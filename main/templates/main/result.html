@@ -128,16 +128,44 @@
 {% block extra_js %}
 <script>
 // Global variables  
-let phoneNumber = '';
+let phoneNumber = '{{ verified_phone|default:"" }}';
 const phoneNotVerified = {{ phone_not_verified|yesno:"true,false" }};
+const skipOTP = {{ skip_otp|yesno:"true,false" }};
 
 // Auto-start verification process
 document.addEventListener('DOMContentLoaded', function() {
-    if (phoneNotVerified) {
+    if (skipOTP && phoneNumber) {
+        // Phone already verified, load results directly
+        loadResults();
+    } else if (phoneNotVerified) {
         // Phone needs verification, show OTP popup
         showOTPVerification();
     }
 });
+
+// Check phone status before asking for OTP
+async function checkPhoneStatus(phoneNumber, countryCode) {
+    try {
+        const phoneOnly = phoneNumber.replace(countryCode, '');
+        
+        const response = await fetch('/api/check-phone/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                phone: phoneOnly,
+                country_code: countryCode
+            })
+        });
+        
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error('Error checking phone status:', error);
+        return { verified: false, error: error.message };
+    }
+}
 
 // OTP Verification using SweetAlert
 async function showOTPVerification() {
@@ -193,7 +221,26 @@ async function showOTPVerification() {
 
     if (phoneInput) {
         phoneNumber = phoneInput;
-        await sendOTPCode();
+        
+        // First check if phone is already verified
+        const countryCode = phoneNumber.startsWith('+60') ? '+60' : '+62';
+        const phoneStatus = await checkPhoneStatus(phoneNumber, countryCode);
+        
+        if (phoneStatus.verified) {
+            // Phone already verified, skip OTP and load results
+            await Swal.fire({
+                icon: 'success',
+                title: 'Nomor Sudah Terverifikasi!',
+                text: 'Nomor telepon Anda sudah aktif. Mengambil hasil estimasi...',
+                showConfirmButton: false,
+                timer: 1500
+            });
+            
+            await loadResults();
+        } else {
+            // Phone not verified, continue with OTP process
+            await sendOTPCode();
+        }
     } else {
         window.location.href = '{% url "main:index" %}';
     }

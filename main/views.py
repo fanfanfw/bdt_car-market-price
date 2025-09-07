@@ -56,9 +56,31 @@ def result(request):
                 'condition_assessments': condition_assessments
             }
             
-            # Always show phone not verified initially - OTP popup will handle verification
-            context['phone_not_verified'] = True
+            # Check if user has verified phone in cookie (1 day session)
+            verified_phone_cookie = request.COOKIES.get('verified_phone')
+            phone_already_verified = False
+            cookie_should_be_deleted = False
+            
+            if verified_phone_cookie:
+                # Check if phone is still active in database (1 month verification)
+                try:
+                    verified_phone = VerifiedPhone.objects.get(phone_number=verified_phone_cookie)
+                    if not verified_phone.is_expired() and verified_phone.is_active:
+                        phone_already_verified = True
+                        context['verified_phone'] = verified_phone_cookie
+                    else:
+                        # Phone expired, mark for cookie deletion
+                        cookie_should_be_deleted = True
+                except VerifiedPhone.DoesNotExist:
+                    # Phone not found in database, mark for cookie deletion
+                    cookie_should_be_deleted = True
+            
+            context['phone_not_verified'] = not phone_already_verified
             context['car_info'] = f"{brand} {model} {variant} ({year})"
+            
+            # If phone already verified, we can show results immediately via JavaScript
+            if phone_already_verified:
+                context['skip_otp'] = True
         else:
             messages.error(request, 'Silakan lengkapi semua data yang diperlukan.')
             return redirect('main:index')
@@ -67,7 +89,13 @@ def result(request):
         messages.info(request, 'Silakan isi form terlebih dahulu.')
         return redirect('main:index')
     
-    return render(request, 'main/result.html', context)
+    # Create response and handle cookie deletion if needed
+    response = render(request, 'main/result.html', context)
+    
+    if cookie_should_be_deleted:
+        response.delete_cookie('verified_phone')
+    
+    return response
 
 
 def get_categories(request):
@@ -522,9 +550,8 @@ def get_secure_results(request):
             verified_phone.access_count += 1
             verified_phone.save()
             
-            # Clear session data after use for security
-            if 'calculation_request' in request.session:
-                del request.session['calculation_request']
+            # Don't clear session data so user can recalculate with same data
+            # Session data will be cleared when user starts new calculation
             
             return JsonResponse({
                 'success': True,
