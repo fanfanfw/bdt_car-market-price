@@ -286,7 +286,7 @@ async function sendOTPCode() {
                 console.log('OTP untuk testing:', data.otp);
             }
             
-            await showOTPInput(data.otp); // Pass OTP for testing
+            await showOTPInput(data.otp, true); // Pass OTP for testing, isNewOTP = true
         } else {
             throw new Error(data.error || 'Gagal mengirim OTP');
         }
@@ -302,87 +302,222 @@ async function sendOTPCode() {
     }
 }
 
-async function showOTPInput(testOTP = null) {
-    let timeLeft = 60;
-    let timerInterval;
-
-    const { value: otpCode } = await Swal.fire({
-        title: 'Masukkan Kode OTP',
-        html: `
-            <div class="space-y-4">
-                <div class="alert alert-success text-sm">
-                    <i class="fas fa-check-circle"></i>
-                    <span>OTP telah dikirim ke ${phoneNumber}</span>
-                </div>
-                ${testOTP ? `<div class="alert alert-info text-sm"><strong>Testing OTP: ${testOTP}</strong></div>` : ''}
-                <input type="text" id="otp-input" class="swal2-input text-center text-2xl" placeholder="123456" maxlength="6" autocomplete="off" style="font-size: 1.5rem; text-align: center; letter-spacing: 0.5rem;">
-                <div class="text-sm text-gray-500" id="otp-timer">Berlaku selama <strong>60</strong> detik</div>
-            </div>
-        `,
-        showCancelButton: true,
-        confirmButtonText: 'Verifikasi',
-        cancelButtonText: 'Kirim Ulang',
-        confirmButtonColor: '#10b981',
-        cancelButtonColor: '#f59e0b',
-        allowOutsideClick: false,
-        allowEscapeKey: false,
-        didOpen: () => {
-            const input = document.getElementById('otp-input');
-            const timer = document.getElementById('otp-timer');
-            
-            // Focus on input
-            input.focus();
-            
-            // Only allow numbers
-            input.addEventListener('input', function(e) {
-                this.value = this.value.replace(/[^0-9]/g, '');
-                if (this.value.length === 6) {
-                    Swal.clickConfirm();
-                }
-            });
-            
-            // Start countdown
-            timerInterval = setInterval(() => {
-                timeLeft--;
-                timer.innerHTML = `Berlaku selama <strong>${timeLeft}</strong> detik`;
-                
-                if (timeLeft <= 0) {
-                    clearInterval(timerInterval);
-                    timer.innerHTML = '<strong class="text-red-500">Kode OTP kedaluwarsa</strong>';
-                }
-            }, 1000);
-        },
-        willClose: () => {
-            if (timerInterval) {
-                clearInterval(timerInterval);
-            }
-        },
-        inputValidator: (value) => {
-            if (!value) {
-                return 'Silakan masukkan kode OTP!';
-            }
-            if (value.length !== 6) {
-                return 'Kode OTP harus 6 digit!';
-            }
-            if (!/^\d+$/.test(value)) {
-                return 'Kode OTP hanya boleh berisi angka!';
-            }
-        },
-        preConfirm: async (otpCode) => {
-            const input = document.getElementById('otp-input');
-            return input.value;
+async function showOTPInput(testOTP = null, isNewOTP = true) {
+    // Initialize timer only for new OTP requests
+    if (isNewOTP) {
+        window.otpTimeLeft = 60;
+        window.otpCancelButtonDisabled = true;
+        window.otpVerificationSuccess = false; // Reset success flag
+        
+        // Clear any existing timer
+        if (window.otpTimerInterval) {
+            clearInterval(window.otpTimerInterval);
+            window.otpTimerInterval = null;
         }
-    });
+    }
 
-    if (otpCode) {
-        await verifyOTPCode(otpCode);
-    } else {
-        // User clicked "Kirim Ulang"
-        await sendOTPCode();
+    const showOTPModal = () => {
+        return Swal.fire({
+            title: 'Masukkan Kode OTP',
+            html: `
+                <div class="space-y-4">
+                    <div class="alert alert-success text-sm">
+                        <i class="fas fa-check-circle"></i>
+                        <span>OTP telah dikirim ke ${phoneNumber}</span>
+                    </div>
+                    ${testOTP ? `<div class="alert alert-info text-sm"><strong>Testing OTP: ${testOTP}</strong></div>` : ''}
+                    <input type="text" id="otp-input" class="swal2-input text-center text-2xl" placeholder="123456" maxlength="6" autocomplete="off" style="font-size: 1.5rem; text-align: center; letter-spacing: 0.5rem;">
+                    <div class="text-sm text-gray-500" id="otp-timer">Berlaku selama <strong>${window.otpTimeLeft}</strong> detik</div>
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonText: 'Ganti Nomor',
+            cancelButtonText: 'Kirim Ulang',
+            confirmButtonColor: '#3b82f6',
+            cancelButtonColor: '#f59e0b',
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            didOpen: () => {
+                const input = document.getElementById('otp-input');
+                const timer = document.getElementById('otp-timer');
+                const cancelButton = Swal.getCancelButton();
+                
+                // Set initial button state based on current timer
+                if (cancelButton) {
+                    cancelButton.disabled = window.otpCancelButtonDisabled;
+                    if (window.otpCancelButtonDisabled) {
+                        cancelButton.style.opacity = '0.5';
+                        cancelButton.style.cursor = 'not-allowed';
+                    } else {
+                        cancelButton.style.opacity = '1';
+                        cancelButton.style.cursor = 'pointer';
+                    }
+                }
+                
+                // Update timer display with current value
+                if (window.otpTimeLeft > 0) {
+                    timer.innerHTML = `Berlaku selama <strong>${window.otpTimeLeft}</strong> detik`;
+                } else {
+                    timer.innerHTML = '<strong class="text-red-500">Kode OTP kedaluwarsa - Silakan kirim ulang</strong>';
+                }
+                
+                // Focus on input
+                input.focus();
+                
+                // Only allow numbers and auto-submit on 6 digits
+                input.addEventListener('input', async function(e) {
+                    this.value = this.value.replace(/[^0-9]/g, '');
+                    if (this.value.length === 6) {
+                        // Auto verify when 6 digits are entered
+                        const otpCode = this.value;
+                        
+                        // Disable input while verifying
+                        this.disabled = true;
+                        
+                        const verificationResult = await verifyOTPCodeSilent(otpCode, testOTP);
+                        
+                        if (verificationResult === true) {
+                            // Success - close modal and stop timer
+                            if (window.otpTimerInterval) {
+                                clearInterval(window.otpTimerInterval);
+                                window.otpTimerInterval = null;
+                            }
+                            window.otpTimeLeft = 0;
+                            window.otpCancelButtonDisabled = true;
+                            window.otpVerificationSuccess = true; // Flag untuk keluar dari loop
+                            Swal.close();
+                        } else {
+                            // Failed - clear input, re-enable, and let user try again
+                            this.value = '';
+                            this.disabled = false;
+                            this.focus();
+                            
+                            // Show error message briefly
+                            const errorMsg = document.createElement('div');
+                            errorMsg.className = 'text-red-500 text-sm mt-2';
+                            errorMsg.textContent = 'Kode OTP salah, silakan coba lagi';
+                            timer.parentNode.appendChild(errorMsg);
+                            
+                            setTimeout(() => {
+                                if (errorMsg.parentNode) {
+                                    errorMsg.parentNode.removeChild(errorMsg);
+                                }
+                            }, 2000);
+                        }
+                    }
+                });
+                
+                // Start countdown only if timer is still running and no existing timer
+                if (window.otpTimeLeft > 0 && !window.otpTimerInterval) {
+                    window.otpTimerInterval = setInterval(() => {
+                        window.otpTimeLeft--;
+                        timer.innerHTML = `Berlaku selama <strong>${window.otpTimeLeft}</strong> detik`;
+                        
+                        if (window.otpTimeLeft <= 0) {
+                            clearInterval(window.otpTimerInterval);
+                            window.otpTimerInterval = null;
+                            timer.innerHTML = '<strong class="text-red-500">Kode OTP kedaluwarsa - Silakan kirim ulang</strong>';
+                            
+                            // Enable cancel button when timer expires
+                            if (cancelButton) {
+                                cancelButton.disabled = false;
+                                cancelButton.style.opacity = '1';
+                                cancelButton.style.cursor = 'pointer';
+                                window.otpCancelButtonDisabled = false;
+                            }
+                        }
+                    }, 1000);
+                }
+            },
+            willClose: () => {
+                // Don't clear the global timer here, let it continue running
+                // Only clear it when OTP is successful or new OTP is requested
+            }
+        });
+    };
+
+    while (true) {
+        const result = await showOTPModal();
+        
+        if (result.isConfirmed) {
+            // User clicked "Ganti Nomor" - go back to phone input modal
+            window.otpTimeLeft = 0;
+            window.otpCancelButtonDisabled = true;
+            await showOTPVerification(); // Go back to phone input
+            break;
+            
+        } else if (result.isDismissed && result.dismiss === Swal.DismissReason.cancel) {
+            // User clicked "Kirim Ulang" 
+            if (!window.otpCancelButtonDisabled) {
+                // Clear existing timer before requesting new OTP
+                if (window.otpTimerInterval) {
+                    clearInterval(window.otpTimerInterval);
+                    window.otpTimerInterval = null;
+                }
+                
+                // Exit current loop and start fresh
+                await sendOTPCode();
+                return; // Exit function completely, sendOTPCode will call showOTPInput again
+            }
+            // If button is disabled, just continue showing the modal
+        } else if (result.isDismissed) {
+            // Modal was closed (either by auto-submit success or other reason)
+            // Check if it was auto-submit success
+            if (window.otpVerificationSuccess === true) {
+                // Success case - exit the function
+                window.otpVerificationSuccess = false; // Reset flag
+                break;
+            }
+            // Otherwise continue showing the modal
+        } else {
+            // User somehow closed the modal (shouldn't happen due to allowOutsideClick: false)
+            window.location.href = '{% url "main:index" %}';
+            break;
+        }
     }
 }
 
-async function verifyOTPCode(otpCode) {
+// Silent verification without UI changes for auto-submit
+async function verifyOTPCodeSilent(otpCode, testOTP = null) {
+    try {
+        const countryCode = phoneNumber.startsWith('+60') ? '+60' : '+62';
+        const phoneOnly = phoneNumber.replace(countryCode, '');
+        
+        const response = await fetch('/api/verify-otp/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                phone: phoneOnly,
+                country_code: countryCode,
+                otp: otpCode
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            // Show success and load results
+            await Swal.fire({
+                icon: 'success',
+                title: 'Verifikasi Berhasil!',
+                text: 'Nomor telepon Anda telah diverifikasi. Mengambil hasil estimasi...',
+                showConfirmButton: false,
+                timer: 1500
+            });
+            
+            await loadResults();
+            return true; // Success
+        } else {
+            return false; // Failed verification - no UI changes
+        }
+    } catch (error) {
+        return false; // Failed verification - no UI changes
+    }
+}
+
+async function verifyOTPCode(otpCode, testOTP = null) {
     try {
         // Show loading
         Swal.fire({
@@ -423,18 +558,30 @@ async function verifyOTPCode(otpCode) {
             
             // Now load the results
             await loadResults();
+            return true; // Success
         } else {
-            throw new Error(data.error || 'Verifikasi gagal');
+            // Show error but don't exit - let the caller handle retry
+            await Swal.fire({
+                icon: 'error',
+                title: 'Verifikasi Gagal',
+                text: data.error || 'Kode OTP salah. Silakan coba lagi.',
+                showConfirmButton: true,
+                confirmButtonText: 'OK',
+                timer: 3000
+            });
+            return false; // Failed verification
         }
     } catch (error) {
-        Swal.fire({
+        // Show error but don't exit - let the caller handle retry
+        await Swal.fire({
             icon: 'error',
             title: 'Verifikasi Gagal',
-            text: error.message,
-            confirmButtonText: 'Coba Lagi'
-        }).then(() => {
-            showOTPVerification();
+            text: 'Terjadi kesalahan jaringan. Silakan coba lagi.',
+            showConfirmButton: true,
+            confirmButtonText: 'OK',
+            timer: 3000
         });
+        return false; // Failed verification
     }
 }
 
