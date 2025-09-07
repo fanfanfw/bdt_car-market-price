@@ -82,8 +82,19 @@ DATABASES = {
         'PASSWORD': config('DB_PASSWORD', default=''),
         'HOST': config('DB_HOST', default=''),
         'PORT': config('DB_PORT', default=''),
+    },
+    'source': {
+        'ENGINE': config('SOURCE_DB_ENGINE', default='django.db.backends.postgresql'),
+        'NAME': config('SOURCE_DB_NAME', default='db_scrap_new'),
+        'USER': config('SOURCE_DB_USER', default=''),
+        'PASSWORD': config('SOURCE_DB_PASSWORD', default=''),
+        'HOST': config('SOURCE_DB_HOST', default='localhost'),
+        'PORT': config('SOURCE_DB_PORT', default='5432'),
     }
 }
+
+# Database routing (optional - for automatic routing)
+# DATABASE_ROUTERS = ['path.to.db_router.DatabaseRouter']
 
 
 # Password validation
