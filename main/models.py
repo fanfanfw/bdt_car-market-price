@@ -1,4 +1,6 @@
 from django.db import models
+from django.utils import timezone
+from datetime import timedelta
 
 
 class Category(models.Model):
@@ -149,3 +151,94 @@ class PriceHistoryUnified(models.Model):
 
     def __str__(self):
         return f"{self.source} - {self.listing_url} - {self.old_price} → {self.new_price}"
+
+
+class VerifiedPhone(models.Model):
+    """Phone verification tracking for OTP system"""
+    phone_number = models.CharField(
+        max_length=15, 
+        unique=True,
+        help_text='Phone number with country code (+60xxxxxxxxx or +62xxxxxxxxx)'
+    )
+    verified_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text='First time verified'
+    )
+    last_accessed = models.DateTimeField(
+        auto_now=True,
+        help_text='Last time accessed'
+    )
+    access_count = models.PositiveIntegerField(
+        default=1,
+        help_text='Number of times accessed'
+    )
+    is_active = models.BooleanField(
+        default=True,
+        help_text='Whether phone is still active'
+    )
+    user_agent = models.TextField(
+        blank=True, 
+        null=True,
+        help_text='Browser/device info'
+    )
+    ip_address = models.GenericIPAddressField(
+        blank=True, 
+        null=True,
+        help_text='Last IP address'
+    )
+
+    class Meta:
+        db_table = 'verified_phones'
+        ordering = ['-last_accessed']
+        indexes = [
+            models.Index(fields=['phone_number'], name='verified_ph_phone_n_317bb1_idx'),
+            models.Index(fields=['verified_at'], name='verified_ph_verifie_13dc2c_idx'),
+            models.Index(fields=['last_accessed'], name='verified_ph_last_ac_1c534c_idx'),
+            models.Index(fields=['is_active'], name='verified_ph_is_acti_852b26_idx'),
+        ]
+
+    def __str__(self):
+        return f"{self.phone_number} - {self.verified_at.strftime('%Y-%m-%d')}"
+
+    def is_expired(self):
+        """Check if phone verification has expired"""
+        from django.conf import settings
+        expiry_days = getattr(settings, 'PHONE_VERIFICATION_EXPIRY_DAYS', 30)
+        expiry_date = self.verified_at + timedelta(days=expiry_days)
+        return timezone.now() > expiry_date
+
+    def extend_expiry(self):
+        """Extend the expiry by updating verified_at to now"""
+        self.verified_at = timezone.now()
+        self.is_active = True
+        self.save()
+
+
+class OTPSession(models.Model):
+    """Temporary OTP sessions (1 minute validity)"""
+    phone_number = models.CharField(max_length=15)
+    otp_code = models.CharField(max_length=6)
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_used = models.BooleanField(default=False)
+    ip_address = models.GenericIPAddressField(blank=True, null=True)
+
+    class Meta:
+        db_table = 'otp_sessions'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['phone_number', 'created_at']),
+            models.Index(fields=['otp_code']),
+            models.Index(fields=['is_used']),
+        ]
+
+    def __str__(self):
+        return f"{self.phone_number} - {self.otp_code} - {self.created_at}"
+
+    def is_expired(self):
+        """Check if OTP has expired (1 minute)"""
+        expiry_time = self.created_at + timedelta(minutes=1)
+        return timezone.now() > expiry_time
+
+    def is_valid(self):
+        """Check if OTP is still valid and unused"""
+        return not self.is_used and not self.is_expired()

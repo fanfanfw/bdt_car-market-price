@@ -1,13 +1,27 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.db import connection
-from .models import CarStandard, CarUnified, Category, BrandCategory
+from django.contrib import messages
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
+from django.views.decorators.http import require_http_methods
+from django.utils import timezone
+import json
+import random
+import re
+from .models import CarStandard, CarUnified, Category, BrandCategory, VerifiedPhone, OTPSession
 
 def index(request):
+    """Main index page with car price estimation form"""
+    context = {}
+    return render(request, 'main/index.html', context)
+
+def result(request):
+    """Display calculation result page with secure OTP verification"""
     context = {}
     
-    # Handle form submission
     if request.method == 'POST':
+        # Handle form submission directly
         category = request.POST.get('category')
         brand = request.POST.get('brand')
         model = request.POST.get('model')
@@ -31,14 +45,29 @@ def index(request):
         }
         
         if category and brand and model and variant and year:
-            # Execute the car statistics query
-            result = get_car_statistics(brand, model, variant, int(year), user_mileage, condition_assessments)
-            if result:
-                context['result'] = result
-            else:
-                context['no_data'] = True
+            # Store form data in session for security (encrypted)
+            request.session['calculation_request'] = {
+                'category': category,
+                'brand': brand,
+                'model': model,
+                'variant': variant,
+                'year': int(year),
+                'user_mileage': user_mileage,
+                'condition_assessments': condition_assessments
+            }
+            
+            # Always show phone not verified initially - OTP popup will handle verification
+            context['phone_not_verified'] = True
+            context['car_info'] = f"{brand} {model} {variant} ({year})"
+        else:
+            messages.error(request, 'Silakan lengkapi semua data yang diperlukan.')
+            return redirect('main:index')
+    else:
+        # GET request - redirect to index
+        messages.info(request, 'Silakan isi form terlebih dahulu.')
+        return redirect('main:index')
     
-    return render(request, 'main/index.html', context)
+    return render(request, 'main/result.html', context)
 
 
 def get_categories(request):
@@ -240,3 +269,275 @@ def get_car_statistics(brand, model, variant, year, user_mileage=None, condition
         return None
     
     return None
+
+
+def get_client_ip(request):
+    """Get client IP address"""
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        ip = x_forwarded_for.split(',')[0]
+    else:
+        ip = request.META.get('REMOTE_ADDR')
+    return ip
+
+
+def normalize_phone_number(phone, country_code):
+    """Normalize phone number format"""
+    # Remove all non-digits
+    phone_digits = re.sub(r'\D', '', phone)
+    
+    # Add country code if not present
+    if not phone_digits.startswith('60') and not phone_digits.startswith('62'):
+        country_digits = country_code.replace('+', '')
+        phone_digits = country_digits + phone_digits
+    
+    return '+' + phone_digits
+
+
+def generate_otp():
+    """Generate 6-digit OTP"""
+    return str(random.randint(100000, 999999))
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def check_phone_status(request):
+    """Check if phone number is already verified and active"""
+    try:
+        data = json.loads(request.body)
+        phone = data.get('phone')
+        country_code = data.get('country_code', '+60')
+        
+        if not phone:
+            return JsonResponse({'error': 'Phone number required'}, status=400)
+        
+        # Normalize phone number
+        full_phone = normalize_phone_number(phone, country_code)
+        
+        # Check if phone exists and is active
+        try:
+            verified_phone = VerifiedPhone.objects.get(phone_number=full_phone)
+            
+            if verified_phone.is_expired():
+                # Phone expired, mark as inactive
+                verified_phone.is_active = False
+                verified_phone.save()
+                return JsonResponse({
+                    'verified': False,
+                    'expired': True,
+                    'message': 'Phone verification has expired. Please verify again.'
+                })
+            
+            # Phone is active and valid
+            verified_phone.access_count += 1
+            verified_phone.save()
+            
+            return JsonResponse({
+                'verified': True,
+                'phone': full_phone,
+                'message': 'Phone number is already verified.'
+            })
+            
+        except VerifiedPhone.DoesNotExist:
+            return JsonResponse({
+                'verified': False,
+                'message': 'Phone number not verified yet.'
+            })
+            
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def send_otp(request):
+    """Send OTP to phone number"""
+    try:
+        data = json.loads(request.body)
+        phone = data.get('phone')
+        country_code = data.get('country_code', '+60')
+        
+        if not phone:
+            return JsonResponse({'error': 'Phone number required'}, status=400)
+        
+        # Normalize phone number
+        full_phone = normalize_phone_number(phone, country_code)
+        
+        # Validate phone number format
+        if country_code == '+60':
+            # Malaysia format validation
+            if not re.match(r'^\+60\d{8,10}$', full_phone):
+                return JsonResponse({'error': 'Invalid Malaysian phone number format'}, status=400)
+        elif country_code == '+62':
+            # Indonesia format validation
+            if not re.match(r'^\+62\d{8,12}$', full_phone):
+                return JsonResponse({'error': 'Invalid Indonesian phone number format'}, status=400)
+        
+        # Generate OTP
+        otp_code = generate_otp()
+        
+        # Clean up old OTP sessions for this phone (optional - keep only latest)
+        OTPSession.objects.filter(phone_number=full_phone, is_used=False).update(is_used=True)
+        
+        # Create new OTP session
+        otp_session = OTPSession.objects.create(
+            phone_number=full_phone,
+            otp_code=otp_code,
+            ip_address=get_client_ip(request)
+        )
+        
+        # For testing - return OTP in response (remove in production)
+        return JsonResponse({
+            'success': True,
+            'message': f'OTP sent to {full_phone}',
+            'otp': otp_code,  # For testing only!
+            'expires_in': 60  # seconds
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def verify_otp(request):
+    """Verify OTP and mark phone as verified"""
+    try:
+        data = json.loads(request.body)
+        phone = data.get('phone')
+        otp_code = data.get('otp')
+        country_code = data.get('country_code', '+60')
+        
+        if not phone or not otp_code:
+            return JsonResponse({'error': 'Phone number and OTP required'}, status=400)
+        
+        # Normalize phone number
+        full_phone = normalize_phone_number(phone, country_code)
+        
+        # Find valid OTP session
+        try:
+            otp_session = OTPSession.objects.filter(
+                phone_number=full_phone,
+                otp_code=otp_code,
+                is_used=False
+            ).order_by('-created_at').first()
+            
+            if not otp_session:
+                return JsonResponse({'error': 'Invalid OTP code'}, status=400)
+            
+            if otp_session.is_expired():
+                return JsonResponse({'error': 'OTP has expired. Please request a new one.'}, status=400)
+            
+            # Mark OTP as used
+            otp_session.is_used = True
+            otp_session.save()
+            
+            # Create or update verified phone
+            verified_phone, created = VerifiedPhone.objects.get_or_create(
+                phone_number=full_phone,
+                defaults={
+                    'user_agent': request.META.get('HTTP_USER_AGENT', ''),
+                    'ip_address': get_client_ip(request),
+                    'access_count': 1,
+                    'is_active': True
+                }
+            )
+            
+            if not created:
+                # Phone already exists, extend expiry
+                verified_phone.extend_expiry()
+                verified_phone.user_agent = request.META.get('HTTP_USER_AGENT', '')
+                verified_phone.ip_address = get_client_ip(request)
+                verified_phone.access_count += 1
+                verified_phone.save()
+            
+            # Set session cookie for user convenience
+            response = JsonResponse({
+                'success': True,
+                'phone': full_phone,
+                'message': 'Phone number verified successfully!'
+            })
+            
+            from django.conf import settings
+            cookie_age = getattr(settings, 'OTP_SESSION_COOKIE_AGE', 86400)
+            response.set_cookie(
+                'verified_phone', 
+                full_phone, 
+                max_age=cookie_age,
+                httponly=True,
+                samesite='Strict'
+            )
+            
+            return response
+            
+        except Exception as e:
+            return JsonResponse({'error': 'Verification failed'}, status=500)
+            
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def get_secure_results(request):
+    """Get calculation results only if phone is verified"""
+    try:
+        data = json.loads(request.body)
+        phone_number = data.get('phone_number')
+        
+        if not phone_number:
+            return JsonResponse({'error': 'Phone number required'}, status=400)
+        
+        # Verify phone is active
+        try:
+            verified_phone = VerifiedPhone.objects.get(phone_number=phone_number)
+            if verified_phone.is_expired():
+                return JsonResponse({'error': 'Phone verification expired'}, status=403)
+        except VerifiedPhone.DoesNotExist:
+            return JsonResponse({'error': 'Phone not verified'}, status=403)
+        
+        # Get calculation data from session
+        calculation_data = request.session.get('calculation_request')
+        if not calculation_data:
+            return JsonResponse({'error': 'No calculation data found'}, status=400)
+        
+        # Perform calculation
+        result_data = get_car_statistics(
+            calculation_data['brand'],
+            calculation_data['model'], 
+            calculation_data['variant'],
+            calculation_data['year'],
+            calculation_data.get('user_mileage'),
+            calculation_data.get('condition_assessments')
+        )
+        
+        if result_data:
+            # Update access count
+            verified_phone.access_count += 1
+            verified_phone.save()
+            
+            # Clear session data after use for security
+            if 'calculation_request' in request.session:
+                del request.session['calculation_request']
+            
+            return JsonResponse({
+                'success': True,
+                'result': result_data
+            })
+        else:
+            return JsonResponse({
+                'success': False,
+                'no_data': True,
+                'message': 'No data found for the selected combination'
+            })
+            
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)

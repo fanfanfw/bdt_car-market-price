@@ -1,282 +1,471 @@
 {% extends 'main/base.html' %}
+{% load static %}
 
-{% block title %}Car Price Assessment - Car Market Price{% endblock %}
+{% block title %}Car Market Price - Estimasi Harga Kendaraan{% endblock %}
+
+{% block extra_css %}
+<script>
+    // Define API URLs using Django template tags
+    const API_URLS = {
+        categories: '{% url "main:get_categories" %}',
+        brands: '{% url "main:get_brands" %}',
+        models: '{% url "main:get_models" %}',
+        variants: '{% url "main:get_variants" %}',
+        years: '{% url "main:get_years" %}'
+    };
+</script>
+{% endblock %}
 
 {% block content %}
-<div class="hero min-h-96 bg-base-200 rounded-lg mb-8">
-    <div class="hero-content text-center">
-        <div class="max-w-md">
-            <h1 class="text-5xl font-bold">
-                <i class="fas fa-calculator text-primary"></i>
-                Car Price Assessment
-            </h1>
-            <p class="py-6">
-                Dapatkan perkiraan harga mobil Anda berdasarkan data pasar terkini. 
-                Masukkan detail mobil dan kondisi untuk mendapatkan estimasi yang akurat.
+<!-- Header -->
+<div class="text-center mb-12">
+    <div class="flex justify-center items-center mb-4">
+        <div class="bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 p-4 rounded-full shadow-lg">
+            <i class="fas fa-car text-3xl text-white"></i>
+        </div>
+    </div>
+    <h1 class="text-5xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent mb-3">
+        Car Market Price
+    </h1>
+    <p class="text-base-content/70 text-lg max-w-2xl mx-auto">
+        Estimasi harga kendaraan berdasarkan mileage dan data pasar yang akurat
+    </p>
+</div>
+
+<!-- Form Card -->
+<div class="card bg-base-100 shadow-2xl border-0 mb-8">
+    <div class="card-body p-8">
+        <div class="text-center mb-8">
+            <h2 class="text-3xl font-bold text-base-content mb-3">
+                <i class="fas fa-calculator text-blue-600 mr-3"></i>
+                Estimasi Harga Kendaraan
+            </h2>
+            <p class="text-base-content/70 text-lg">
+                Pilih spesifikasi kendaraan dan masukkan mileage untuk mendapatkan estimasi harga
             </p>
         </div>
+        
+        <form id="mileageForm" method="POST" action="{% url 'main:result' %}">
+            {% csrf_token %}
+            
+            <!-- Vehicle Selection Section -->
+            <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-6 mb-8">
+                <h3 class="text-xl font-semibold text-base-content mb-4 flex items-center">
+                    <i class="fas fa-car-side text-blue-600 mr-2"></i>
+                    Spesifikasi Kendaraan
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                    <!-- Category -->
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text font-medium">Category</span>
+                        </label>
+                        <select name="category" id="categorySelect" class="select select-bordered w-full" required>
+                            <option value="" disabled selected>Pilih Category</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Brand -->
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text font-medium">Brand</span>
+                        </label>
+                        <select name="brand" id="brandSelect" class="select select-bordered w-full focus:select-primary" disabled required>
+                            <option value="" disabled selected>Pilih Brand</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Model -->
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text font-medium">Model</span>
+                        </label>
+                        <select name="model" id="modelSelect" class="select select-bordered w-full focus:select-primary" disabled required>
+                            <option value="" disabled selected>Pilih Model</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Variant -->
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text font-medium">Variant</span>
+                        </label>
+                        <select name="variant" id="variantSelect" class="select select-bordered w-full focus:select-primary" disabled required>
+                            <option value="" disabled selected>Pilih Variant</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Year -->
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text font-medium">Tahun</span>
+                        </label>
+                        <select name="year" id="yearSelect" class="select select-bordered w-full focus:select-primary" disabled required>
+                            <option value="" disabled selected>Pilih Tahun</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- User Mileage Input -->
+            <div class="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl p-6 mb-8">
+                <h3 class="text-xl font-semibold text-base-content mb-4 flex items-center">
+                    <i class="fas fa-tachometer-alt text-green-600 mr-2"></i>
+                    Mileage Kendaraan
+                </h3>
+                <div class="form-control max-w-xs">
+                    <label class="label">
+                        <span class="label-text font-medium">Mileage Kendaraan Anda (km)</span>
+                    </label>
+                    <div class="relative">
+                        <input type="number" name="user_mileage" id="userMileageInput" 
+                               class="input input-bordered w-full pr-12 focus:input-primary" 
+                               placeholder="Contoh: 50000" min="0" step="1000">
+                        <span class="absolute right-3 top-1/2 transform -translate-y-1/2 text-base-content/50 text-sm">km</span>
+                    </div>
+                    <label class="label">
+                        <span class="label-text-alt text-base-content/60">Masukkan mileage kendaraan Anda</span>
+                    </label>
+                </div>
+            </div>
+        
+            <!-- Condition Assessment Section -->
+            <div class="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl p-6 mb-8">
+                <h3 class="text-xl font-semibold text-base-content mb-4 flex items-center">
+                    <i class="fas fa-clipboard-check text-purple-600 mr-2"></i>
+                    Penilaian Kondisi Kendaraan
+                </h3>
+                <p class="text-base-content/70 mb-6">Pilih kondisi yang paling sesuai untuk setiap aspek kendaraan Anda</p>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- Exterior Condition -->
+                    <div class="card bg-base-100 shadow-sm border border-base-200 hover:shadow-md transition-all duration-300">
+                        <div class="card-body p-4">
+                            <h4 class="font-semibold text-base-content mb-3 flex items-center">
+                                <i class="fas fa-car text-blue-500 mr-2"></i>
+                                Exterior Condition
+                            </h4>
+                            <div class="space-y-2">
+                                <label class="cursor-pointer label justify-start">
+                                    <input type="radio" name="exterior_condition" value="0" class="radio radio-primary radio-sm mr-3" required>
+                                    <span class="label-text">Excellent (0%)</span>
+                                </label>
+                                <label class="cursor-pointer label justify-start">
+                                    <input type="radio" name="exterior_condition" value="3" class="radio radio-primary radio-sm mr-3">
+                                    <span class="label-text">Good (-3%)</span>
+                                </label>
+                                <label class="cursor-pointer label justify-start">
+                                    <input type="radio" name="exterior_condition" value="6" class="radio radio-primary radio-sm mr-3">
+                                    <span class="label-text">Fair (-6%)</span>
+                                </label>
+                                <label class="cursor-pointer label justify-start">
+                                    <input type="radio" name="exterior_condition" value="10" class="radio radio-primary radio-sm mr-3">
+                                    <span class="label-text">Poor (-10%)</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Interior Condition -->
+                    <div class="card bg-base-100 shadow-sm border border-base-200 hover:shadow-md transition-all duration-300">
+                        <div class="card-body p-4">
+                            <h4 class="font-semibold text-base-content mb-3 flex items-center">
+                                <i class="fas fa-couch text-green-500 mr-2"></i>
+                                Interior Condition
+                            </h4>
+                            <div class="space-y-2">
+                                <label class="cursor-pointer label justify-start">
+                                    <input type="radio" name="interior_condition" value="0" class="radio radio-primary radio-sm mr-3" required>
+                                    <span class="label-text">Excellent (0%)</span>
+                                </label>
+                                <label class="cursor-pointer label justify-start">
+                                    <input type="radio" name="interior_condition" value="3" class="radio radio-primary radio-sm mr-3">
+                                    <span class="label-text">Good (-3%)</span>
+                                </label>
+                                <label class="cursor-pointer label justify-start">
+                                    <input type="radio" name="interior_condition" value="6" class="radio radio-primary radio-sm mr-3">
+                                    <span class="label-text">Fair (-6%)</span>
+                                </label>
+                                <label class="cursor-pointer label justify-start">
+                                    <input type="radio" name="interior_condition" value="10" class="radio radio-primary radio-sm mr-3">
+                                    <span class="label-text">Poor (-10%)</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Mechanical Condition -->
+                    <div class="card bg-base-100 shadow-sm border border-base-200 hover:shadow-md transition-all duration-300">
+                        <div class="card-body p-4">
+                            <h4 class="font-semibold text-base-content mb-3 flex items-center">
+                                <i class="fas fa-cogs text-orange-500 mr-2"></i>
+                                Mechanical Condition
+                            </h4>
+                            <div class="space-y-2">
+                                <label class="cursor-pointer label justify-start">
+                                    <input type="radio" name="mechanical_condition" value="0" class="radio radio-primary radio-sm mr-3" required>
+                                    <span class="label-text">Excellent (0%)</span>
+                                </label>
+                                <label class="cursor-pointer label justify-start">
+                                    <input type="radio" name="mechanical_condition" value="7" class="radio radio-primary radio-sm mr-3">
+                                    <span class="label-text">Good (-7%)</span>
+                                </label>
+                                <label class="cursor-pointer label justify-start">
+                                    <input type="radio" name="mechanical_condition" value="13" class="radio radio-primary radio-sm mr-3">
+                                    <span class="label-text">Fair (-13%)</span>
+                                </label>
+                                <label class="cursor-pointer label justify-start">
+                                    <input type="radio" name="mechanical_condition" value="20" class="radio radio-primary radio-sm mr-3">
+                                    <span class="label-text">Poor (-20%)</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Accident History -->
+                    <div class="card bg-base-100 shadow-sm border border-base-200 hover:shadow-md transition-all duration-300">
+                        <div class="card-body p-4">
+                            <h4 class="font-semibold text-base-content mb-3 flex items-center">
+                                <i class="fas fa-exclamation-triangle text-red-500 mr-2"></i>
+                                Accident History
+                            </h4>
+                            <div class="space-y-2">
+                                <label class="cursor-pointer label justify-start">
+                                    <input type="radio" name="accident_history" value="0" class="radio radio-primary radio-sm mr-3" required>
+                                    <span class="label-text">None (0%)</span>
+                                </label>
+                                <label class="cursor-pointer label justify-start">
+                                    <input type="radio" name="accident_history" value="8" class="radio radio-primary radio-sm mr-3">
+                                    <span class="label-text">Minor (-8%)</span>
+                                </label>
+                                <label class="cursor-pointer label justify-start">
+                                    <input type="radio" name="accident_history" value="15" class="radio radio-primary radio-sm mr-3">
+                                    <span class="label-text">Major (-15%)</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Service History -->
+                    <div class="card bg-base-100 shadow-sm border border-base-200 hover:shadow-md transition-all duration-300">
+                        <div class="card-body p-4">
+                            <h4 class="font-semibold text-base-content mb-3 flex items-center">
+                                <i class="fas fa-wrench text-yellow-500 mr-2"></i>
+                                Service History
+                            </h4>
+                            <div class="space-y-2">
+                                <label class="cursor-pointer label justify-start">
+                                    <input type="radio" name="service_history" value="0" class="radio radio-primary radio-sm mr-3" required>
+                                    <span class="label-text">Full (0%)</span>
+                                </label>
+                                <label class="cursor-pointer label justify-start">
+                                    <input type="radio" name="service_history" value="3" class="radio radio-primary radio-sm mr-3">
+                                    <span class="label-text">Partial (-3%)</span>
+                                </label>
+                                <label class="cursor-pointer label justify-start">
+                                    <input type="radio" name="service_history" value="5" class="radio radio-primary radio-sm mr-3">
+                                    <span class="label-text">None (-5%)</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Number of Owners -->
+                    <div class="card bg-base-100 shadow-sm border border-base-200 hover:shadow-md transition-all duration-300">
+                        <div class="card-body p-4">
+                            <h4 class="font-semibold text-base-content mb-3 flex items-center">
+                                <i class="fas fa-users text-indigo-500 mr-2"></i>
+                                Number of Owners
+                            </h4>
+                            <div class="space-y-2">
+                                <label class="cursor-pointer label justify-start">
+                                    <input type="radio" name="number_of_owners" value="0" class="radio radio-primary radio-sm mr-3" required>
+                                    <span class="label-text">1 Owner (0%)</span>
+                                </label>
+                                <label class="cursor-pointer label justify-start">
+                                    <input type="radio" name="number_of_owners" value="2" class="radio radio-primary radio-sm mr-3">
+                                    <span class="label-text">2 Owners (-2%)</span>
+                                </label>
+                                <label class="cursor-pointer label justify-start">
+                                    <input type="radio" name="number_of_owners" value="5" class="radio radio-primary radio-sm mr-3">
+                                    <span class="label-text">3+ Owners (-5%)</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Row 2 -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
+                    <!-- Tires & Brakes -->
+                    <div class="card bg-base-100 shadow-sm border border-base-200 hover:shadow-md transition-all duration-300">
+                        <div class="card-body p-4">
+                            <h4 class="font-semibold text-base-content mb-3 flex items-center">
+                                <i class="fas fa-circle text-gray-500 mr-2"></i>
+                                Tires & Brakes
+                            </h4>
+                            <div class="space-y-2">
+                                <label class="cursor-pointer label justify-start">
+                                    <input type="radio" name="tires_brakes" value="0" class="radio radio-primary radio-sm mr-3" required>
+                                    <span class="label-text">New (0%)</span>
+                                </label>
+                                <label class="cursor-pointer label justify-start">
+                                    <input type="radio" name="tires_brakes" value="2.5" class="radio radio-primary radio-sm mr-3">
+                                    <span class="label-text">Fair (-2.5%)</span>
+                                </label>
+                                <label class="cursor-pointer label justify-start">
+                                    <input type="radio" name="tires_brakes" value="5" class="radio radio-primary radio-sm mr-3">
+                                    <span class="label-text">Needs Replacement (-5%)</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Modifications -->
+                    <div class="card bg-base-100 shadow-sm border border-base-200 hover:shadow-md transition-all duration-300">
+                        <div class="card-body p-4">
+                            <h4 class="font-semibold text-base-content mb-3 flex items-center">
+                                <i class="fas fa-tools text-purple-500 mr-2"></i>
+                                Modifications
+                            </h4>
+                            <div class="space-y-2">
+                                <label class="cursor-pointer label justify-start">
+                                    <input type="radio" name="modifications" value="0" class="radio radio-primary radio-sm mr-3" required>
+                                    <span class="label-text">None (0%)</span>
+                                </label>
+                                <label class="cursor-pointer label justify-start">
+                                    <input type="radio" name="modifications" value="2.5" class="radio radio-primary radio-sm mr-3">
+                                    <span class="label-text">Minor (-2.5%)</span>
+                                </label>
+                                <label class="cursor-pointer label justify-start">
+                                    <input type="radio" name="modifications" value="5" class="radio radio-primary radio-sm mr-3">
+                                    <span class="label-text">Major (-5%)</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Market Demand -->
+                    <div class="card bg-base-100 shadow-sm border border-base-200 hover:shadow-md transition-all duration-300">
+                        <div class="card-body p-4">
+                            <h4 class="font-semibold text-base-content mb-3 flex items-center">
+                                <i class="fas fa-chart-line text-green-500 mr-2"></i>
+                                Market Demand
+                            </h4>
+                            <div class="space-y-2">
+                                <label class="cursor-pointer label justify-start">
+                                    <input type="radio" name="market_demand" value="0" class="radio radio-primary radio-sm mr-3" required>
+                                    <span class="label-text">High (0%)</span>
+                                </label>
+                                <label class="cursor-pointer label justify-start">
+                                    <input type="radio" name="market_demand" value="5" class="radio radio-primary radio-sm mr-3">
+                                    <span class="label-text">Average (-5%)</span>
+                                </label>
+                                <label class="cursor-pointer label justify-start">
+                                    <input type="radio" name="market_demand" value="10" class="radio radio-primary radio-sm mr-3">
+                                    <span class="label-text">Low (-10%)</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Brand Category -->
+                    <div class="card bg-base-100 shadow-sm border border-base-200 hover:shadow-md transition-all duration-300">
+                        <div class="card-body p-4">
+                            <h4 class="font-semibold text-base-content mb-3 flex items-center">
+                                <i class="fas fa-flag text-red-500 mr-2"></i>
+                                Brand Category (Malaysia)
+                            </h4>
+                            <div class="space-y-2">
+                                <label class="cursor-pointer label justify-start">
+                                    <input type="radio" name="brand_category" value="8" class="radio radio-primary radio-sm mr-3" required>
+                                    <span class="label-text">Local Car (-8%)</span>
+                                </label>
+                                <label class="cursor-pointer label justify-start">
+                                    <input type="radio" name="brand_category" value="0" class="radio radio-primary radio-sm mr-3">
+                                    <span class="label-text">Japanese Car (0%)</span>
+                                </label>
+                                <label class="cursor-pointer label justify-start">
+                                    <input type="radio" name="brand_category" value="10" class="radio radio-primary radio-sm mr-3">
+                                    <span class="label-text">Continental Car (-10%)</span>
+                                </label>
+                                <label class="cursor-pointer label justify-start">
+                                    <input type="radio" name="brand_category" value="30" class="radio radio-primary radio-sm mr-3">
+                                    <span class="label-text">Super Car (-30%)</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Price Tier -->
+                    <div class="card bg-base-100 shadow-sm border border-base-200 hover:shadow-md transition-all duration-300">
+                        <div class="card-body p-4">
+                            <h4 class="font-semibold text-base-content mb-3 flex items-center">
+                                <i class="fas fa-dollar-sign text-yellow-500 mr-2"></i>
+                                Price Tier (Base Price)
+                            </h4>
+                            <div class="space-y-2">
+                                <label class="cursor-pointer label justify-start">
+                                    <input type="radio" name="price_tier" value="12" class="radio radio-primary radio-sm mr-3" required>
+                                    <span class="label-text">&lt;RM20,000 (-12%)</span>
+                                </label>
+                                <label class="cursor-pointer label justify-start">
+                                    <input type="radio" name="price_tier" value="6" class="radio radio-primary radio-sm mr-3">
+                                    <span class="label-text">RM20k - RM50k (-6%)</span>
+                                </label>
+                                <label class="cursor-pointer label justify-start">
+                                    <input type="radio" name="price_tier" value="0" class="radio radio-primary radio-sm mr-3">
+                                    <span class="label-text">&gt;RM50k (0%)</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="text-center mt-8">
+                <button type="submit" id="submitBtn" disabled class="btn btn-primary btn-lg px-8 disabled:opacity-50">
+                    <i class="fas fa-calculator mr-2"></i>
+                    Dapatkan Estimasi Harga
+                </button>
+            </div>
+        </form>
     </div>
 </div>
 
-<div class="grid lg:grid-cols-2 gap-8">
-    <!-- Form Section -->
-    <div class="card bg-base-100 shadow-xl">
-        <div class="card-body">
-            <h2 class="card-title">
-                <i class="fas fa-form text-primary"></i>
-                Form Penilaian Mobil
-            </h2>
-            
-            <form method="post" class="space-y-4" id="assessmentForm">
-                {% csrf_token %}
-                
-                <!-- Car Selection -->
-                <div class="form-control">
-                    <label class="label">
-                        <span class="label-text font-medium">
-                            <i class="fas fa-tags"></i> Kategori
-                        </span>
-                    </label>
-                    <select class="select select-bordered" name="category" id="category" required>
-                        <option value="">Pilih Kategori</option>
-                    </select>
-                </div>
-
-                <div class="form-control">
-                    <label class="label">
-                        <span class="label-text font-medium">
-                            <i class="fas fa-trademark"></i> Brand
-                        </span>
-                    </label>
-                    <select class="select select-bordered" name="brand" id="brand" required disabled>
-                        <option value="">Pilih Brand</option>
-                    </select>
-                </div>
-
-                <div class="form-control">
-                    <label class="label">
-                        <span class="label-text font-medium">
-                            <i class="fas fa-car-side"></i> Model
-                        </span>
-                    </label>
-                    <select class="select select-bordered" name="model" id="model" required disabled>
-                        <option value="">Pilih Model</option>
-                    </select>
-                </div>
-
-                <div class="form-control">
-                    <label class="label">
-                        <span class="label-text font-medium">
-                            <i class="fas fa-cogs"></i> Variant
-                        </span>
-                    </label>
-                    <select class="select select-bordered" name="variant" id="variant" required disabled>
-                        <option value="">Pilih Variant</option>
-                    </select>
-                </div>
-
-                <div class="form-control">
-                    <label class="label">
-                        <span class="label-text font-medium">
-                            <i class="fas fa-calendar"></i> Tahun
-                        </span>
-                    </label>
-                    <select class="select select-bordered" name="year" id="year" required disabled>
-                        <option value="">Pilih Tahun</option>
-                    </select>
-                </div>
-
-                <div class="form-control">
-                    <label class="label">
-                        <span class="label-text font-medium">
-                            <i class="fas fa-tachometer-alt"></i> Kilometer (KM)
-                        </span>
-                    </label>
-                    <input type="number" class="input input-bordered" name="user_mileage" placeholder="Masukkan KM mobil Anda">
-                </div>
-
-                <!-- Condition Assessment -->
-                <div class="divider">
-                    <i class="fas fa-clipboard-check"></i>
-                    Penilaian Kondisi
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="form-control">
-                        <label class="label">
-                            <span class="label-text">Kondisi Eksterior (%)</span>
-                        </label>
-                        <input type="range" min="0" max="10" value="0" class="range range-primary" 
-                               name="exterior_condition" oninput="updateRangeValue(this, 'exterior_value')">
-                        <div class="flex justify-between text-xs px-2">
-                            <span>0%</span>
-                            <span id="exterior_value">0%</span>
-                            <span>10%</span>
-                        </div>
-                    </div>
-
-                    <div class="form-control">
-                        <label class="label">
-                            <span class="label-text">Kondisi Interior (%)</span>
-                        </label>
-                        <input type="range" min="0" max="10" value="0" class="range range-primary" 
-                               name="interior_condition" oninput="updateRangeValue(this, 'interior_value')">
-                        <div class="flex justify-between text-xs px-2">
-                            <span>0%</span>
-                            <span id="interior_value">0%</span>
-                            <span>10%</span>
-                        </div>
-                    </div>
-
-                    <div class="form-control">
-                        <label class="label">
-                            <span class="label-text">Kondisi Mekanik (%)</span>
-                        </label>
-                        <input type="range" min="0" max="15" value="0" class="range range-primary" 
-                               name="mechanical_condition" oninput="updateRangeValue(this, 'mechanical_value')">
-                        <div class="flex justify-between text-xs px-2">
-                            <span>0%</span>
-                            <span id="mechanical_value">0%</span>
-                            <span>15%</span>
-                        </div>
-                    </div>
-
-                    <div class="form-control">
-                        <label class="label">
-                            <span class="label-text">Riwayat Kecelakaan (%)</span>
-                        </label>
-                        <input type="range" min="0" max="15" value="0" class="range range-primary" 
-                               name="accident_history" oninput="updateRangeValue(this, 'accident_value')">
-                        <div class="flex justify-between text-xs px-2">
-                            <span>0%</span>
-                            <span id="accident_value">0%</span>
-                            <span>15%</span>
-                        </div>
-                    </div>
-
-                    <div class="form-control">
-                        <label class="label">
-                            <span class="label-text">Riwayat Service (%)</span>
-                        </label>
-                        <input type="range" min="0" max="5" value="0" class="range range-primary" 
-                               name="service_history" oninput="updateRangeValue(this, 'service_value')">
-                        <div class="flex justify-between text-xs px-2">
-                            <span>0%</span>
-                            <span id="service_value">0%</span>
-                            <span>5%</span>
-                        </div>
-                    </div>
-
-                    <div class="form-control">
-                        <label class="label">
-                            <span class="label-text">Jumlah Pemilik (%)</span>
-                        </label>
-                        <input type="range" min="0" max="5" value="0" class="range range-primary" 
-                               name="number_of_owners" oninput="updateRangeValue(this, 'owners_value')">
-                        <div class="flex justify-between text-xs px-2">
-                            <span>0%</span>
-                            <span id="owners_value">0%</span>
-                            <span>5%</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Contact Information -->
-                <div class="divider">
-                    <i class="fas fa-phone"></i>
-                    Informasi Kontak
-                </div>
-
-                <div class="form-control">
-                    <label class="label">
-                        <span class="label-text font-medium">
-                            <i class="fas fa-mobile-alt"></i> Nomor HP/WhatsApp
-                        </span>
-                    </label>
-                    <input type="tel" class="input input-bordered" name="phone" placeholder="08xxxxxxxxxx" required>
-                    <div class="label">
-                        <span class="label-text-alt">
-                            <i class="fas fa-info-circle"></i>
-                            Nomor HP akan digunakan untuk mengirimkan hasil analisa
-                        </span>
-                    </div>
-                </div>
-
-                <div class="form-control mt-6">
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-calculator"></i>
-                        Hitung Perkiraan Harga
-                    </button>
-                </div>
-            </form>
+<!-- No Data Alert -->
+{% if no_data %}
+<div class="alert alert-warning shadow-lg mb-8">
+    <div class="flex items-center">
+        <i class="fas fa-exclamation-triangle text-2xl"></i>
+        <div>
+            <h4 class="text-lg font-bold">Data Tidak Ditemukan</h4>
+            <p>Tidak ada data untuk kombinasi yang dipilih. Silakan coba kombinasi lain.</p>
         </div>
     </div>
+</div>
+{% endif %}
 
-    <!-- Result Section -->
-    <div class="card bg-base-100 shadow-xl">
-        <div class="card-body">
-            <h2 class="card-title">
-                <i class="fas fa-chart-line text-secondary"></i>
-                Hasil Penilaian
-            </h2>
-            
-            {% if result %}
-                <div class="stats stats-vertical shadow">
-                    <div class="stat">
-                        <div class="stat-figure text-primary">
-                            <i class="fas fa-car text-2xl"></i>
-                        </div>
-                        <div class="stat-title">Mobil</div>
-                        <div class="stat-value text-lg">{{ result.brand_norm }} {{ result.model_norm }}</div>
-                        <div class="stat-desc">{{ result.variant_norm }} ({{ result.year }})</div>
-                    </div>
-                    
-                    <div class="stat">
-                        <div class="stat-figure text-secondary">
-                            <i class="fas fa-dollar-sign text-2xl"></i>
-                        </div>
-                        <div class="stat-title">Harga Pasar Rata-rata</div>
-                        <div class="stat-value text-primary">Rp {{ result.rata_rata_price_bulat|floatformat:0 }}</div>
-                        <div class="stat-desc">Berdasarkan {{ result.total_data }} data</div>
-                    </div>
-                    
-                    <div class="stat">
-                        <div class="stat-figure text-accent">
-                            <i class="fas fa-percentage text-2xl"></i>
-                        </div>
-                        <div class="stat-title">Total Pengurangan</div>
-                        <div class="stat-value text-error">{{ result.total_reduction }}%</div>
-                        <div class="stat-desc">
-                            Kilometer: {{ result.layer1_reduction }}% | Kondisi: {{ result.layer2_reduction }}%
-                        </div>
-                    </div>
-                    
-                    <div class="stat">
-                        <div class="stat-figure text-success">
-                            <i class="fas fa-tag text-2xl"></i>
-                        </div>
-                        <div class="stat-title">Perkiraan Harga Anda</div>
-                        <div class="stat-value text-success">Rp {{ result.adjusted_price|floatformat:0 }}</div>
-                        <div class="stat-desc">Hemat Rp {{ result.price_savings|floatformat:0 }}</div>
-                    </div>
-                </div>
-            {% elif no_data %}
-                <div class="alert alert-warning">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    <span>Data tidak ditemukan untuk kombinasi yang dipilih. Silakan coba kombinasi lain.</span>
-                </div>
-            {% else %}
-                <div class="alert alert-info">
-                    <i class="fas fa-info-circle"></i>
-                    <span>Lengkapi form di samping untuk mendapatkan perkiraan harga mobil Anda.</span>
-                </div>
-            {% endif %}
+<!-- Footer Info -->
+<div class="card bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 shadow-lg">
+    <div class="card-body text-center p-8">
+        <div class="flex justify-center mb-4">
+            <div class="bg-blue-600 p-3 rounded-full">
+                <i class="fas fa-code text-white text-xl"></i>
+            </div>
+        </div>
+        <h4 class="text-xl font-bold text-blue-800 mb-2">Platform dalam Pengembangan</h4>
+        <p class="text-blue-700">Saat ini tersedia fitur analisis mileage kendaraan berdasarkan data pasar.</p>
+        <div class="mt-4">
+            <div class="badge badge-primary badge-lg">
+                <i class="fas fa-rocket mr-1"></i>
+                Version 1.0
+            </div>
         </div>
     </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
-{% load static %}
-<script src="{% static 'main/js/car-assessment.js' %}"></script>
+<script src="{% static 'main/js/car-price-estimator.js' %}"></script>
 {% endblock %}

@@ -141,3 +141,7 @@ STATICFILES_DIRS = [
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# OTP System Settings
+PHONE_VERIFICATION_EXPIRY_DAYS = 30  # Phone active period (configurable)
+OTP_SESSION_COOKIE_AGE = 86400  # 1 day in seconds (for user convenience)
