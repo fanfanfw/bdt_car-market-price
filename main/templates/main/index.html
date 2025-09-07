@@ -1,0 +1,282 @@
+{% extends 'main/base.html' %}
+
+{% block title %}Car Price Assessment - Car Market Price{% endblock %}
+
+{% block content %}
+<div class="hero min-h-96 bg-base-200 rounded-lg mb-8">
+    <div class="hero-content text-center">
+        <div class="max-w-md">
+            <h1 class="text-5xl font-bold">
+                <i class="fas fa-calculator text-primary"></i>
+                Car Price Assessment
+            </h1>
+            <p class="py-6">
+                Dapatkan perkiraan harga mobil Anda berdasarkan data pasar terkini. 
+                Masukkan detail mobil dan kondisi untuk mendapatkan estimasi yang akurat.
+            </p>
+        </div>
+    </div>
+</div>
+
+<div class="grid lg:grid-cols-2 gap-8">
+    <!-- Form Section -->
+    <div class="card bg-base-100 shadow-xl">
+        <div class="card-body">
+            <h2 class="card-title">
+                <i class="fas fa-form text-primary"></i>
+                Form Penilaian Mobil
+            </h2>
+            
+            <form method="post" class="space-y-4" id="assessmentForm">
+                {% csrf_token %}
+                
+                <!-- Car Selection -->
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text font-medium">
+                            <i class="fas fa-tags"></i> Kategori
+                        </span>
+                    </label>
+                    <select class="select select-bordered" name="category" id="category" required>
+                        <option value="">Pilih Kategori</option>
+                    </select>
+                </div>
+
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text font-medium">
+                            <i class="fas fa-trademark"></i> Brand
+                        </span>
+                    </label>
+                    <select class="select select-bordered" name="brand" id="brand" required disabled>
+                        <option value="">Pilih Brand</option>
+                    </select>
+                </div>
+
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text font-medium">
+                            <i class="fas fa-car-side"></i> Model
+                        </span>
+                    </label>
+                    <select class="select select-bordered" name="model" id="model" required disabled>
+                        <option value="">Pilih Model</option>
+                    </select>
+                </div>
+
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text font-medium">
+                            <i class="fas fa-cogs"></i> Variant
+                        </span>
+                    </label>
+                    <select class="select select-bordered" name="variant" id="variant" required disabled>
+                        <option value="">Pilih Variant</option>
+                    </select>
+                </div>
+
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text font-medium">
+                            <i class="fas fa-calendar"></i> Tahun
+                        </span>
+                    </label>
+                    <select class="select select-bordered" name="year" id="year" required disabled>
+                        <option value="">Pilih Tahun</option>
+                    </select>
+                </div>
+
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text font-medium">
+                            <i class="fas fa-tachometer-alt"></i> Kilometer (KM)
+                        </span>
+                    </label>
+                    <input type="number" class="input input-bordered" name="user_mileage" placeholder="Masukkan KM mobil Anda">
+                </div>
+
+                <!-- Condition Assessment -->
+                <div class="divider">
+                    <i class="fas fa-clipboard-check"></i>
+                    Penilaian Kondisi
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">Kondisi Eksterior (%)</span>
+                        </label>
+                        <input type="range" min="0" max="10" value="0" class="range range-primary" 
+                               name="exterior_condition" oninput="updateRangeValue(this, 'exterior_value')">
+                        <div class="flex justify-between text-xs px-2">
+                            <span>0%</span>
+                            <span id="exterior_value">0%</span>
+                            <span>10%</span>
+                        </div>
+                    </div>
+
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">Kondisi Interior (%)</span>
+                        </label>
+                        <input type="range" min="0" max="10" value="0" class="range range-primary" 
+                               name="interior_condition" oninput="updateRangeValue(this, 'interior_value')">
+                        <div class="flex justify-between text-xs px-2">
+                            <span>0%</span>
+                            <span id="interior_value">0%</span>
+                            <span>10%</span>
+                        </div>
+                    </div>
+
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">Kondisi Mekanik (%)</span>
+                        </label>
+                        <input type="range" min="0" max="15" value="0" class="range range-primary" 
+                               name="mechanical_condition" oninput="updateRangeValue(this, 'mechanical_value')">
+                        <div class="flex justify-between text-xs px-2">
+                            <span>0%</span>
+                            <span id="mechanical_value">0%</span>
+                            <span>15%</span>
+                        </div>
+                    </div>
+
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">Riwayat Kecelakaan (%)</span>
+                        </label>
+                        <input type="range" min="0" max="15" value="0" class="range range-primary" 
+                               name="accident_history" oninput="updateRangeValue(this, 'accident_value')">
+                        <div class="flex justify-between text-xs px-2">
+                            <span>0%</span>
+                            <span id="accident_value">0%</span>
+                            <span>15%</span>
+                        </div>
+                    </div>
+
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">Riwayat Service (%)</span>
+                        </label>
+                        <input type="range" min="0" max="5" value="0" class="range range-primary" 
+                               name="service_history" oninput="updateRangeValue(this, 'service_value')">
+                        <div class="flex justify-between text-xs px-2">
+                            <span>0%</span>
+                            <span id="service_value">0%</span>
+                            <span>5%</span>
+                        </div>
+                    </div>
+
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">Jumlah Pemilik (%)</span>
+                        </label>
+                        <input type="range" min="0" max="5" value="0" class="range range-primary" 
+                               name="number_of_owners" oninput="updateRangeValue(this, 'owners_value')">
+                        <div class="flex justify-between text-xs px-2">
+                            <span>0%</span>
+                            <span id="owners_value">0%</span>
+                            <span>5%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Contact Information -->
+                <div class="divider">
+                    <i class="fas fa-phone"></i>
+                    Informasi Kontak
+                </div>
+
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text font-medium">
+                            <i class="fas fa-mobile-alt"></i> Nomor HP/WhatsApp
+                        </span>
+                    </label>
+                    <input type="tel" class="input input-bordered" name="phone" placeholder="08xxxxxxxxxx" required>
+                    <div class="label">
+                        <span class="label-text-alt">
+                            <i class="fas fa-info-circle"></i>
+                            Nomor HP akan digunakan untuk mengirimkan hasil analisa
+                        </span>
+                    </div>
+                </div>
+
+                <div class="form-control mt-6">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-calculator"></i>
+                        Hitung Perkiraan Harga
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Result Section -->
+    <div class="card bg-base-100 shadow-xl">
+        <div class="card-body">
+            <h2 class="card-title">
+                <i class="fas fa-chart-line text-secondary"></i>
+                Hasil Penilaian
+            </h2>
+            
+            {% if result %}
+                <div class="stats stats-vertical shadow">
+                    <div class="stat">
+                        <div class="stat-figure text-primary">
+                            <i class="fas fa-car text-2xl"></i>
+                        </div>
+                        <div class="stat-title">Mobil</div>
+                        <div class="stat-value text-lg">{{ result.brand_norm }} {{ result.model_norm }}</div>
+                        <div class="stat-desc">{{ result.variant_norm }} ({{ result.year }})</div>
+                    </div>
+                    
+                    <div class="stat">
+                        <div class="stat-figure text-secondary">
+                            <i class="fas fa-dollar-sign text-2xl"></i>
+                        </div>
+                        <div class="stat-title">Harga Pasar Rata-rata</div>
+                        <div class="stat-value text-primary">Rp {{ result.rata_rata_price_bulat|floatformat:0 }}</div>
+                        <div class="stat-desc">Berdasarkan {{ result.total_data }} data</div>
+                    </div>
+                    
+                    <div class="stat">
+                        <div class="stat-figure text-accent">
+                            <i class="fas fa-percentage text-2xl"></i>
+                        </div>
+                        <div class="stat-title">Total Pengurangan</div>
+                        <div class="stat-value text-error">{{ result.total_reduction }}%</div>
+                        <div class="stat-desc">
+                            Kilometer: {{ result.layer1_reduction }}% | Kondisi: {{ result.layer2_reduction }}%
+                        </div>
+                    </div>
+                    
+                    <div class="stat">
+                        <div class="stat-figure text-success">
+                            <i class="fas fa-tag text-2xl"></i>
+                        </div>
+                        <div class="stat-title">Perkiraan Harga Anda</div>
+                        <div class="stat-value text-success">Rp {{ result.adjusted_price|floatformat:0 }}</div>
+                        <div class="stat-desc">Hemat Rp {{ result.price_savings|floatformat:0 }}</div>
+                    </div>
+                </div>
+            {% elif no_data %}
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <span>Data tidak ditemukan untuk kombinasi yang dipilih. Silakan coba kombinasi lain.</span>
+                </div>
+            {% else %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i>
+                    <span>Lengkapi form di samping untuk mendapatkan perkiraan harga mobil Anda.</span>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% load static %}
+<script src="{% static 'main/js/car-assessment.js' %}"></script>
+{% endblock %}
