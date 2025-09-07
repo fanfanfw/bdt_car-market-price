@@ -19,7 +19,7 @@ db.sqlite3
 *.jar
 *.war
 *.ear
-*.txt
+note.txt
 *.md
 *.pdf
 *.docx
