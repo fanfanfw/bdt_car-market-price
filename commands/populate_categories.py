@@ -3,12 +3,18 @@ import sys
 import django
 import csv
 from pathlib import Path
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv(override=True)
 
 # Add project root to Python path
-sys.path.append(str(Path(__file__).resolve().parent))
+project_root = Path(__file__).resolve().parent.parent
+sys.path.append(str(project_root))
 
-# Setup Django environment
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'carmarketprice.settings')
+# Setup Django environment using environment variable
+django_settings = os.getenv('DJANGO_SETTINGS_MODULE', 'carmarket.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', django_settings)
 django.setup()
 
 from main.models import Category, BrandCategory
@@ -16,13 +22,25 @@ from main.models import Category, BrandCategory
 def populate_categories():
     """Populate categories and brand_categories from CSV file"""
     
-    csv_file = 'data-category.csv'
+    print("📋 Category Data Population")
+    print("-" * 40)
+    print(f"🔧 Django Settings: {os.getenv('DJANGO_SETTINGS_MODULE', 'carmarket.settings')}")
+    print(f"🗄️ Database: {os.getenv('DB_NAME', 'default')}")
     
-    if not os.path.exists(csv_file):
-        print(f"Error: {csv_file} not found")
-        return
+    # Get the directory where this script is located
+    script_dir = Path(__file__).resolve().parent
+    csv_file = script_dir / 'data-category.csv'
     
-    print("Starting category population...")
+    if not csv_file.exists():
+        print(f"❌ Error: {csv_file} not found")
+        # Try alternative path (when run from project root)
+        csv_file = Path('commands/data-category.csv')
+        if not csv_file.exists():
+            print(f"❌ Error: data-category.csv not found in {script_dir} or commands/")
+            return
+    
+    print(f"📄 Using CSV file: {csv_file}")
+    print("🚀 Starting category population...")
     
     # Track categories and brand mappings
     categories_set = set()
@@ -39,8 +57,8 @@ def populate_categories():
                 categories_set.add(category)
                 brand_mappings.append((brand, category))
     
-    print(f"Found {len(categories_set)} unique categories")
-    print(f"Found {len(brand_mappings)} brand-category mappings")
+    print(f"📊 Found {len(categories_set)} unique categories")
+    print(f"📊 Found {len(brand_mappings)} brand-category mappings")
     
     # Create categories
     created_categories = 0
@@ -48,9 +66,9 @@ def populate_categories():
         category, created = Category.objects.get_or_create(name=category_name)
         if created:
             created_categories += 1
-            print(f"Created category: {category_name}")
+            print(f"✅ Created category: {category_name}")
     
-    print(f"Created {created_categories} new categories")
+    print(f"📥 Created {created_categories} new categories")
     
     # Create brand-category mappings
     created_mappings = 0
@@ -63,12 +81,23 @@ def populate_categories():
             )
             if created:
                 created_mappings += 1
-                print(f"Created mapping: {brand} -> {category_name}")
+                print(f"✅ Created mapping: {brand} -> {category_name}")
         except Category.DoesNotExist:
-            print(f"Warning: Category '{category_name}' not found for brand '{brand}'")
+            print(f"⚠️ Warning: Category '{category_name}' not found for brand '{brand}'")
     
-    print(f"Created {created_mappings} new brand-category mappings")
-    print("Category population completed!")
+    print(f"📥 Created {created_mappings} new brand-category mappings")
+    
+    # Summary
+    print("\n" + "="*50)
+    print("✅ CATEGORY POPULATION COMPLETED")
+    print("="*50)
+    print(f"📋 Categories: {created_categories} new, {len(categories_set)} total")
+    print(f"🔗 Mappings: {created_mappings} new, {len(brand_mappings)} total")
+    print("🎉 Population completed successfully!")
 
 if __name__ == '__main__':
-    populate_categories()
+    try:
+        populate_categories()
+    except Exception as e:
+        print(f"\n❌ Error during category population: {e}")
+        sys.exit(1)

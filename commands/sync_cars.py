@@ -23,9 +23,14 @@ import logging
 import csv
 import sys
 import argparse
+import os
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List, Tuple
 import json
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv(override=True)
 
 # Configure logging
 logging.basicConfig(
@@ -48,23 +53,29 @@ class DatabaseConfig:
     """Database configuration"""
     
     def __init__(self):
-        # Source database (scraping data)
+        # Source database (scraping data) - from SOURCE_DB_* env vars
         self.SOURCE_DB = {
-            'host': '127.0.0.1',
-            'port': 5432,
-            'database': 'db_scrap_new',
-            'user': 'fanfan',
-            'password': 'cenanun'
+            'host': os.getenv('SOURCE_DB_HOST', '127.0.0.1'),
+            'port': int(os.getenv('SOURCE_DB_PORT', 5432)),
+            'database': os.getenv('SOURCE_DB_NAME', 'db_scrap_new'),
+            'user': os.getenv('SOURCE_DB_USER', 'fanfan'),
+            'password': os.getenv('SOURCE_DB_PASSWORD', 'cenanun')
         }
         
-        # Target database (car market price)
+        # Target database (car market price) - from DB_* env vars
         self.TARGET_DB = {
-            'host': '127.0.0.1',
-            'port': 5432,
-            'database': 'db_carmarketprice',
-            'user': 'fanfan',
-            'password': 'cenanun'
+            'host': os.getenv('DB_HOST', '127.0.0.1'),
+            'port': int(os.getenv('DB_PORT', 5432)),
+            'database': os.getenv('DB_NAME', 'db_carmarketprice_new_2'),
+            'user': os.getenv('DB_USER', 'fanfan'),
+            'password': os.getenv('DB_PASSWORD', 'cenanun')
         }
+    
+    def log_config(self):
+        """Log database configuration (without passwords)"""
+        logger.info("🔧 Database Configuration:")
+        logger.info(f"   Source DB: {self.SOURCE_DB['user']}@{self.SOURCE_DB['host']}:{self.SOURCE_DB['port']}/{self.SOURCE_DB['database']}")
+        logger.info(f"   Target DB: {self.TARGET_DB['user']}@{self.TARGET_DB['host']}:{self.TARGET_DB['port']}/{self.TARGET_DB['database']}")
 
 
 class CarDataSyncService:
@@ -647,11 +658,14 @@ async def main():
         print(f"📅 Mode: Sync last {days_back} days")
     else:
         print("📅 Mode: Sync today's data only")
+    
+    # Initialize config and display database settings
+    config = DatabaseConfig()
+    config.log_config()
     print()
     
     # Run sync
     try:
-        config = DatabaseConfig()
         service = CarDataSyncService(config)
         
         summary = await service.sync_all_data(

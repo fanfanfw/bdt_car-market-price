@@ -16,9 +16,19 @@ import sys
 from datetime import datetime
 import logging
 from tqdm import tqdm
+from dotenv import load_dotenv
+from pathlib import Path
 
-# Setup Django environment
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'carmarketprice.settings')
+# Load environment variables
+load_dotenv(override=True)
+
+# Add project root to Python path
+project_root = Path(__file__).resolve().parent.parent
+sys.path.append(str(project_root))
+
+# Setup Django environment using environment variable
+django_settings = os.getenv('DJANGO_SETTINGS_MODULE', 'carmarket.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', django_settings)
 django.setup()
 
 from django.db import connection
@@ -121,6 +131,12 @@ def fill_all_category_id():
     """
     Mengisi category_id untuk semua source (carlistmy dan mudahmy)
     """
+    print("📋 Fill Cars Category ID")
+    print("-" * 50)
+    print(f"🔧 Django Settings: {os.getenv('DJANGO_SETTINGS_MODULE', 'carmarket.settings')}")
+    print(f"🗄️ Database: {os.getenv('DB_NAME', 'default')}")
+    print("")
+    
     logger.info("🚀 Memulai proses pengisian category_id untuk record yang NULL...")
     
     start_time = datetime.now()
@@ -220,9 +236,13 @@ if __name__ == "__main__":
         datefmt='%Y-%m-%d %H:%M:%S'
     )
     
-    result = fill_all_category_id()
-    print("\n" + "=" * 60)
-    print("HASIL AKHIR:")
-    print("=" * 60)
-    for key, value in result.items():
-        print(f"{key}: {value}")
+    try:
+        result = fill_all_category_id()
+        print("\n" + "=" * 60)
+        print("HASIL AKHIR:")
+        print("=" * 60)
+        for key, value in result.items():
+            print(f"{key}: {value}")
+    except Exception as e:
+        print(f"\n❌ Error: {e}")
+        sys.exit(1)

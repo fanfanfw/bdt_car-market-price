@@ -18,7 +18,12 @@ import logging
 import csv
 import sys
 import argparse
+import os
 from typing import Dict, Any
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv(override=True)
 
 # Configure logging
 logging.basicConfig(
@@ -32,14 +37,19 @@ class DatabaseConfig:
     """Database configuration"""
     
     def __init__(self):
-        # Target database (car market price)
+        # Target database (car market price) - from DB_* env vars
         self.TARGET_DB = {
-            'host': '127.0.0.1',
-            'port': 5432,
-            'database': 'db_carmarketprice',
-            'user': 'fanfan',
-            'password': 'cenanun'
+            'host': os.getenv('DB_HOST', '127.0.0.1'),
+            'port': int(os.getenv('DB_PORT', 5432)),
+            'database': os.getenv('DB_NAME', 'db_carmarketprice_new_2'),
+            'user': os.getenv('DB_USER', 'fanfan'),
+            'password': os.getenv('DB_PASSWORD', 'cenanun')
         }
+    
+    def log_config(self):
+        """Log database configuration (without password)"""
+        logger.info("🔧 Database Configuration:")
+        logger.info(f"   Target DB: {self.TARGET_DB['user']}@{self.TARGET_DB['host']}:{self.TARGET_DB['port']}/{self.TARGET_DB['database']}")
 
 
 class CarsStandardImporter:
@@ -49,7 +59,7 @@ class CarsStandardImporter:
         self.config = config
     
     def clear_existing_data(self):
-        """Clear existing cars_standard data"""
+        """Clear existing cars_standard data with foreign key check"""
         conn = None
         try:
             conn = psycopg2.connect(**self.config.TARGET_DB)
@@ -58,6 +68,29 @@ class CarsStandardImporter:
             # Get count before deletion
             cur.execute("SELECT COUNT(*) FROM cars_standard")
             existing_count = cur.fetchone()[0]
+            
+            if existing_count == 0:
+                logger.info("🗑️ No existing cars_standard records to clear")
+                return 0
+            
+            # Check for foreign key references
+            try:
+                cur.execute("""
+                    SELECT COUNT(*) FROM cars_unified 
+                    WHERE cars_standard_id IS NOT NULL
+                """)
+                referenced_count = cur.fetchone()[0]
+                
+                if referenced_count > 0:
+                    logger.error(f"❌ Cannot clear cars_standard: {referenced_count} cars_unified records reference this data")
+                    logger.info("💡 Solutions:")
+                    logger.info("   1. Use UPSERT mode instead: python import_cars_standard.py --mode upsert")
+                    logger.info("   2. Clear cars_unified first: UPDATE cars_unified SET cars_standard_id = NULL")
+                    raise Exception(f"Foreign key constraint: {referenced_count} records in cars_unified reference cars_standard")
+                    
+            except psycopg2.ProgrammingError:
+                # Table might not exist yet, ignore
+                logger.warning("⚠️ Table cars_unified not found, proceeding with clear")
             
             # Clear data
             cur.execute("DELETE FROM cars_standard")
@@ -139,6 +172,101 @@ class CarsStandardImporter:
             raise
         except Exception as e:
             logger.error(f"❌ Import failed: {e}")
+            if conn:
+                conn.rollback()
+            raise
+        finally:
+            if conn:
+                conn.close()
+    
+    def upsert_from_csv(self, csv_file_path: str = 'cars_standard.csv') -> Dict[str, int]:
+        """UPSERT cars_standard data from CSV file (safe for existing data)"""
+        conn = None
+        try:
+            conn = psycopg2.connect(**self.config.TARGET_DB)
+            cur = conn.cursor(cursor_factory=RealDictCursor)
+            
+            inserted_count = 0
+            updated_count = 0
+            skipped_count = 0
+            
+            logger.info(f"🔄 UPSERT mode: Reading CSV file: {csv_file_path}")
+            
+            with open(csv_file_path, 'r', encoding='utf-8') as file:
+                reader = csv.DictReader(file)
+                
+                for row_num, row in enumerate(reader, start=1):
+                    try:
+                        # Validate required fields
+                        if not row.get('id') or not row.get('brand_norm'):
+                            logger.warning(f"⚠️ Row {row_num}: Missing required fields, skipping")
+                            skipped_count += 1
+                            continue
+                        
+                        # UPSERT query using PostgreSQL ON CONFLICT
+                        upsert_query = """
+                            INSERT INTO cars_standard (
+                                id, brand_norm, model_group_norm, model_norm, variant_norm,
+                                model_group_raw, model_raw, variant_raw, variant_raw2,
+                                created_at, updated_at
+                            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW())
+                            ON CONFLICT (id) 
+                            DO UPDATE SET
+                                brand_norm = EXCLUDED.brand_norm,
+                                model_group_norm = EXCLUDED.model_group_norm,
+                                model_norm = EXCLUDED.model_norm,
+                                variant_norm = EXCLUDED.variant_norm,
+                                model_group_raw = EXCLUDED.model_group_raw,
+                                model_raw = EXCLUDED.model_raw,
+                                variant_raw = EXCLUDED.variant_raw,
+                                variant_raw2 = EXCLUDED.variant_raw2,
+                                updated_at = NOW()
+                            RETURNING (xmax = 0) AS inserted
+                        """
+                        
+                        cur.execute(upsert_query, (
+                            int(row['id']),
+                            row['brand_norm'],
+                            row['model_group_norm'], 
+                            row['model_norm'],
+                            row['variant_norm'],
+                            row.get('model_group_raw') or None,
+                            row.get('model_raw') or None,
+                            row.get('variant_raw') or None,
+                            row.get('variant_raw2') or None
+                        ))
+                        
+                        result = cur.fetchone()
+                        if result and result['inserted']:
+                            inserted_count += 1
+                        else:
+                            updated_count += 1
+                        
+                        # Progress indicator for large files
+                        total_processed = inserted_count + updated_count
+                        if total_processed % 500 == 0:
+                            logger.info(f"📊 Processed {total_processed} records ({inserted_count} new, {updated_count} updated)...")
+                            
+                    except Exception as e:
+                        logger.error(f"❌ Error processing row {row_num}: {e}")
+                        logger.error(f"Row data: {row}")
+                        skipped_count += 1
+                        continue
+                
+                conn.commit()
+                logger.info(f"✅ UPSERT completed: {inserted_count} inserted, {updated_count} updated, {skipped_count} skipped")
+                
+                return {
+                    'inserted': inserted_count,
+                    'updated': updated_count,
+                    'skipped': skipped_count
+                }
+                
+        except FileNotFoundError:
+            logger.error(f"❌ CSV file not found: {csv_file_path}")
+            raise
+        except Exception as e:
+            logger.error(f"❌ UPSERT failed: {e}")
             if conn:
                 conn.rollback()
             raise
@@ -252,10 +380,10 @@ def display_summary(summary: Dict[str, Any]):
 def main():
     """Main function with command line argument parsing"""
     parser = argparse.ArgumentParser(description='Import Cars Standard Data from CSV')
-    parser.add_argument('--csv-path', default='cars_standard.csv', 
-                       help='Path to cars_standard.csv file (default: cars_standard.csv)')
-    parser.add_argument('--no-clear', action='store_true', 
-                       help='Do not clear existing data before import')
+    parser.add_argument('--csv-path', default='commands/cars_standard.csv', 
+                       help='Path to cars_standard.csv file (default: commands/cars_standard.csv)')
+    parser.add_argument('--mode', choices=['upsert', 'clear-import'], default='upsert',
+                       help='Import mode: upsert (safe, default) or clear-import (may fail with foreign keys)')
     parser.add_argument('--clear-only', action='store_true', 
                        help='Only clear existing data, do not import')
     parser.add_argument('--verify-only', action='store_true', 
@@ -278,15 +406,17 @@ def main():
     elif args.verify_only:
         print("🔍 Mode: Verify existing data only")
     else:
-        print(f"📥 Mode: Import from CSV")
+        print(f"📥 Mode: {args.mode.upper()}")
         print(f"📄 CSV File: {args.csv_path}")
-        print(f"🗑️ Clear First: {'No' if args.no_clear else 'Yes'}")
     
     print()
     
+    # Initialize config and display database settings
+    config = DatabaseConfig()
+    config.log_config()
+    
     # Run import
     try:
-        config = DatabaseConfig()
         importer = CarsStandardImporter(config)
         
         if args.clear_only:
@@ -306,9 +436,35 @@ def main():
             }
             display_summary(summary)
             
+        elif args.mode == 'upsert':
+            # Safe UPSERT mode (recommended)
+            logger.info("🔄 Using UPSERT mode (safe for existing data)")
+            result = importer.upsert_from_csv(args.csv_path)
+            
+            # Verify after upsert
+            verification = importer.verify_import()
+            
+            # Display UPSERT summary
+            print("\n" + "="*60)
+            print("✅ CARS STANDARD UPSERT COMPLETED")
+            print("="*60)
+            
+            print(f"📥 Inserted: {result['inserted']} new records")
+            print(f"🔄 Updated: {result['updated']} existing records")
+            if result['skipped'] > 0:
+                print(f"⚠️ Skipped: {result['skipped']} invalid records")
+            print(f"📊 Final Total: {verification['total_count']} records in database")
+            
+            print(f"\n🏷️ TOP BRANDS:")
+            for brand in verification['top_brands'][:5]:
+                print(f"   {brand['brand_norm']}: {brand['count']} models")
+            
+            print(f"\n🎉 UPSERT completed successfully!")
+            
         else:
-            # Full import process
-            clear_first = not args.no_clear
+            # Clear and import mode (may fail with foreign keys)
+            logger.warning("⚠️ Using CLEAR-IMPORT mode (may fail if foreign keys exist)")
+            clear_first = True
             summary = importer.full_import(
                 csv_file_path=args.csv_path,
                 clear_first=clear_first
