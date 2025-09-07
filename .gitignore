@@ -26,3 +26,5 @@ note.txt
 
 # CSS output files
 main/static/main/css/output.css
+
+staticfiles/
