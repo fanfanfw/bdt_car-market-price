@@ -7,14 +7,14 @@
 <!-- Header -->
 <div class="text-center mb-8">
     <div class="flex justify-center items-center mb-4">
-        <div class="bg-gradient-to-r from-green-600 to-emerald-600 p-4 rounded-full shadow-lg">
+        <div class="bg-gradient-to-r from-green-600 to-emerald-600 p-4 rounded-full shadow-lg animate-pulse">
             <i class="fas fa-check-circle text-3xl text-white"></i>
         </div>
     </div>
-    <h1 class="text-4xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent mb-3">
+    <h1 class="text-3xl sm:text-4xl lg:text-5xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent mb-3">
         Hasil Estimasi Harga
     </h1>
-    <p class="text-base-content/70 text-lg max-w-2xl mx-auto">
+    <p class="text-base-content/70 text-sm sm:text-lg max-w-2xl mx-auto px-4">
         Berikut adalah estimasi harga kendaraan Anda berdasarkan data pasar dan kondisi yang dipilih
     </p>
 </div>
@@ -40,28 +40,29 @@
 
 {% else %}
 <!-- Loading and Results Container -->
-<div class="card bg-base-100 shadow-2xl border-0 mb-8">
-    <div class="card-body p-8">
+<div class="card bg-base-100 shadow-2xl border-0 mb-8 mx-4 sm:mx-auto">
+    <div class="card-body p-4 sm:p-8">
         <!-- Car Info (Always visible) -->
         <div class="text-center pb-6 border-b border-base-200 mb-6">
-            <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-6">
-                <h2 class="text-2xl font-bold text-base-content mb-2">
+            <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-4 sm:p-6">
+                <h2 class="text-lg sm:text-2xl font-bold text-base-content mb-2 break-words">
                     {{ car_info }}
                 </h2>
-                <div class="flex justify-center items-center gap-4 text-base-content/70">
-                    <span class="badge badge-outline badge-lg">
+                <div class="flex justify-center items-center gap-2 sm:gap-4 text-base-content/70 flex-wrap">
+                    <span class="badge badge-outline badge-sm sm:badge-lg">
                         <i class="fas fa-calculator mr-1"></i>
-                        Estimasi Harga
+                        <span class="hidden sm:inline">Estimasi Harga</span>
+                        <span class="sm:hidden">Estimasi</span>
                     </span>
                 </div>
             </div>
         </div>
         
         <!-- Loading State -->
-        <div id="loadingState" class="text-center py-8">
+        <div id="loadingState" class="text-center py-8 px-4">
             <div class="loading loading-spinner loading-lg text-primary mb-4"></div>
-            <p class="text-lg text-base-content/70">Memproses data kendaraan Anda...</p>
-            <p class="text-sm text-base-content/50 mt-2">Harap tunggu, sedang memverifikasi nomor telepon</p>
+            <p class="text-base sm:text-lg text-base-content/70">Memproses data kendaraan Anda...</p>
+            <p class="text-xs sm:text-sm text-base-content/50 mt-2">Harap tunggu, sedang memverifikasi nomor telepon</p>
         </div>
         
         <!-- Results Container (Hidden initially) -->
@@ -70,54 +71,58 @@
         </div>
         
         <!-- No Data State (Hidden initially) -->
-        <div id="noDataState" class="hidden text-center py-8">
+        <div id="noDataState" class="hidden text-center py-8 px-4">
             <div class="alert alert-warning">
-                <i class="fas fa-exclamation-triangle text-2xl"></i>
+                <i class="fas fa-exclamation-triangle text-xl sm:text-2xl"></i>
                 <div>
-                    <h4 class="text-lg font-bold">Data Tidak Ditemukan</h4>
-                    <p>Tidak ada data untuk kombinasi yang dipilih. Silakan coba kombinasi lain.</p>
+                    <h4 class="text-base sm:text-lg font-bold">Data Tidak Ditemukan</h4>
+                    <p class="text-sm sm:text-base">Tidak ada data untuk kombinasi yang dipilih. Silakan coba kombinasi lain.</p>
                 </div>
             </div>
             
             <div class="text-center mt-4">
-                <a href="{% url 'main:index' %}" class="btn btn-primary">
-                    <i class="fas fa-arrow-left mr-2"></i>
-                    Kembali ke Form
+                <a href="{% url 'main:index' %}" class="btn btn-primary btn-sm sm:btn-md">
+                    <i class="fas fa-arrow-left mr-1 sm:mr-2"></i>
+                    <span class="hidden sm:inline">Kembali ke Form</span>
+                    <span class="sm:hidden">Kembali</span>
                 </a>
             </div>
         </div>
         
         <!-- Error State (Hidden initially) -->
-        <div id="errorState" class="hidden text-center py-8">
+        <div id="errorState" class="hidden text-center py-8 px-4">
             <div class="alert alert-error">
-                <i class="fas fa-times-circle text-2xl"></i>
+                <i class="fas fa-times-circle text-xl sm:text-2xl"></i>
                 <div>
-                    <h4 class="text-lg font-bold">Terjadi Kesalahan</h4>
-                    <p id="errorMessage">Tidak dapat memproses data. Silakan coba lagi.</p>
+                    <h4 class="text-base sm:text-lg font-bold">Terjadi Kesalahan</h4>
+                    <p id="errorMessage" class="text-sm sm:text-base">Tidak dapat memproses data. Silakan coba lagi.</p>
                 </div>
             </div>
             
             <div class="text-center mt-4">
-                <a href="{% url 'main:index' %}" class="btn btn-primary">
-                    <i class="fas fa-arrow-left mr-2"></i>
-                    Kembali ke Form
+                <a href="{% url 'main:index' %}" class="btn btn-primary btn-sm sm:btn-md">
+                    <i class="fas fa-arrow-left mr-1 sm:mr-2"></i>
+                    <span class="hidden sm:inline">Kembali ke Form</span>
+                    <span class="sm:hidden">Kembali</span>
                 </a>
             </div>
         </div>
         
         <!-- Actions (Hidden initially) -->
-        <div id="resultActions" class="hidden flex flex-col sm:flex-row gap-4 justify-center mt-8">
-            <a href="{% url 'main:index' %}" class="btn btn-primary">
-                <i class="fas fa-calculator mr-2"></i>
-                Hitung Estimasi Lain
+        <div id="resultActions" class="hidden flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center mt-8 px-4">
+            <a href="{% url 'main:index' %}" class="btn btn-primary btn-sm sm:btn-md">
+                <i class="fas fa-calculator mr-1 sm:mr-2"></i>
+                <span class="hidden sm:inline">Hitung Estimasi Lain</span>
+                <span class="sm:hidden">Hitung Lagi</span>
             </a>
-            <button onclick="window.print()" class="btn btn-outline btn-secondary">
+            <button onclick="window.print()" class="btn btn-outline btn-secondary btn-sm sm:btn-md hidden sm:flex">
                 <i class="fas fa-print mr-2"></i>
                 Cetak Hasil
             </button>
-            <button onclick="shareResult()" class="btn btn-outline btn-accent">
-                <i class="fas fa-share-alt mr-2"></i>
-                Bagikan Hasil
+            <button onclick="shareResult()" class="btn btn-outline btn-accent btn-sm sm:btn-md">
+                <i class="fas fa-share-alt mr-1 sm:mr-2"></i>
+                <span class="hidden sm:inline">Bagikan Hasil</span>
+                <span class="sm:hidden">Bagikan</span>
             </button>
         </div>
     </div>
@@ -476,37 +481,37 @@ function displayResults(result) {
 
 function generateResultsHTML(result) {
     return `
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-8">
             <!-- Market Statistics -->
-            <div class="space-y-6">
-                <h3 class="text-xl font-bold text-base-content flex items-center">
+            <div class="space-y-4 sm:space-y-6">
+                <h3 class="text-lg sm:text-xl font-bold text-base-content flex items-center">
                     <i class="fas fa-chart-bar text-blue-600 mr-2"></i>
                     Data Pasar
                 </h3>
                 
                 <div class="card bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200">
-                    <div class="card-body p-6">
-                        <div class="space-y-4">
-                            <div class="flex justify-between items-center">
-                                <span class="text-base-content flex items-center">
+                    <div class="card-body p-4 sm:p-6">
+                        <div class="space-y-3 sm:space-y-4">
+                            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-0">
+                                <span class="text-base-content flex items-center text-sm sm:text-base">
                                     <i class="fas fa-tachometer-alt text-blue-500 mr-2"></i>
                                     Rata-rata Mileage:
                                 </span>
-                                <span class="font-bold text-lg text-blue-600">${Math.round(result.rata_rata_mileage_bulat)} km</span>
+                                <span class="font-bold text-base sm:text-lg text-blue-600">${Math.round(result.rata_rata_mileage_bulat)} km</span>
                             </div>
-                            <div class="flex justify-between items-center">
-                                <span class="text-base-content flex items-center">
+                            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-0">
+                                <span class="text-base-content flex items-center text-sm sm:text-base">
                                     <i class="fas fa-money-bill-wave text-green-500 mr-2"></i>
                                     Rata-rata Harga:
                                 </span>
-                                <span class="font-bold text-lg text-green-600">RM ${Math.round(result.rata_rata_price_bulat).toLocaleString()}</span>
+                                <span class="font-bold text-base sm:text-lg text-green-600">RM ${Math.round(result.rata_rata_price_bulat).toLocaleString()}</span>
                             </div>
-                            <div class="flex justify-between items-center">
-                                <span class="text-base-content flex items-center">
+                            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-0">
+                                <span class="text-base-content flex items-center text-sm sm:text-base">
                                     <i class="fas fa-database text-purple-500 mr-2"></i>
                                     Total Data:
                                 </span>
-                                <span class="font-bold text-lg text-purple-600">${result.total_data} unit</span>
+                                <span class="font-bold text-base sm:text-lg text-purple-600">${result.total_data} unit</span>
                             </div>
                         </div>
                     </div>
@@ -514,81 +519,81 @@ function generateResultsHTML(result) {
             </div>
             
             <!-- Price Estimation -->
-            <div class="space-y-6">
-                <h3 class="text-xl font-bold text-base-content flex items-center">
+            <div class="space-y-4 sm:space-y-6">
+                <h3 class="text-lg sm:text-xl font-bold text-base-content flex items-center">
                     <i class="fas fa-calculator text-green-600 mr-2"></i>
                     Estimasi Harga Anda
                 </h3>
                 
                 <div class="card bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200">
-                    <div class="card-body p-6">
+                    <div class="card-body p-4 sm:p-6">
                         ${result.user_mileage ? `
-                            <div class="space-y-3 mb-6">
-                                <div class="flex justify-between items-center">
-                                    <span class="text-base-content flex items-center">
+                            <div class="space-y-2 sm:space-y-3 mb-4 sm:mb-6">
+                                <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-0">
+                                    <span class="text-base-content flex items-center text-sm sm:text-base">
                                         <i class="fas fa-user-check text-blue-500 mr-2"></i>
                                         Mileage Anda:
                                     </span>
-                                    <span class="font-semibold">${Math.round(result.user_mileage).toLocaleString()} km</span>
+                                    <span class="font-semibold text-sm sm:text-base">${Math.round(result.user_mileage).toLocaleString()} km</span>
                                 </div>
                                 ${result.mileage_diff_percent > 0 ? `
-                                    <div class="flex justify-between items-center">
-                                        <span class="text-base-content/70">Selisih Mileage:</span>
-                                        <span class="badge badge-warning">+${result.mileage_diff_percent}%</span>
+                                    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-0">
+                                        <span class="text-base-content/70 text-sm">Selisih Mileage:</span>
+                                        <span class="badge badge-warning badge-sm">+${result.mileage_diff_percent}%</span>
                                     </div>
                                 ` : result.mileage_diff_percent < 0 ? `
-                                    <div class="flex justify-between items-center">
-                                        <span class="text-base-content/70">Selisih Mileage:</span>
-                                        <span class="badge badge-success">${result.mileage_diff_percent}%</span>
+                                    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-0">
+                                        <span class="text-base-content/70 text-sm">Selisih Mileage:</span>
+                                        <span class="badge badge-success badge-sm">${result.mileage_diff_percent}%</span>
                                     </div>
                                 ` : ''}
                             </div>
                         ` : ''}
                         
-                        <div class="space-y-4 mb-6">
-                            <h4 class="font-semibold text-base-content flex items-center">
+                        <div class="space-y-3 sm:space-y-4 mb-4 sm:mb-6">
+                            <h4 class="font-semibold text-base-content flex items-center text-sm sm:text-base">
                                 <i class="fas fa-minus-circle text-red-500 mr-2"></i>
                                 Pengurangan Harga:
                             </h4>
                             
                             ${result.layer1_reduction > 0 ? `
-                                <div class="flex justify-between items-center">
-                                    <span class="text-base-content/70">• Berdasarkan Mileage:</span>
-                                    <span class="badge badge-error">-${result.layer1_reduction}%</span>
+                                <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-0">
+                                    <span class="text-base-content/70 text-sm">• Berdasarkan Mileage:</span>
+                                    <span class="badge badge-error badge-sm">-${result.layer1_reduction}%</span>
                                 </div>
                             ` : ''}
                             
                             ${result.layer2_reduction > 0 ? `
-                                <div class="flex justify-between items-center">
-                                    <span class="text-base-content/70">• Berdasarkan Kondisi:</span>
-                                    <span class="badge badge-error">-${result.layer2_reduction}%</span>
+                                <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-0">
+                                    <span class="text-base-content/70 text-sm">• Berdasarkan Kondisi:</span>
+                                    <span class="badge badge-error badge-sm">-${result.layer2_reduction}%</span>
                                 </div>
                             ` : ''}
                             
                             ${result.total_reduction > 0 ? `
                                 <div class="divider"></div>
-                                <div class="flex justify-between items-center">
-                                    <span class="font-bold text-base-content">Total Pengurangan:</span>
-                                    <span class="badge badge-error badge-lg font-bold">-${result.total_reduction}%</span>
+                                <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-0">
+                                    <span class="font-bold text-base-content text-sm sm:text-base">Total Pengurangan:</span>
+                                    <span class="badge badge-error badge-sm sm:badge-lg font-bold">-${result.total_reduction}%</span>
                                 </div>
                             ` : `
                                 <div class="alert alert-success">
                                     <i class="fas fa-check-circle mr-2"></i>
-                                    Tidak ada pengurangan harga
+                                    <span class="text-sm sm:text-base">Tidak ada pengurangan harga</span>
                                 </div>
                             `}
                         </div>
                         
-                        <div class="bg-base-100 rounded-xl p-4 border-2 border-green-300">
-                            <div class="flex justify-between items-center">
-                                <span class="text-base-content font-bold text-lg flex items-center">
+                        <div class="bg-base-100 rounded-xl p-3 sm:p-4 border-2 border-green-300">
+                            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 sm:gap-0">
+                                <span class="text-base-content font-bold text-sm sm:text-lg flex items-center">
                                     <i class="fas fa-tags text-green-600 mr-2"></i>
                                     Estimasi Harga:
                                 </span>
-                                <span class="text-2xl font-bold text-green-600">RM ${Math.round(result.adjusted_price).toLocaleString()}</span>
+                                <span class="text-xl sm:text-2xl font-bold text-green-600">RM ${Math.round(result.adjusted_price).toLocaleString()}</span>
                             </div>
                             ${result.price_savings > 0 ? `
-                                <p class="text-sm text-green-600 text-right mt-2 flex items-center justify-end">
+                                <p class="text-xs sm:text-sm text-green-600 text-right mt-2 flex items-center justify-end">
                                     <i class="fas fa-piggy-bank mr-1"></i>
                                     Hemat RM ${Math.round(result.price_savings).toLocaleString()}
                                 </p>
@@ -600,13 +605,13 @@ function generateResultsHTML(result) {
         </div>
         
         ${result.condition_breakdown ? `
-            <div class="card bg-gradient-to-r from-gray-50 to-slate-50 border border-base-200 mt-8">
-                <div class="card-body p-6">
-                    <h4 class="font-bold text-base-content mb-4 flex items-center">
+            <div class="card bg-gradient-to-r from-gray-50 to-slate-50 border border-base-200 mt-6 sm:mt-8">
+                <div class="card-body p-4 sm:p-6">
+                    <h4 class="font-bold text-base-content mb-3 sm:mb-4 flex items-center text-sm sm:text-base">
                         <i class="fas fa-list-ul text-base-content/60 mr-2"></i>
                         Detail Penilaian Kondisi:
                     </h4>
-                    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-3">
                         ${Object.entries(result.condition_breakdown).map(([key, value]) => {
                             if (value > 0) {
                                 const labels = {
@@ -623,8 +628,8 @@ function generateResultsHTML(result) {
                                     'price_tier': 'Price Tier'
                                 };
                                 return `
-                                    <div class="flex justify-between items-center bg-base-100 rounded-lg p-2">
-                                        <span class="text-sm">${labels[key] || key}:</span>
+                                    <div class="flex justify-between items-center bg-base-100 rounded-lg p-2 sm:p-3">
+                                        <span class="text-xs sm:text-sm">${labels[key] || key}:</span>
                                         <span class="badge badge-error badge-sm">-${value}%</span>
                                     </div>
                                 `;
