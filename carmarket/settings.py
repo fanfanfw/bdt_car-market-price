@@ -28,6 +28,15 @@ DEBUG = config('DEBUG', default=False, cast=bool)
 
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='*').split(',')
 
+CSRF_TRUSTED_ORIGINS = [
+    'https://192.168.1.111:8001',
+    'http://192.168.1.111:8001',
+    'https://127.0.0.1',
+    'http://127.0.0.1',
+    'https://localhost',
+    'http://localhost',
+    'https://aiagent.fanfanfw.biz.id',
+]
 
 # Application definition
 
