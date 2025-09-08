@@ -1,0 +1,133 @@
+{% extends 'admin/base-admin.html' %}
+
+{% block title %}Admin Login - Car Market Price{% endblock %}
+
+{% block login_content %}
+<div class="card bg-base-100 shadow-2xl">
+    <div class="card-body">
+        <!-- Logo/Title -->
+        <div class="text-center mb-6">
+            <h1 class="text-3xl font-bold text-primary">
+                <i class="fas fa-shield-alt"></i>
+                Admin Login
+            </h1>
+            <p class="text-base-content/60 mt-2">Car Market Price System</p>
+        </div>
+
+        <!-- Login Form -->
+        <form method="post" id="loginForm">
+            {% csrf_token %}
+            
+            <!-- Username Field -->
+            <div class="form-control mb-4">
+                <label class="label">
+                    <span class="label-text font-semibold">Username</span>
+                </label>
+                <div class="input-group">
+                    <span class="input-group-text bg-base-200">
+                        <i class="fas fa-user"></i>
+                    </span>
+                    <input type="text" 
+                           name="username" 
+                           class="input input-bordered w-full" 
+                           placeholder="Enter your username"
+                           required
+                           {% if form.username.value %}value="{{ form.username.value }}"{% endif %}>
+                </div>
+                {% if form.username.errors %}
+                    <label class="label">
+                        <span class="label-text-alt text-error">{{ form.username.errors.0 }}</span>
+                    </label>
+                {% endif %}
+            </div>
+
+            <!-- Password Field -->
+            <div class="form-control mb-6">
+                <label class="label">
+                    <span class="label-text font-semibold">Password</span>
+                </label>
+                <div class="input-group">
+                    <span class="input-group-text bg-base-200">
+                        <i class="fas fa-lock"></i>
+                    </span>
+                    <input type="password" 
+                           name="password" 
+                           class="input input-bordered w-full" 
+                           placeholder="Enter your password"
+                           required>
+                    <button type="button" 
+                            class="input-group-text bg-base-200 hover:bg-base-300 cursor-pointer"
+                            onclick="togglePassword()">
+                        <i class="fas fa-eye" id="toggleIcon"></i>
+                    </button>
+                </div>
+                {% if form.password.errors %}
+                    <label class="label">
+                        <span class="label-text-alt text-error">{{ form.password.errors.0 }}</span>
+                    </label>
+                {% endif %}
+            </div>
+
+            <!-- Error Messages -->
+            {% if form.non_field_errors %}
+                <div class="alert alert-error mb-4">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <span>{{ form.non_field_errors.0 }}</span>
+                </div>
+            {% endif %}
+
+            <!-- Remember Me -->
+            <div class="form-control mb-6">
+                <label class="cursor-pointer label justify-start gap-3">
+                    <input type="checkbox" name="remember_me" class="checkbox checkbox-primary">
+                    <span class="label-text">Remember me</span>
+                </label>
+            </div>
+
+            <!-- Submit Button -->
+            <div class="form-control">
+                <button type="submit" class="btn btn-primary btn-block" id="loginBtn">
+                    <i class="fas fa-sign-in-alt"></i>
+                    Login
+                </button>
+            </div>
+        </form>
+
+        <!-- Back to Main Site -->
+        <div class="divider"></div>
+        <div class="text-center">
+            <a href="{% url 'main:index' %}" class="btn btn-ghost btn-sm">
+                <i class="fas fa-arrow-left"></i>
+                Back to Main Site
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function togglePassword() {
+    const passwordInput = document.querySelector('input[name="password"]');
+    const toggleIcon = document.getElementById('toggleIcon');
+    
+    if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        toggleIcon.className = 'fas fa-eye-slash';
+    } else {
+        passwordInput.type = 'password';
+        toggleIcon.className = 'fas fa-eye';
+    }
+}
+
+// Handle form submission with loading state
+document.getElementById('loginForm').addEventListener('submit', function(e) {
+    const loginBtn = document.getElementById('loginBtn');
+    loginBtn.innerHTML = '<span class="loading loading-spinner loading-sm"></span> Logging in...';
+    loginBtn.disabled = true;
+});
+
+// Auto-focus username field
+document.querySelector('input[name="username"]').focus();
+</script>
+{% endblock %}

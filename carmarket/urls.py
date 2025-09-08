@@ -18,10 +18,14 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from main.views import CustomAdminLoginView, admin_dashboard_view, admin_logout_view
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', include('main.urls')),
+    path('login/', CustomAdminLoginView.as_view(), name='admin_login'),
+    path('panel/dashboard/', admin_dashboard_view, name='admin_dashboard'),
+    path('panel/logout/', admin_logout_view, name='admin_logout'),
+    path('', include('main.urls', namespace='main')),
 ]
 
 if settings.DEBUG:

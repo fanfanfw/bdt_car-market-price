@@ -6,6 +6,10 @@ from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from django.views.decorators.http import require_http_methods
 from django.utils import timezone
+from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.views import LoginView
+from django.contrib.auth.decorators import login_required, user_passes_test
+from django.contrib.auth.models import User
 import json
 import random
 import re
@@ -557,3 +561,75 @@ def get_secure_results(request):
         return JsonResponse({'error': 'Invalid JSON'}, status=400)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+
+
+# Admin Views
+def is_staff_user(user):
+    """Check if user is staff"""
+    return user.is_authenticated and user.is_staff
+
+class CustomAdminLoginView(LoginView):
+    """Custom admin login view"""
+    template_name = 'admin/admin-login.html'
+    redirect_authenticated_user = True
+    
+    def get_success_url(self):
+        return '/panel/dashboard/'
+    
+    def form_valid(self, form):
+        """Check if user is staff before allowing login"""
+        user = form.get_user()
+        
+        if not user.is_staff:
+            form.add_error(None, 'You do not have admin privileges.')
+            return self.form_invalid(form)
+        
+        messages.success(self.request, f'Welcome back, {user.first_name or user.username}!')
+        return super().form_valid(form)
+    
+    def dispatch(self, request, *args, **kwargs):
+        """Redirect if already authenticated and is staff"""
+        if request.user.is_authenticated and request.user.is_staff:
+            return redirect(self.get_success_url())
+        return super().dispatch(request, *args, **kwargs)
+
+@login_required
+@user_passes_test(is_staff_user, login_url='/login/')
+def admin_dashboard_view(request):
+    """Admin dashboard"""
+    # Get statistics
+    stats = {
+        'total_users': User.objects.count(),
+        'verified_phones': VerifiedPhone.objects.filter(is_active=True).count(),
+        'car_records': CarUnified.objects.count(),
+        'today_calculations': 0,  # This would need to be tracked separately
+    }
+    
+    # Get recent activity (mock data for now)
+    recent_activities = [
+        {
+            'icon': 'phone',
+            'description': 'New phone verification',
+            'timestamp': timezone.now()
+        },
+        {
+            'icon': 'calculator',
+            'description': 'Price calculation performed',
+            'timestamp': timezone.now()
+        },
+    ]
+    
+    context = {
+        'stats': stats,
+        'recent_activities': recent_activities,
+    }
+    
+    return render(request, 'admin/dashboard.html', context)
+
+@login_required
+@user_passes_test(is_staff_user, login_url='/login/')
+def admin_logout_view(request):
+    """Admin logout"""
+    logout(request)
+    messages.success(request, 'You have been logged out successfully.')
+    return redirect('admin_login')
