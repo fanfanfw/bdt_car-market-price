@@ -8,61 +8,33 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function initializeApp() {
-    loadCategories();
+    loadBrands();
     setupEventListeners();
     setupFormValidation();
 }
 
-// Load categories on page load
-async function loadCategories() {
+// Load brands on page load
+async function loadBrands() {
     try {
-        const response = await fetch(API_URLS.categories);
-        const categories = await response.json();
+        const response = await fetch(API_URLS.brands);
+        const brands = await response.json();
         
-        const categorySelect = document.getElementById('categorySelect');
-        categorySelect.innerHTML = '<option value="" disabled selected>Pilih Category</option>';
+        const brandSelect = document.getElementById('brandSelect');
+        brandSelect.innerHTML = '<option value="" disabled selected>Select Brand</option>';
         
-        categories.forEach(category => {
-            categorySelect.innerHTML += `<option value="${category}">${category}</option>`;
+        brands.forEach(brand => {
+            brandSelect.innerHTML += `<option value="${brand}">${brand}</option>`;
         });
+        
+        brandSelect.disabled = false;
     } catch (error) {
-        console.error('Error loading categories:', error);
-        showError('Gagal memuat kategori. Silakan refresh halaman.');
+        console.error('Error loading brands:', error);
+        showError('Failed to load brand. Please refresh the page.');
     }
 }
 
 // Setup all event listeners
 function setupEventListeners() {
-    // Category change handler
-    document.getElementById('categorySelect').addEventListener('change', async function() {
-        const category = this.value;
-        const brandSelect = document.getElementById('brandSelect');
-        
-        if (category) {
-            try {
-                showLoading(brandSelect);
-                const response = await fetch(`${API_URLS.brands}?category=${encodeURIComponent(category)}`);
-                const brands = await response.json();
-                
-                brandSelect.innerHTML = '<option value="" disabled selected>Pilih Brand</option>';
-                brands.forEach(brand => {
-                    brandSelect.innerHTML += `<option value="${brand}">${brand}</option>`;
-                });
-                
-                brandSelect.disabled = false;
-                resetSelects(['modelSelect', 'variantSelect', 'yearSelect']);
-                validateForm();
-            } catch (error) {
-                console.error('Error loading brands:', error);
-                showError('Gagal memuat brand. Silakan coba lagi.');
-            }
-        } else {
-            brandSelect.disabled = true;
-            resetSelects(['brandSelect', 'modelSelect', 'variantSelect', 'yearSelect']);
-            validateForm();
-        }
-    });
-
     // Brand change handler
     document.getElementById('brandSelect').addEventListener('change', async function() {
         const brand = this.value;
@@ -74,7 +46,7 @@ function setupEventListeners() {
                 const response = await fetch(`${API_URLS.models}?brand=${encodeURIComponent(brand)}`);
                 const models = await response.json();
                 
-                modelSelect.innerHTML = '<option value="" disabled selected>Pilih Model</option>';
+                modelSelect.innerHTML = '<option value="" disabled selected>Select Model</option>';
                 models.forEach(model => {
                     modelSelect.innerHTML += `<option value="${model}">${model}</option>`;
                 });
@@ -84,7 +56,7 @@ function setupEventListeners() {
                 validateForm();
             } catch (error) {
                 console.error('Error loading models:', error);
-                showError('Gagal memuat model. Silakan coba lagi.');
+                showError('Failed to load model. Please try again.');
             }
         } else {
             resetSelects(['modelSelect', 'variantSelect', 'yearSelect']);
@@ -104,7 +76,7 @@ function setupEventListeners() {
                 const response = await fetch(`${API_URLS.variants}?brand=${encodeURIComponent(brand)}&model=${encodeURIComponent(model)}`);
                 const variants = await response.json();
                 
-                variantSelect.innerHTML = '<option value="" disabled selected>Pilih Variant</option>';
+                variantSelect.innerHTML = '<option value="" disabled selected>Select Variant</option>';
                 variants.forEach(variant => {
                     variantSelect.innerHTML += `<option value="${variant}">${variant}</option>`;
                 });
@@ -114,7 +86,7 @@ function setupEventListeners() {
                 validateForm();
             } catch (error) {
                 console.error('Error loading variants:', error);
-                showError('Gagal memuat variant. Silakan coba lagi.');
+                showError('Failed to load variant. Please try again.');
             }
         } else {
             resetSelects(['variantSelect', 'yearSelect']);
@@ -135,7 +107,7 @@ function setupEventListeners() {
                 const response = await fetch(`${API_URLS.years}?brand=${encodeURIComponent(brand)}&model=${encodeURIComponent(model)}&variant=${encodeURIComponent(variant)}`);
                 const years = await response.json();
                 
-                yearSelect.innerHTML = '<option value="" disabled selected>Pilih Tahun</option>';
+                yearSelect.innerHTML = '<option value="" disabled selected>Select Year</option>';
                 years.forEach(year => {
                     yearSelect.innerHTML += `<option value="${year}">${year}</option>`;
                 });
@@ -144,7 +116,7 @@ function setupEventListeners() {
                 validateForm();
             } catch (error) {
                 console.error('Error loading years:', error);
-                showError('Gagal memuat tahun. Silakan coba lagi.');
+                showError('Failed to load year. Please try again.');
             }
         } else {
             resetSelects(['yearSelect']);
@@ -178,12 +150,12 @@ function resetSelects(selectIds) {
 
 function getPlaceholderText(selectId) {
     const placeholders = {
-        'brandSelect': 'Pilih Brand',
-        'modelSelect': 'Pilih Model', 
-        'variantSelect': 'Pilih Variant',
-        'yearSelect': 'Pilih Tahun'
+        'brandSelect': 'Select Brand',
+        'modelSelect': 'Select Model', 
+        'variantSelect': 'Select Variant',
+        'yearSelect': 'Select Year'
     };
-    return placeholders[selectId] || 'Pilih';
+    return placeholders[selectId] || 'Select';
 }
 
 function showLoading(selectElement) {
@@ -192,7 +164,6 @@ function showLoading(selectElement) {
 }
 
 function validateForm() {
-    const category = document.getElementById('categorySelect').value;
     const brand = document.getElementById('brandSelect').value;
     const model = document.getElementById('modelSelect').value;
     const variant = document.getElementById('variantSelect').value;
@@ -218,7 +189,7 @@ function validateForm() {
     });
     
     const submitBtn = document.getElementById('submitBtn');
-    const isValid = category && brand && model && variant && year && allRadiosSelected;
+    const isValid = brand && model && variant && year && allRadiosSelected;
     
     submitBtn.disabled = !isValid;
     submitBtn.classList.toggle('disabled:opacity-50', !isValid);
@@ -251,14 +222,13 @@ function setupFormValidation() {
 }
 
 function validateFormBeforeSubmit() {
-    const category = document.getElementById('categorySelect').value;
     const brand = document.getElementById('brandSelect').value;
     const model = document.getElementById('modelSelect').value;
     const variant = document.getElementById('variantSelect').value;
     const year = document.getElementById('yearSelect').value;
     
-    if (!category || !brand || !model || !variant || !year) {
-        showError('Silakan lengkapi semua spesifikasi kendaraan.');
+    if (!brand || !model || !variant || !year) {
+        showError('Please complete all vehicle specifications.');
         return false;
     }
     
@@ -279,7 +249,7 @@ function validateFormBeforeSubmit() {
     
     for (let groupName of requiredRadioGroups) {
         if (!document.querySelector(`input[name="${groupName}"]:checked`)) {
-            showError(`Silakan pilih kondisi untuk ${getReadableFieldName(groupName)}.`);
+            showError(`Please select condition for ${getReadableFieldName(groupName)}.`);
             return false;
         }
     }
@@ -347,7 +317,7 @@ function showSuccess(message) {
     if (typeof Swal !== 'undefined') {
         Swal.fire({
             icon: 'success',
-            title: 'Berhasil!',
+            title: 'Success!',
             text: message,
             confirmButtonText: 'OK'
         });

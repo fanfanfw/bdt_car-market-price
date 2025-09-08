@@ -1,7 +1,7 @@
 {% extends 'main/base.html' %}
 {% load static %}
 
-{% block title %}Hasil Estimasi Harga - Car Market Price{% endblock %}
+{% block title %}Price Estimation Result - Car Market Price{% endblock %}
 
 {% block content %}
 <!-- Header -->
@@ -12,10 +12,10 @@
         </div>
     </div>
     <h1 class="text-3xl sm:text-4xl lg:text-5xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent mb-3">
-        Hasil Estimasi Harga
+        Price Estimation Result
     </h1>
     <p class="text-base-content/70 text-sm sm:text-lg max-w-2xl mx-auto px-4">
-        Berikut adalah estimasi harga kendaraan Anda berdasarkan data pasar dan kondisi yang dipilih
+        Here is your vehicle price estimation based on market data and selected conditions
     </p>
 </div>
 
@@ -25,8 +25,8 @@
     <div class="flex items-center">
         <i class="fas fa-exclamation-triangle text-2xl"></i>
         <div>
-            <h4 class="text-lg font-bold">Verifikasi Nomor Kedaluwarsa</h4>
-            <p>Verifikasi nomor {{ phone_number }} sudah kedaluwarsa. Silakan verifikasi ulang.</p>
+            <h4 class="text-lg font-bold">Phone Verification Expired</h4>
+            <p>Verification for number {{ phone_number }} has expired. Please verify again.</p>
         </div>
     </div>
 </div>
@@ -34,7 +34,7 @@
 <div class="text-center">
     <a href="{% url 'main:index' %}" class="btn btn-primary">
         <i class="fas fa-arrow-left mr-2"></i>
-        Kembali ke Form
+        Back to Form
     </a>
 </div>
 
@@ -51,8 +51,8 @@
                 <div class="flex justify-center items-center gap-2 sm:gap-4 text-base-content/70 flex-wrap">
                     <span class="badge badge-outline badge-sm sm:badge-lg">
                         <i class="fas fa-calculator mr-1"></i>
-                        <span class="hidden sm:inline">Estimasi Harga</span>
-                        <span class="sm:hidden">Estimasi</span>
+                        <span class="hidden sm:inline">Price Estimation</span>
+                        <span class="sm:hidden">Estimation</span>
                     </span>
                 </div>
             </div>
@@ -61,8 +61,8 @@
         <!-- Loading State -->
         <div id="loadingState" class="text-center py-8 px-4">
             <div class="loading loading-spinner loading-lg text-primary mb-4"></div>
-            <p class="text-base sm:text-lg text-base-content/70">Memproses data kendaraan Anda...</p>
-            <p class="text-xs sm:text-sm text-base-content/50 mt-2">Harap tunggu, sedang memverifikasi nomor telepon</p>
+            <p class="text-base sm:text-lg text-base-content/70">Processing your vehicle data...</p>
+            <p class="text-xs sm:text-sm text-base-content/50 mt-2">Please wait, verifying phone number</p>
         </div>
         
         <!-- Results Container (Hidden initially) -->
@@ -75,16 +75,16 @@
             <div class="alert alert-warning">
                 <i class="fas fa-exclamation-triangle text-xl sm:text-2xl"></i>
                 <div>
-                    <h4 class="text-base sm:text-lg font-bold">Data Tidak Ditemukan</h4>
-                    <p class="text-sm sm:text-base">Tidak ada data untuk kombinasi yang dipilih. Silakan coba kombinasi lain.</p>
+                    <h4 class="text-base sm:text-lg font-bold">Data Not Found</h4>
+                    <p class="text-sm sm:text-base">No data available for the selected combination. Please try another combination.</p>
                 </div>
             </div>
             
             <div class="text-center mt-4">
                 <a href="{% url 'main:index' %}" class="btn btn-primary btn-sm sm:btn-md">
                     <i class="fas fa-arrow-left mr-1 sm:mr-2"></i>
-                    <span class="hidden sm:inline">Kembali ke Form</span>
-                    <span class="sm:hidden">Kembali</span>
+                    <span class="hidden sm:inline">Back to Form</span>
+                    <span class="sm:hidden">Back</span>
                 </a>
             </div>
         </div>
@@ -94,16 +94,16 @@
             <div class="alert alert-error">
                 <i class="fas fa-times-circle text-xl sm:text-2xl"></i>
                 <div>
-                    <h4 class="text-base sm:text-lg font-bold">Terjadi Kesalahan</h4>
-                    <p id="errorMessage" class="text-sm sm:text-base">Tidak dapat memproses data. Silakan coba lagi.</p>
+                    <h4 class="text-base sm:text-lg font-bold">An Error Occurred</h4>
+                    <p id="errorMessage" class="text-sm sm:text-base">Unable to process data. Please try again.</p>
                 </div>
             </div>
             
             <div class="text-center mt-4">
                 <a href="{% url 'main:index' %}" class="btn btn-primary btn-sm sm:btn-md">
                     <i class="fas fa-arrow-left mr-1 sm:mr-2"></i>
-                    <span class="hidden sm:inline">Kembali ke Form</span>
-                    <span class="sm:hidden">Kembali</span>
+                    <span class="hidden sm:inline">Back to Form</span>
+                    <span class="sm:hidden">Back</span>
                 </a>
             </div>
         </div>
@@ -112,17 +112,17 @@
         <div id="resultActions" class="hidden flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center mt-8 px-4">
             <a href="{% url 'main:index' %}" class="btn btn-primary btn-sm sm:btn-md">
                 <i class="fas fa-calculator mr-1 sm:mr-2"></i>
-                <span class="hidden sm:inline">Hitung Estimasi Lain</span>
-                <span class="sm:hidden">Hitung Lagi</span>
+                <span class="hidden sm:inline">Calculate Another Estimation</span>
+                <span class="sm:hidden">Calculate Again</span>
             </a>
             <button onclick="window.print()" class="btn btn-outline btn-secondary btn-sm sm:btn-md hidden sm:flex">
                 <i class="fas fa-print mr-2"></i>
-                Cetak Hasil
+                Print Result
             </button>
             <button onclick="shareResult()" class="btn btn-outline btn-accent btn-sm sm:btn-md">
                 <i class="fas fa-share-alt mr-1 sm:mr-2"></i>
-                <span class="hidden sm:inline">Bagikan Hasil</span>
-                <span class="sm:hidden">Bagikan</span>
+                <span class="hidden sm:inline">Share Result</span>
+                <span class="sm:hidden">Share</span>
             </button>
         </div>
     </div>
@@ -176,25 +176,25 @@ async function checkPhoneStatus(phoneNumber, countryCode) {
 async function showOTPVerification() {
     // Step 1: Ask for phone number
     const { value: phoneInput } = await Swal.fire({
-        title: 'Masukkan Nomor Telepon',
+        title: 'Enter Phone Number',
         html: `
             <div class="text-left space-y-4">
                 <div class="alert alert-info text-sm">
                     <i class="fas fa-info-circle"></i>
-                    <span>Nomor telepon Anda perlu diverifikasi untuk melihat hasil estimasi</span>
+                    <span>Your phone number needs to be verified to view the estimation result</span>
                 </div>
                 <div class="space-y-3">
                     <div>
-                        <label class="block text-sm font-medium mb-2">Negara</label>
+                        <label class="block text-sm font-medium mb-2">Country</label>
                         <select id="country-select" class="w-full p-2 border rounded">
                             <option value="+60">🇲🇾 Malaysia (+60)</option>
                             <option value="+62">🇮🇩 Indonesia (+62)</option>
                         </select>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium mb-2">Nomor Telepon</label>
-                        <input type="tel" id="phone-input" class="w-full p-2 border rounded" placeholder="Contoh: 123456789">
-                        <small class="text-gray-500">Masukkan nomor tanpa kode negara</small>
+                        <label class="block text-sm font-medium mb-2">Phone Number</label>
+                        <input type="tel" id="phone-input" class="w-full p-2 border rounded" placeholder="Example: 123456789">
+                        <small class="text-gray-500">Enter number without country code</small>
                     </div>
                 </div>
             </div>
@@ -256,7 +256,7 @@ async function sendOTPCode() {
         // Show loading
         Swal.fire({
             title: 'Mengirim OTP...',
-            text: 'Mohon tunggu sebentar',
+            text: 'Please wait a moment',
             allowOutsideClick: false,
             allowEscapeKey: false,
             didOpen: () => {
@@ -318,21 +318,21 @@ async function showOTPInput(testOTP = null, isNewOTP = true) {
 
     const showOTPModal = () => {
         return Swal.fire({
-            title: 'Masukkan Kode OTP',
+            title: 'Enter OTP Code',
             html: `
                 <div class="space-y-4">
                     <div class="alert alert-success text-sm">
                         <i class="fas fa-check-circle"></i>
-                        <span>OTP telah dikirim ke ${phoneNumber}</span>
+                        <span>OTP has been sent to ${phoneNumber}</span>
                     </div>
                     ${testOTP ? `<div class="alert alert-info text-sm"><strong>Testing OTP: ${testOTP}</strong></div>` : ''}
                     <input type="text" id="otp-input" class="swal2-input text-center text-2xl" placeholder="123456" maxlength="6" autocomplete="off" style="font-size: 1.5rem; text-align: center; letter-spacing: 0.5rem;">
-                    <div class="text-sm text-gray-500" id="otp-timer">Berlaku selama <strong>${window.otpTimeLeft}</strong> detik</div>
+                    <div class="text-sm text-gray-500" id="otp-timer">Valid for <strong>${window.otpTimeLeft}</strong> seconds</div>
                 </div>
             `,
             showCancelButton: true,
-            confirmButtonText: 'Ganti Nomor',
-            cancelButtonText: 'Kirim Ulang',
+            confirmButtonText: 'Change Number',
+            cancelButtonText: 'Resend',
             confirmButtonColor: '#3b82f6',
             cancelButtonColor: '#f59e0b',
             allowOutsideClick: false,
@@ -356,9 +356,9 @@ async function showOTPInput(testOTP = null, isNewOTP = true) {
                 
                 // Update timer display with current value
                 if (window.otpTimeLeft > 0) {
-                    timer.innerHTML = `Berlaku selama <strong>${window.otpTimeLeft}</strong> detik`;
+                    timer.innerHTML = `Valid for <strong>${window.otpTimeLeft}</strong> seconds`;
                 } else {
-                    timer.innerHTML = '<strong class="text-red-500">Kode OTP kedaluwarsa - Silakan kirim ulang</strong>';
+                    timer.innerHTML = '<strong class="text-red-500">OTP code expired - Please resend</strong>';
                 }
                 
                 // Focus on input
@@ -395,7 +395,7 @@ async function showOTPInput(testOTP = null, isNewOTP = true) {
                             // Show error message briefly
                             const errorMsg = document.createElement('div');
                             errorMsg.className = 'text-red-500 text-sm mt-2';
-                            errorMsg.textContent = 'Kode OTP salah, silakan coba lagi';
+                            errorMsg.textContent = 'Incorrect OTP code, please try again';
                             timer.parentNode.appendChild(errorMsg);
                             
                             setTimeout(() => {
@@ -411,12 +411,12 @@ async function showOTPInput(testOTP = null, isNewOTP = true) {
                 if (window.otpTimeLeft > 0 && !window.otpTimerInterval) {
                     window.otpTimerInterval = setInterval(() => {
                         window.otpTimeLeft--;
-                        timer.innerHTML = `Berlaku selama <strong>${window.otpTimeLeft}</strong> detik`;
+                        timer.innerHTML = `Valid for <strong>${window.otpTimeLeft}</strong> seconds`;
                         
                         if (window.otpTimeLeft <= 0) {
                             clearInterval(window.otpTimerInterval);
                             window.otpTimerInterval = null;
-                            timer.innerHTML = '<strong class="text-red-500">Kode OTP kedaluwarsa - Silakan kirim ulang</strong>';
+                            timer.innerHTML = '<strong class="text-red-500">OTP code expired - Please resend</strong>';
                             
                             // Enable cancel button when timer expires
                             if (cancelButton) {
@@ -501,7 +501,7 @@ async function verifyOTPCodeSilent(otpCode, testOTP = null) {
             // Show success and load results
             await Swal.fire({
                 icon: 'success',
-                title: 'Verifikasi Berhasil!',
+                title: 'Verification Successful!',
                 text: 'Nomor telepon Anda telah diverifikasi. Mengambil hasil estimasi...',
                 showConfirmButton: false,
                 timer: 1500
@@ -521,8 +521,8 @@ async function verifyOTPCode(otpCode, testOTP = null) {
     try {
         // Show loading
         Swal.fire({
-            title: 'Memverifikasi OTP...',
-            text: 'Mohon tunggu sebentar',
+            title: 'Verifying OTP...',
+            text: 'Please wait a moment',
             allowOutsideClick: false,
             allowEscapeKey: false,
             didOpen: () => {
@@ -550,7 +550,7 @@ async function verifyOTPCode(otpCode, testOTP = null) {
         if (data.success) {
             await Swal.fire({
                 icon: 'success',
-                title: 'Verifikasi Berhasil!',
+                title: 'Verification Successful!',
                 text: 'Nomor telepon Anda telah diverifikasi. Mengambil hasil estimasi...',
                 showConfirmButton: false,
                 timer: 1500
@@ -563,8 +563,8 @@ async function verifyOTPCode(otpCode, testOTP = null) {
             // Show error but don't exit - let the caller handle retry
             await Swal.fire({
                 icon: 'error',
-                title: 'Verifikasi Gagal',
-                text: data.error || 'Kode OTP salah. Silakan coba lagi.',
+                title: 'Verification Failed',
+                text: data.error || 'Incorrect OTP code. Please try again.',
                 showConfirmButton: true,
                 confirmButtonText: 'OK',
                 timer: 3000
@@ -575,8 +575,8 @@ async function verifyOTPCode(otpCode, testOTP = null) {
         // Show error but don't exit - let the caller handle retry
         await Swal.fire({
             icon: 'error',
-            title: 'Verifikasi Gagal',
-            text: 'Terjadi kesalahan jaringan. Silakan coba lagi.',
+            title: 'Verification Failed',
+            text: 'Network error occurred. Please try again.',
             showConfirmButton: true,
             confirmButtonText: 'OK',
             timer: 3000
@@ -604,7 +604,7 @@ async function loadResults() {
         } else if (data.no_data) {
             showNoDataState();
         } else {
-            throw new Error(data.message || 'Gagal mengambil hasil');
+            throw new Error(data.message || 'Failed to get results');
         }
     } catch (error) {
         showErrorState(error.message);
@@ -633,7 +633,7 @@ function generateResultsHTML(result) {
             <div class="space-y-4 sm:space-y-6">
                 <h3 class="text-lg sm:text-xl font-bold text-base-content flex items-center">
                     <i class="fas fa-chart-bar text-blue-600 mr-2"></i>
-                    Data Pasar
+                    Market Data
                 </h3>
                 
                 <div class="card bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200">
@@ -642,14 +642,14 @@ function generateResultsHTML(result) {
                             <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-0">
                                 <span class="text-base-content flex items-center text-sm sm:text-base">
                                     <i class="fas fa-tachometer-alt text-blue-500 mr-2"></i>
-                                    Rata-rata Mileage:
+                                    Average Mileage:
                                 </span>
                                 <span class="font-bold text-base sm:text-lg text-blue-600">${Math.round(result.rata_rata_mileage_bulat)} km</span>
                             </div>
                             <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-0">
                                 <span class="text-base-content flex items-center text-sm sm:text-base">
                                     <i class="fas fa-money-bill-wave text-green-500 mr-2"></i>
-                                    Rata-rata Harga:
+                                    Average Price:
                                 </span>
                                 <span class="font-bold text-base sm:text-lg text-green-600">RM ${Math.round(result.rata_rata_price_bulat).toLocaleString()}</span>
                             </div>
@@ -669,7 +669,7 @@ function generateResultsHTML(result) {
             <div class="space-y-4 sm:space-y-6">
                 <h3 class="text-lg sm:text-xl font-bold text-base-content flex items-center">
                     <i class="fas fa-calculator text-green-600 mr-2"></i>
-                    Estimasi Harga Anda
+                    Your Price Estimation
                 </h3>
                 
                 <div class="card bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200">
@@ -679,18 +679,18 @@ function generateResultsHTML(result) {
                                 <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-0">
                                     <span class="text-base-content flex items-center text-sm sm:text-base">
                                         <i class="fas fa-user-check text-blue-500 mr-2"></i>
-                                        Mileage Anda:
+                                        Your Mileage:
                                     </span>
                                     <span class="font-semibold text-sm sm:text-base">${Math.round(result.user_mileage).toLocaleString()} km</span>
                                 </div>
                                 ${result.mileage_diff_percent > 0 ? `
                                     <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-0">
-                                        <span class="text-base-content/70 text-sm">Selisih Mileage:</span>
+                                        <span class="text-base-content/70 text-sm">Mileage Difference:</span>
                                         <span class="badge badge-warning badge-sm">+${result.mileage_diff_percent}%</span>
                                     </div>
                                 ` : result.mileage_diff_percent < 0 ? `
                                     <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-0">
-                                        <span class="text-base-content/70 text-sm">Selisih Mileage:</span>
+                                        <span class="text-base-content/70 text-sm">Mileage Difference:</span>
                                         <span class="badge badge-success badge-sm">${result.mileage_diff_percent}%</span>
                                     </div>
                                 ` : ''}
@@ -700,19 +700,19 @@ function generateResultsHTML(result) {
                         <div class="space-y-3 sm:space-y-4 mb-4 sm:mb-6">
                             <h4 class="font-semibold text-base-content flex items-center text-sm sm:text-base">
                                 <i class="fas fa-minus-circle text-red-500 mr-2"></i>
-                                Pengurangan Harga:
+                                Price Reduction:
                             </h4>
                             
                             ${result.layer1_reduction > 0 ? `
                                 <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-0">
-                                    <span class="text-base-content/70 text-sm">• Berdasarkan Mileage:</span>
+                                    <span class="text-base-content/70 text-sm">• Based on Mileage:</span>
                                     <span class="badge badge-error badge-sm">-${result.layer1_reduction}%</span>
                                 </div>
                             ` : ''}
                             
                             ${result.layer2_reduction > 0 ? `
                                 <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-0">
-                                    <span class="text-base-content/70 text-sm">• Berdasarkan Kondisi:</span>
+                                    <span class="text-base-content/70 text-sm">• Based on Condition:</span>
                                     <span class="badge badge-error badge-sm">-${result.layer2_reduction}%</span>
                                 </div>
                             ` : ''}
@@ -720,13 +720,13 @@ function generateResultsHTML(result) {
                             ${result.total_reduction > 0 ? `
                                 <div class="divider"></div>
                                 <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-0">
-                                    <span class="font-bold text-base-content text-sm sm:text-base">Total Pengurangan:</span>
+                                    <span class="font-bold text-base-content text-sm sm:text-base">Total Reduction:</span>
                                     <span class="badge badge-error badge-sm sm:badge-lg font-bold">-${result.total_reduction}%</span>
                                 </div>
                             ` : `
                                 <div class="alert alert-success">
                                     <i class="fas fa-check-circle mr-2"></i>
-                                    <span class="text-sm sm:text-base">Tidak ada pengurangan harga</span>
+                                    <span class="text-sm sm:text-base">No price reduction</span>
                                 </div>
                             `}
                         </div>
@@ -735,14 +735,14 @@ function generateResultsHTML(result) {
                             <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 sm:gap-0">
                                 <span class="text-base-content font-bold text-sm sm:text-lg flex items-center">
                                     <i class="fas fa-tags text-green-600 mr-2"></i>
-                                    Estimasi Harga:
+                                    Estimated Price:
                                 </span>
                                 <span class="text-xl sm:text-2xl font-bold text-green-600">RM ${Math.round(result.adjusted_price).toLocaleString()}</span>
                             </div>
                             ${result.price_savings > 0 ? `
                                 <p class="text-xs sm:text-sm text-green-600 text-right mt-2 flex items-center justify-end">
                                     <i class="fas fa-piggy-bank mr-1"></i>
-                                    Hemat RM ${Math.round(result.price_savings).toLocaleString()}
+                                    Save RM ${Math.round(result.price_savings).toLocaleString()}
                                 </p>
                             ` : ''}
                         </div>
@@ -756,7 +756,7 @@ function generateResultsHTML(result) {
                 <div class="card-body p-4 sm:p-6">
                     <h4 class="font-bold text-base-content mb-3 sm:mb-4 flex items-center text-sm sm:text-base">
                         <i class="fas fa-list-ul text-base-content/60 mr-2"></i>
-                        Detail Penilaian Kondisi:
+                        Condition Assessment Details:
                     </h4>
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-3">
                         ${Object.entries(result.condition_breakdown).map(([key, value]) => {
@@ -804,8 +804,8 @@ function showErrorState(message) {
 function shareResult() {
     if (navigator.share) {
         navigator.share({
-            title: 'Hasil Estimasi Harga Kendaraan',
-            text: 'Lihat hasil estimasi harga kendaraan dari Car Market Price',
+            title: 'Vehicle Price Estimation Result',
+            text: 'Check out vehicle price estimation results from Car Market Price',
             url: window.location.href
         });
     } else {
@@ -813,8 +813,8 @@ function shareResult() {
         navigator.clipboard.writeText(window.location.href).then(function() {
             Swal.fire({
                 icon: 'success',
-                title: 'Berhasil!',
-                text: 'Link hasil estimasi telah disalin ke clipboard.',
+                title: 'Success!',
+                text: 'Estimation result link has been copied to clipboard.',
                 confirmButtonText: 'OK'
             });
         });

@@ -1,13 +1,12 @@
 {% extends 'main/base.html' %}
 {% load static %}
 
-{% block title %}Car Market Price - Estimasi Harga Kendaraan{% endblock %}
+{% block title %}Car Market Price - Vehicle Price Estimation{% endblock %}
 
 {% block extra_css %}
 <script>
     // Define API URLs using Django template tags
     const API_URLS = {
-        categories: '{% url "main:get_categories" %}',
         brands: '{% url "main:get_brands" %}',
         models: '{% url "main:get_models" %}',
         variants: '{% url "main:get_variants" %}',
@@ -28,23 +27,13 @@
         Car Market Price
     </h1>
     <p class="text-base-content/70 text-lg max-w-2xl mx-auto">
-        Estimasi harga kendaraan berdasarkan mileage dan data pasar yang akurat
+        Vehicle price estimation based on mileage and accurate market data
     </p>
 </div>
 
 <!-- Form Card -->
 <div class="card bg-base-100 shadow-2xl border-0 mb-8">
     <div class="card-body p-8">
-        <div class="text-center mb-8">
-            <h2 class="text-3xl font-bold text-base-content mb-3">
-                <i class="fas fa-calculator text-blue-600 mr-3"></i>
-                Estimasi Harga Kendaraan
-            </h2>
-            <p class="text-base-content/70 text-lg">
-                Pilih spesifikasi kendaraan dan masukkan mileage untuk mendapatkan estimasi harga
-            </p>
-        </div>
-        
         <form id="mileageForm" method="POST" action="{% url 'main:result' %}">
             {% csrf_token %}
             
@@ -52,26 +41,16 @@
             <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-6 mb-8">
                 <h3 class="text-xl font-semibold text-base-content mb-4 flex items-center">
                     <i class="fas fa-car-side text-blue-600 mr-2"></i>
-                    Spesifikasi Kendaraan
+                    Vehicle Specifications
                 </h3>
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-                    <!-- Category -->
-                    <div class="form-control">
-                        <label class="label">
-                            <span class="label-text font-medium">Category</span>
-                        </label>
-                        <select name="category" id="categorySelect" class="select select-bordered w-full" required>
-                            <option value="" disabled selected>Pilih Category</option>
-                        </select>
-                    </div>
-                    
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     <!-- Brand -->
                     <div class="form-control">
                         <label class="label">
                             <span class="label-text font-medium">Brand</span>
                         </label>
-                        <select name="brand" id="brandSelect" class="select select-bordered w-full focus:select-primary" disabled required>
-                            <option value="" disabled selected>Pilih Brand</option>
+                        <select name="brand" id="brandSelect" class="select select-bordered w-full focus:select-primary" required>
+                            <option value="" disabled selected>Select Brand</option>
                         </select>
                     </div>
                     
@@ -81,7 +60,7 @@
                             <span class="label-text font-medium">Model</span>
                         </label>
                         <select name="model" id="modelSelect" class="select select-bordered w-full focus:select-primary" disabled required>
-                            <option value="" disabled selected>Pilih Model</option>
+                            <option value="" disabled selected>Select Model</option>
                         </select>
                     </div>
                     
@@ -91,17 +70,17 @@
                             <span class="label-text font-medium">Variant</span>
                         </label>
                         <select name="variant" id="variantSelect" class="select select-bordered w-full focus:select-primary" disabled required>
-                            <option value="" disabled selected>Pilih Variant</option>
+                            <option value="" disabled selected>Select Variant</option>
                         </select>
                     </div>
                     
                     <!-- Year -->
                     <div class="form-control">
                         <label class="label">
-                            <span class="label-text font-medium">Tahun</span>
+                            <span class="label-text font-medium">Year</span>
                         </label>
                         <select name="year" id="yearSelect" class="select select-bordered w-full focus:select-primary" disabled required>
-                            <option value="" disabled selected>Pilih Tahun</option>
+                            <option value="" disabled selected>Select Year</option>
                         </select>
                     </div>
                 </div>
@@ -111,20 +90,20 @@
             <div class="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl p-6 mb-8">
                 <h3 class="text-xl font-semibold text-base-content mb-4 flex items-center">
                     <i class="fas fa-tachometer-alt text-green-600 mr-2"></i>
-                    Mileage Kendaraan
+                    Vehicle Mileage
                 </h3>
                 <div class="form-control max-w-xs">
                     <label class="label">
-                        <span class="label-text font-medium">Mileage Kendaraan Anda (km)</span>
+                        <span class="label-text font-medium">Your Vehicle Mileage (km)</span>
                     </label>
                     <div class="relative">
                         <input type="number" name="user_mileage" id="userMileageInput" 
                                class="input input-bordered w-full pr-12 focus:input-primary" 
-                               placeholder="Contoh: 50000" min="0" step="1000">
+                               placeholder="Example: 50000" min="0" step="1000">
                         <span class="absolute right-3 top-1/2 transform -translate-y-1/2 text-base-content/50 text-sm">km</span>
                     </div>
                     <label class="label">
-                        <span class="label-text-alt text-base-content/60">Masukkan mileage kendaraan Anda</span>
+                        <span class="label-text-alt text-base-content/60">Enter your vehicle mileage</span>
                     </label>
                 </div>
             </div>
@@ -133,9 +112,9 @@
             <div class="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl p-6 mb-8">
                 <h3 class="text-xl font-semibold text-base-content mb-4 flex items-center">
                     <i class="fas fa-clipboard-check text-purple-600 mr-2"></i>
-                    Penilaian Kondisi Kendaraan
+                    Vehicle Condition Assessment
                 </h3>
-                <p class="text-base-content/70 mb-6">Pilih kondisi yang paling sesuai untuk setiap aspek kendaraan Anda</p>
+                <p class="text-base-content/70 mb-6">Select the most appropriate condition for each aspect of your vehicle</p>
                 
                 <div class="space-y-4">
                     <!-- Exterior Condition Row -->
@@ -445,7 +424,7 @@
             <div class="text-center mt-8">
                 <button type="submit" id="submitBtn" disabled class="btn btn-primary btn-lg px-8 disabled:opacity-50">
                     <i class="fas fa-calculator mr-2"></i>
-                    Dapatkan Estimasi Harga
+                    Get Price Estimation
                 </button>
             </div>
         </form>
@@ -458,8 +437,8 @@
     <div class="flex items-center">
         <i class="fas fa-exclamation-triangle text-2xl"></i>
         <div>
-            <h4 class="text-lg font-bold">Data Tidak Ditemukan</h4>
-            <p>Tidak ada data untuk kombinasi yang dipilih. Silakan coba kombinasi lain.</p>
+            <h4 class="text-lg font-bold">Data Not Found</h4>
+            <p>No data available for the selected combination. Please try another combination.</p>
         </div>
     </div>
 </div>
@@ -473,8 +452,8 @@
                 <i class="fas fa-code text-white text-xl"></i>
             </div>
         </div>
-        <h4 class="text-xl font-bold text-blue-800 mb-2">Platform dalam Pengembangan</h4>
-        <p class="text-blue-700">Saat ini tersedia fitur analisis mileage kendaraan berdasarkan data pasar.</p>
+        <h4 class="text-xl font-bold text-blue-800 mb-2">Platform Under Development</h4>
+        <p class="text-blue-700">Currently available vehicle mileage analysis feature based on market data.</p>
         <div class="mt-4">
             <div class="badge badge-primary badge-lg">
                 <i class="fas fa-rocket mr-1"></i>

@@ -22,7 +22,6 @@ def result(request):
     
     if request.method == 'POST':
         # Handle form submission directly
-        category = request.POST.get('category')
         brand = request.POST.get('brand')
         model = request.POST.get('model')
         variant = request.POST.get('variant')
@@ -44,10 +43,9 @@ def result(request):
             'price_tier': float(request.POST.get('price_tier', 0))
         }
         
-        if category and brand and model and variant and year:
+        if brand and model and variant and year:
             # Store form data in session for security (encrypted)
             request.session['calculation_request'] = {
-                'category': category,
                 'brand': brand,
                 'model': model,
                 'variant': variant,
@@ -82,11 +80,11 @@ def result(request):
             if phone_already_verified:
                 context['skip_otp'] = True
         else:
-            messages.error(request, 'Silakan lengkapi semua data yang diperlukan.')
+            messages.error(request, 'Please complete all required data.')
             return redirect('main:index')
     else:
         # GET request - redirect to index
-        messages.info(request, 'Silakan isi form terlebih dahulu.')
+        messages.info(request, 'Please fill out the form first.')
         return redirect('main:index')
     
     # Create response and handle cookie deletion if needed
@@ -108,19 +106,10 @@ def get_categories(request):
 
 
 def get_brands(request):
-    """API endpoint to get brands filtered by category"""
+    """API endpoint to get all brands"""
     try:
-        category_name = request.GET.get('category')
-        
-        if category_name:
-            # Get brands for specific category
-            brands = BrandCategory.objects.filter(
-                category__name=category_name
-            ).values_list('brand', flat=True).distinct().order_by('brand')
-        else:
-            # Get all brands if no category specified (fallback)
-            brands = CarStandard.objects.values_list('brand_norm', flat=True).distinct().order_by('brand_norm')
-        
+        # Get all brands directly from CarStandard
+        brands = CarStandard.objects.values_list('brand_norm', flat=True).distinct().order_by('brand_norm')
         return JsonResponse(list(brands), safe=False)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
