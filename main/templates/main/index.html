@@ -108,316 +108,48 @@
                 </div>
             </div>
         
-            <!-- Condition Assessment Section -->
+            <!-- Dynamic Condition Assessment Section -->
             <div class="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl p-6 mb-8">
                 <h3 class="text-xl font-semibold text-base-content mb-4 flex items-center">
                     <i class="fas fa-clipboard-check text-purple-600 mr-2"></i>
                     Vehicle Condition Assessment
+                    {% if pricing_config %}
+                    <span class="badge badge-primary badge-sm ml-2">v{{ pricing_config.version }}</span>
+                    {% endif %}
                 </h3>
                 <p class="text-base-content/70 mb-6">Select the most appropriate condition for each aspect of your vehicle</p>
                 
                 <div class="space-y-4">
-                    <!-- Exterior Condition Row -->
+                    {% for condition in layer2_conditions %}
+                    <!-- {{ condition.name }} Row -->
                     <div class="card bg-base-100 shadow-sm border border-base-200 hover:shadow-md transition-all duration-300">
                         <div class="card-body p-4">
                             <div class="flex flex-col sm:flex-row sm:items-center gap-4">
                                 <div class="flex items-center min-w-0 sm:w-48">
-                                    <i class="fas fa-car text-blue-500 mr-2"></i>
-                                    <h4 class="font-semibold text-base-content text-sm sm:text-base">Exterior Condition</h4>
+                                    <h4 class="font-semibold text-base-content text-sm sm:text-base">{{ condition.name }}</h4>
                                 </div>
                                 <div class="flex flex-wrap gap-2 sm:gap-4 flex-1">
+                                    {% for option in condition.options.all %}
                                     <label class="cursor-pointer flex items-center">
-                                        <input type="radio" name="exterior_condition" value="0" class="radio radio-primary radio-sm mr-2" required>
-                                        <span class="label-text text-sm">Excellent (0%)</span>
+                                        <input type="radio" name="{{ condition.field_name }}" value="{{ option.percentage }}" 
+                                               class="radio radio-primary radio-sm mr-2" {% if forloop.first %}required{% endif %}>
+                                        <span class="label-text text-sm">{{ option.label }} {% if option.percentage > 0 %}(-{{ option.percentage }}%){% else %}({{ option.percentage }}%){% endif %}</span>
                                     </label>
-                                    <label class="cursor-pointer flex items-center">
-                                        <input type="radio" name="exterior_condition" value="3" class="radio radio-primary radio-sm mr-2">
-                                        <span class="label-text text-sm">Good (-3%)</span>
-                                    </label>
-                                    <label class="cursor-pointer flex items-center">
-                                        <input type="radio" name="exterior_condition" value="6" class="radio radio-primary radio-sm mr-2">
-                                        <span class="label-text text-sm">Fair (-6%)</span>
-                                    </label>
-                                    <label class="cursor-pointer flex items-center">
-                                        <input type="radio" name="exterior_condition" value="10" class="radio radio-primary radio-sm mr-2">
-                                        <span class="label-text text-sm">Poor (-10%)</span>
-                                    </label>
+                                    {% endfor %}
                                 </div>
                             </div>
                         </div>
                     </div>
-                    
-                    <!-- Interior Condition Row -->
-                    <div class="card bg-base-100 shadow-sm border border-base-200 hover:shadow-md transition-all duration-300">
-                        <div class="card-body p-4">
-                            <div class="flex flex-col sm:flex-row sm:items-center gap-4">
-                                <div class="flex items-center min-w-0 sm:w-48">
-                                    <i class="fas fa-couch text-green-500 mr-2"></i>
-                                    <h4 class="font-semibold text-base-content text-sm sm:text-base">Interior Condition</h4>
-                                </div>
-                                <div class="flex flex-wrap gap-2 sm:gap-4 flex-1">
-                                    <label class="cursor-pointer flex items-center">
-                                        <input type="radio" name="interior_condition" value="0" class="radio radio-primary radio-sm mr-2" required>
-                                        <span class="label-text text-sm">Excellent (0%)</span>
-                                    </label>
-                                    <label class="cursor-pointer flex items-center">
-                                        <input type="radio" name="interior_condition" value="3" class="radio radio-primary radio-sm mr-2">
-                                        <span class="label-text text-sm">Good (-3%)</span>
-                                    </label>
-                                    <label class="cursor-pointer flex items-center">
-                                        <input type="radio" name="interior_condition" value="6" class="radio radio-primary radio-sm mr-2">
-                                        <span class="label-text text-sm">Fair (-6%)</span>
-                                    </label>
-                                    <label class="cursor-pointer flex items-center">
-                                        <input type="radio" name="interior_condition" value="10" class="radio radio-primary radio-sm mr-2">
-                                        <span class="label-text text-sm">Poor (-10%)</span>
-                                    </label>
-                                </div>
-                            </div>
+                    {% empty %}
+                    <!-- Fallback: No dynamic configuration available -->
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <div>
+                            <strong>Configuration Not Available</strong>
+                            <p>Dynamic pricing configuration is not available. Please contact the administrator.</p>
                         </div>
                     </div>
-                    
-                    <!-- Mechanical Condition Row -->
-                    <div class="card bg-base-100 shadow-sm border border-base-200 hover:shadow-md transition-all duration-300">
-                        <div class="card-body p-4">
-                            <div class="flex flex-col sm:flex-row sm:items-center gap-4">
-                                <div class="flex items-center min-w-0 sm:w-48">
-                                    <i class="fas fa-cogs text-orange-500 mr-2"></i>
-                                    <h4 class="font-semibold text-base-content text-sm sm:text-base">Mechanical Condition</h4>
-                                </div>
-                                <div class="flex flex-wrap gap-2 sm:gap-4 flex-1">
-                                    <label class="cursor-pointer flex items-center">
-                                        <input type="radio" name="mechanical_condition" value="0" class="radio radio-primary radio-sm mr-2" required>
-                                        <span class="label-text text-sm">Excellent (0%)</span>
-                                    </label>
-                                    <label class="cursor-pointer flex items-center">
-                                        <input type="radio" name="mechanical_condition" value="7" class="radio radio-primary radio-sm mr-2">
-                                        <span class="label-text text-sm">Good (-7%)</span>
-                                    </label>
-                                    <label class="cursor-pointer flex items-center">
-                                        <input type="radio" name="mechanical_condition" value="13" class="radio radio-primary radio-sm mr-2">
-                                        <span class="label-text text-sm">Fair (-13%)</span>
-                                    </label>
-                                    <label class="cursor-pointer flex items-center">
-                                        <input type="radio" name="mechanical_condition" value="20" class="radio radio-primary radio-sm mr-2">
-                                        <span class="label-text text-sm">Poor (-20%)</span>
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Accident History Row -->
-                    <div class="card bg-base-100 shadow-sm border border-base-200 hover:shadow-md transition-all duration-300">
-                        <div class="card-body p-4">
-                            <div class="flex flex-col sm:flex-row sm:items-center gap-4">
-                                <div class="flex items-center min-w-0 sm:w-48">
-                                    <i class="fas fa-exclamation-triangle text-red-500 mr-2"></i>
-                                    <h4 class="font-semibold text-base-content text-sm sm:text-base">Accident History</h4>
-                                </div>
-                                <div class="flex flex-wrap gap-2 sm:gap-4 flex-1">
-                                    <label class="cursor-pointer flex items-center">
-                                        <input type="radio" name="accident_history" value="0" class="radio radio-primary radio-sm mr-2" required>
-                                        <span class="label-text text-sm">None (0%)</span>
-                                    </label>
-                                    <label class="cursor-pointer flex items-center">
-                                        <input type="radio" name="accident_history" value="8" class="radio radio-primary radio-sm mr-2">
-                                        <span class="label-text text-sm">Minor (-8%)</span>
-                                    </label>
-                                    <label class="cursor-pointer flex items-center">
-                                        <input type="radio" name="accident_history" value="15" class="radio radio-primary radio-sm mr-2">
-                                        <span class="label-text text-sm">Major (-15%)</span>
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Service History Row -->
-                    <div class="card bg-base-100 shadow-sm border border-base-200 hover:shadow-md transition-all duration-300">
-                        <div class="card-body p-4">
-                            <div class="flex flex-col sm:flex-row sm:items-center gap-4">
-                                <div class="flex items-center min-w-0 sm:w-48">
-                                    <i class="fas fa-wrench text-yellow-500 mr-2"></i>
-                                    <h4 class="font-semibold text-base-content text-sm sm:text-base">Service History</h4>
-                                </div>
-                                <div class="flex flex-wrap gap-2 sm:gap-4 flex-1">
-                                    <label class="cursor-pointer flex items-center">
-                                        <input type="radio" name="service_history" value="0" class="radio radio-primary radio-sm mr-2" required>
-                                        <span class="label-text text-sm">Full (0%)</span>
-                                    </label>
-                                    <label class="cursor-pointer flex items-center">
-                                        <input type="radio" name="service_history" value="3" class="radio radio-primary radio-sm mr-2">
-                                        <span class="label-text text-sm">Partial (-3%)</span>
-                                    </label>
-                                    <label class="cursor-pointer flex items-center">
-                                        <input type="radio" name="service_history" value="5" class="radio radio-primary radio-sm mr-2">
-                                        <span class="label-text text-sm">None (-5%)</span>
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Number of Owners Row -->
-                    <div class="card bg-base-100 shadow-sm border border-base-200 hover:shadow-md transition-all duration-300">
-                        <div class="card-body p-4">
-                            <div class="flex flex-col sm:flex-row sm:items-center gap-4">
-                                <div class="flex items-center min-w-0 sm:w-48">
-                                    <i class="fas fa-users text-indigo-500 mr-2"></i>
-                                    <h4 class="font-semibold text-base-content text-sm sm:text-base">Number of Owners</h4>
-                                </div>
-                                <div class="flex flex-wrap gap-2 sm:gap-4 flex-1">
-                                    <label class="cursor-pointer flex items-center">
-                                        <input type="radio" name="number_of_owners" value="0" class="radio radio-primary radio-sm mr-2" required>
-                                        <span class="label-text text-sm">1 Owner (0%)</span>
-                                    </label>
-                                    <label class="cursor-pointer flex items-center">
-                                        <input type="radio" name="number_of_owners" value="2" class="radio radio-primary radio-sm mr-2">
-                                        <span class="label-text text-sm">2 Owners (-2%)</span>
-                                    </label>
-                                    <label class="cursor-pointer flex items-center">
-                                        <input type="radio" name="number_of_owners" value="5" class="radio radio-primary radio-sm mr-2">
-                                        <span class="label-text text-sm">3+ Owners (-5%)</span>
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Tires & Brakes Row -->
-                    <div class="card bg-base-100 shadow-sm border border-base-200 hover:shadow-md transition-all duration-300">
-                        <div class="card-body p-4">
-                            <div class="flex flex-col sm:flex-row sm:items-center gap-4">
-                                <div class="flex items-center min-w-0 sm:w-48">
-                                    <i class="fas fa-circle text-gray-500 mr-2"></i>
-                                    <h4 class="font-semibold text-base-content text-sm sm:text-base">Tires & Brakes</h4>
-                                </div>
-                                <div class="flex flex-wrap gap-2 sm:gap-4 flex-1">
-                                    <label class="cursor-pointer flex items-center">
-                                        <input type="radio" name="tires_brakes" value="0" class="radio radio-primary radio-sm mr-2" required>
-                                        <span class="label-text text-sm">New (0%)</span>
-                                    </label>
-                                    <label class="cursor-pointer flex items-center">
-                                        <input type="radio" name="tires_brakes" value="2.5" class="radio radio-primary radio-sm mr-2">
-                                        <span class="label-text text-sm">Fair (-2.5%)</span>
-                                    </label>
-                                    <label class="cursor-pointer flex items-center">
-                                        <input type="radio" name="tires_brakes" value="5" class="radio radio-primary radio-sm mr-2">
-                                        <span class="label-text text-sm">Needs Replacement (-5%)</span>
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Modifications Row -->
-                    <div class="card bg-base-100 shadow-sm border border-base-200 hover:shadow-md transition-all duration-300">
-                        <div class="card-body p-4">
-                            <div class="flex flex-col sm:flex-row sm:items-center gap-4">
-                                <div class="flex items-center min-w-0 sm:w-48">
-                                    <i class="fas fa-tools text-purple-500 mr-2"></i>
-                                    <h4 class="font-semibold text-base-content text-sm sm:text-base">Modifications</h4>
-                                </div>
-                                <div class="flex flex-wrap gap-2 sm:gap-4 flex-1">
-                                    <label class="cursor-pointer flex items-center">
-                                        <input type="radio" name="modifications" value="0" class="radio radio-primary radio-sm mr-2" required>
-                                        <span class="label-text text-sm">None (0%)</span>
-                                    </label>
-                                    <label class="cursor-pointer flex items-center">
-                                        <input type="radio" name="modifications" value="2.5" class="radio radio-primary radio-sm mr-2">
-                                        <span class="label-text text-sm">Minor (-2.5%)</span>
-                                    </label>
-                                    <label class="cursor-pointer flex items-center">
-                                        <input type="radio" name="modifications" value="5" class="radio radio-primary radio-sm mr-2">
-                                        <span class="label-text text-sm">Major (-5%)</span>
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Market Demand Row -->
-                    <div class="card bg-base-100 shadow-sm border border-base-200 hover:shadow-md transition-all duration-300">
-                        <div class="card-body p-4">
-                            <div class="flex flex-col sm:flex-row sm:items-center gap-4">
-                                <div class="flex items-center min-w-0 sm:w-48">
-                                    <i class="fas fa-chart-line text-green-500 mr-2"></i>
-                                    <h4 class="font-semibold text-base-content text-sm sm:text-base">Market Demand</h4>
-                                </div>
-                                <div class="flex flex-wrap gap-2 sm:gap-4 flex-1">
-                                    <label class="cursor-pointer flex items-center">
-                                        <input type="radio" name="market_demand" value="0" class="radio radio-primary radio-sm mr-2" required>
-                                        <span class="label-text text-sm">High (0%)</span>
-                                    </label>
-                                    <label class="cursor-pointer flex items-center">
-                                        <input type="radio" name="market_demand" value="5" class="radio radio-primary radio-sm mr-2">
-                                        <span class="label-text text-sm">Average (-5%)</span>
-                                    </label>
-                                    <label class="cursor-pointer flex items-center">
-                                        <input type="radio" name="market_demand" value="10" class="radio radio-primary radio-sm mr-2">
-                                        <span class="label-text text-sm">Low (-10%)</span>
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Brand Category Row -->
-                    <div class="card bg-base-100 shadow-sm border border-base-200 hover:shadow-md transition-all duration-300">
-                        <div class="card-body p-4">
-                            <div class="flex flex-col sm:flex-row sm:items-center gap-4">
-                                <div class="flex items-center min-w-0 sm:w-48">
-                                    <i class="fas fa-flag text-red-500 mr-2"></i>
-                                    <h4 class="font-semibold text-base-content text-sm sm:text-base">Brand Category</h4>
-                                </div>
-                                <div class="flex flex-wrap gap-2 sm:gap-4 flex-1">
-                                    <label class="cursor-pointer flex items-center">
-                                        <input type="radio" name="brand_category" value="8" class="radio radio-primary radio-sm mr-2" required>
-                                        <span class="label-text text-sm">Local Car (-8%)</span>
-                                    </label>
-                                    <label class="cursor-pointer flex items-center">
-                                        <input type="radio" name="brand_category" value="0" class="radio radio-primary radio-sm mr-2">
-                                        <span class="label-text text-sm">Japanese Car (0%)</span>
-                                    </label>
-                                    <label class="cursor-pointer flex items-center">
-                                        <input type="radio" name="brand_category" value="10" class="radio radio-primary radio-sm mr-2">
-                                        <span class="label-text text-sm">Continental (-10%)</span>
-                                    </label>
-                                    <label class="cursor-pointer flex items-center">
-                                        <input type="radio" name="brand_category" value="30" class="radio radio-primary radio-sm mr-2">
-                                        <span class="label-text text-sm">Super Car (-30%)</span>
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Price Tier Row -->
-                    <div class="card bg-base-100 shadow-sm border border-base-200 hover:shadow-md transition-all duration-300">
-                        <div class="card-body p-4">
-                            <div class="flex flex-col sm:flex-row sm:items-center gap-4">
-                                <div class="flex items-center min-w-0 sm:w-48">
-                                    <i class="fas fa-dollar-sign text-yellow-500 mr-2"></i>
-                                    <h4 class="font-semibold text-base-content text-sm sm:text-base">Price Tier</h4>
-                                </div>
-                                <div class="flex flex-wrap gap-2 sm:gap-4 flex-1">
-                                    <label class="cursor-pointer flex items-center">
-                                        <input type="radio" name="price_tier" value="12" class="radio radio-primary radio-sm mr-2" required>
-                                        <span class="label-text text-sm">&lt;RM20k (-12%)</span>
-                                    </label>
-                                    <label class="cursor-pointer flex items-center">
-                                        <input type="radio" name="price_tier" value="6" class="radio radio-primary radio-sm mr-2">
-                                        <span class="label-text text-sm">RM20k-50k (-6%)</span>
-                                    </label>
-                                    <label class="cursor-pointer flex items-center">
-                                        <input type="radio" name="price_tier" value="0" class="radio radio-primary radio-sm mr-2">
-                                        <span class="label-text text-sm">&gt;RM50k (0%)</span>
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    {% endfor %}
                 </div>
             </div>
             

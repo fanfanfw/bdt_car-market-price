@@ -1,0 +1,204 @@
+{% extends 'admin/base-admin.html' %}
+
+{% block title %}Edit Configuration - Car Market Price Admin{% endblock %}
+{% block page_title %}Edit Configuration{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="breadcrumbs text-sm">
+        <ul>
+            <li><a href="{% url 'main:pricing_config_list' %}">Configurations</a></li>
+            <li><a href="{% url 'main:pricing_config_detail' config.id %}">v{{ config.version }} - {{ config.name }}</a></li>
+            <li>Edit</li>
+        </ul>
+    </div>
+
+    <!-- Alert for Draft Only -->
+    <div class="alert alert-warning">
+        <i class="fas fa-info-circle"></i>
+        <div>
+            <h4 class="font-bold">Editing Draft Configuration</h4>
+            <p>Only draft configurations can be edited. This configuration is currently in draft status.</p>
+        </div>
+    </div>
+
+    <form method="post" class="space-y-6">
+        {% csrf_token %}
+        
+        <!-- Basic Information -->
+        <div class="card bg-base-100 shadow">
+            <div class="card-body">
+                <h2 class="card-title">
+                    <i class="fas fa-info-circle"></i>
+                    Basic Information
+                </h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text font-medium">Configuration Name</span>
+                        </label>
+                        <input type="text" name="name" class="input input-bordered" 
+                               value="{{ config.name }}" required>
+                    </div>
+                    
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text font-medium">Version</span>
+                        </label>
+                        <input type="text" class="input input-bordered bg-base-200" 
+                               value="v{{ config.version }}" readonly>
+                    </div>
+                </div>
+                
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text font-medium">Description</span>
+                    </label>
+                    <textarea name="description" class="textarea textarea-bordered" rows="3" 
+                              placeholder="Brief description of this configuration">{{ config.description }}</textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- Layer 1: Mileage Configuration -->
+        <div class="card bg-base-100 shadow">
+            <div class="card-body">
+                <h2 class="card-title">
+                    <i class="fas fa-tachometer-alt text-warning"></i>
+                    Layer 1: Mileage-based Configuration
+                </h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text font-medium">Mileage Threshold (%)</span>
+                            <span class="label-text-alt">Every X% excess mileage</span>
+                        </label>
+                        <input type="number" name="mileage_threshold_percent" 
+                               class="input input-bordered" step="0.1" min="1" max="100"
+                               value="{% if layer1_config %}{{ layer1_config.mileage_threshold_percent }}{% else %}10.0{% endif %}" required>
+                    </div>
+                    
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text font-medium">Reduction per Threshold (%)</span>
+                            <span class="label-text-alt">Price reduction percentage</span>
+                        </label>
+                        <input type="number" name="reduction_per_threshold" 
+                               class="input input-bordered" step="0.1" min="0.1" max="10"
+                               value="{% if layer1_config %}{{ layer1_config.reduction_per_threshold }}{% else %}2.0{% endif %}" required>
+                    </div>
+                    
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text font-medium">Maximum Reduction (%)</span>
+                            <span class="label-text-alt">Layer 1 cap</span>
+                        </label>
+                        <input type="number" name="layer1_max_reduction" 
+                               class="input input-bordered" step="0.1" min="1" max="100"
+                               value="{{ config.layer1_max_reduction }}" required>
+                    </div>
+                </div>
+
+                <div class="alert alert-info mt-4">
+                    <i class="fas fa-info-circle"></i>
+                    <div>
+                        <strong>Current Logic:</strong> Every 
+                        <span id="threshold-display">{% if layer1_config %}{{ layer1_config.mileage_threshold_percent }}{% else %}10{% endif %}</span>% 
+                        excess mileage results in 
+                        <span id="reduction-display">{% if layer1_config %}{{ layer1_config.reduction_per_threshold }}{% else %}2{% endif %}</span>% 
+                        price reduction, capped at 
+                        <span id="cap-display">{{ config.layer1_max_reduction }}</span>%.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Layer 2: Condition Assessment Configuration -->
+        <div class="card bg-base-100 shadow">
+            <div class="card-body">
+                <h2 class="card-title">
+                    <i class="fas fa-clipboard-check text-info"></i>
+                    Layer 2: Condition Assessment Configuration
+                </h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text font-medium">Layer 2 Maximum Reduction (%)</span>
+                            <span class="label-text-alt">Cap for all conditions combined</span>
+                        </label>
+                        <input type="number" name="layer2_max_reduction" 
+                               class="input input-bordered" step="0.1" min="1" max="100"
+                               value="{{ config.layer2_max_reduction }}" required>
+                    </div>
+                    
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text font-medium">Total Maximum Reduction (%)</span>
+                            <span class="label-text-alt">Layer 1 + Layer 2 combined cap</span>
+                        </label>
+                        <input type="number" name="total_max_reduction" 
+                               class="input input-bordered" step="0.1" min="1" max="100"
+                               value="{{ config.total_max_reduction }}" required>
+                    </div>
+                </div>
+
+                <div class="alert alert-info mt-4">
+                    <i class="fas fa-info-circle"></i>
+                    <div>
+                        <strong>Note:</strong> To modify condition categories and their options, use the 
+                        <a href="{% url 'main:condition_manage' config.id %}" class="link link-primary">"Manage Conditions"</a> 
+                        feature after saving these basic settings.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="card bg-base-100 shadow">
+            <div class="card-body">
+                <div class="flex justify-between items-center">
+                    <div class="text-sm text-base-content/70">
+                        Changes will be saved to this draft configuration. You can publish it when ready.
+                    </div>
+                    <div class="flex gap-2">
+                        <a href="{% url 'main:pricing_config_detail' config.id %}" class="btn btn-ghost">Cancel</a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i>
+                            Save Changes
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Update live preview when values change
+document.addEventListener('DOMContentLoaded', function() {
+    const thresholdInput = document.querySelector('input[name="mileage_threshold_percent"]');
+    const reductionInput = document.querySelector('input[name="reduction_per_threshold"]');
+    const capInput = document.querySelector('input[name="layer1_max_reduction"]');
+    
+    const thresholdDisplay = document.getElementById('threshold-display');
+    const reductionDisplay = document.getElementById('reduction-display');
+    const capDisplay = document.getElementById('cap-display');
+    
+    function updateDisplay() {
+        thresholdDisplay.textContent = thresholdInput.value;
+        reductionDisplay.textContent = reductionInput.value;
+        capDisplay.textContent = capInput.value;
+    }
+    
+    thresholdInput.addEventListener('input', updateDisplay);
+    reductionInput.addEventListener('input', updateDisplay);
+    capInput.addEventListener('input', updateDisplay);
+});
+</script>
+{% endblock %}

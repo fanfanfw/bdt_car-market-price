@@ -169,22 +169,11 @@ function validateForm() {
     const variant = document.getElementById('variantSelect').value;
     const year = document.getElementById('yearSelect').value;
     
-    // Check all required radio button groups
-    const requiredRadioGroups = [
-        'exterior_condition',
-        'interior_condition', 
-        'mechanical_condition',
-        'accident_history',
-        'service_history',
-        'number_of_owners',
-        'tires_brakes',
-        'modifications',
-        'market_demand',
-        'brand_category',
-        'price_tier'
-    ];
+    // Check all required radio button groups dynamically
+    const allRadioGroups = document.querySelectorAll('input[type="radio"][required]');
+    const uniqueGroupNames = [...new Set(Array.from(allRadioGroups).map(radio => radio.name))];
     
-    const allRadiosSelected = requiredRadioGroups.every(groupName => {
+    const allRadiosSelected = uniqueGroupNames.every(groupName => {
         return document.querySelector(`input[name="${groupName}"]:checked`) !== null;
     });
     
@@ -232,22 +221,11 @@ function validateFormBeforeSubmit() {
         return false;
     }
     
-    // Check all required radio button groups
-    const requiredRadioGroups = [
-        'exterior_condition',
-        'interior_condition', 
-        'mechanical_condition',
-        'accident_history',
-        'service_history',
-        'number_of_owners',
-        'tires_brakes',
-        'modifications',
-        'market_demand',
-        'brand_category',
-        'price_tier'
-    ];
+    // Check all required radio button groups dynamically
+    const allRadioGroups = document.querySelectorAll('input[type="radio"][required]');
+    const uniqueGroupNames = [...new Set(Array.from(allRadioGroups).map(radio => radio.name))];
     
-    for (let groupName of requiredRadioGroups) {
+    for (let groupName of uniqueGroupNames) {
         if (!document.querySelector(`input[name="${groupName}"]:checked`)) {
             showError(`Please select condition for ${getReadableFieldName(groupName)}.`);
             return false;
@@ -258,20 +236,20 @@ function validateFormBeforeSubmit() {
 }
 
 function getReadableFieldName(fieldName) {
-    const fieldNames = {
-        'exterior_condition': 'Exterior Condition',
-        'interior_condition': 'Interior Condition',
-        'mechanical_condition': 'Mechanical Condition',
-        'accident_history': 'Accident History',
-        'service_history': 'Service History',
-        'number_of_owners': 'Number of Owners',
-        'tires_brakes': 'Tires & Brakes',
-        'modifications': 'Modifications',
-        'market_demand': 'Market Demand',
-        'brand_category': 'Brand Category',
-        'price_tier': 'Price Tier'
-    };
-    return fieldNames[fieldName] || fieldName;
+    // Try to get readable name from the DOM first
+    const radioInput = document.querySelector(`input[name="${fieldName}"]`);
+    if (radioInput) {
+        const conditionCard = radioInput.closest('.card-body');
+        if (conditionCard) {
+            const titleElement = conditionCard.querySelector('h4');
+            if (titleElement) {
+                return titleElement.textContent.trim();
+            }
+        }
+    }
+    
+    // Fallback: convert field name to readable format
+    return fieldName.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
 }
 
 function showLoadingState() {

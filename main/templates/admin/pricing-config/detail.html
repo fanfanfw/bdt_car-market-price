@@ -1,0 +1,294 @@
+{% extends 'admin/base-admin.html' %}
+
+{% block title %}Configuration v{{ config.version }} - Car Market Price Admin{% endblock %}
+{% block page_title %}Configuration v{{ config.version }}{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+            <div class="breadcrumbs text-sm">
+                <ul>
+                    <li><a href="{% url 'main:pricing_config_list' %}">Configurations</a></li>
+                    <li>v{{ config.version }} - {{ config.name }}</li>
+                </ul>
+            </div>
+            <h1 class="text-2xl font-bold">{{ config.name }}</h1>
+            <p class="text-base-content/70">{{ config.description|default:"No description" }}</p>
+        </div>
+        <div class="flex gap-2">
+            {% if config.is_draft %}
+                <a href="{% url 'main:pricing_config_edit' config.id %}" class="btn btn-primary">
+                    <i class="fas fa-edit"></i>
+                    Edit
+                </a>
+                <a href="{% url 'main:condition_manage' config.id %}" class="btn btn-secondary">
+                    <i class="fas fa-cogs"></i>
+                    Manage Conditions
+                </a>
+                <form method="post" action="{% url 'main:pricing_config_publish' config.id %}" style="display: inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-success" onclick="return confirm('Are you sure you want to publish this configuration? This will make it active for all users.')">
+                        <i class="fas fa-rocket"></i>
+                        Publish
+                    </button>
+                </form>
+            {% else %}
+                <span class="badge badge-lg {% if config.is_active %}badge-success{% else %}badge-ghost{% endif %}">
+                    {% if config.is_active %}
+                        <i class="fas fa-check mr-1"></i>
+                        Currently Active
+                    {% else %}
+                        <i class="fas fa-archive mr-1"></i>
+                        Published
+                    {% endif %}
+                </span>
+            {% endif %}
+            
+            <!-- Always available actions -->
+            <a href="{% url 'main:pricing_config_clone' config.id %}" class="btn btn-info">
+                <i class="fas fa-copy"></i>
+                Clone
+            </a>
+            
+            {% if not config.is_active %}
+                <a href="{% url 'main:pricing_config_delete' config.id %}" class="btn btn-error">
+                    <i class="fas fa-trash"></i>
+                    Delete
+                </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Status Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="stat bg-base-100 shadow rounded-lg">
+            <div class="stat-figure text-primary">
+                <i class="fas fa-version text-2xl"></i>
+            </div>
+            <div class="stat-title">Version</div>
+            <div class="stat-value text-primary">{{ config.version }}</div>
+        </div>
+        
+        <div class="stat bg-base-100 shadow rounded-lg">
+            <div class="stat-figure text-warning">
+                <i class="fas fa-tachometer-alt text-2xl"></i>
+            </div>
+            <div class="stat-title">Layer 1 Cap</div>
+            <div class="stat-value text-warning">{{ config.layer1_max_reduction }}%</div>
+        </div>
+        
+        <div class="stat bg-base-100 shadow rounded-lg">
+            <div class="stat-figure text-info">
+                <i class="fas fa-clipboard-check text-2xl"></i>
+            </div>
+            <div class="stat-title">Layer 2 Cap</div>
+            <div class="stat-value text-info">{{ config.layer2_max_reduction }}%</div>
+        </div>
+        
+        <div class="stat bg-base-100 shadow rounded-lg">
+            <div class="stat-figure {% if is_over_cap %}text-error{% else %}text-success{% endif %}">
+                <i class="fas fa-calculator text-2xl"></i>
+            </div>
+            <div class="stat-title">Total Cap</div>
+            <div class="stat-value {% if is_over_cap %}text-error{% else %}text-success{% endif %}">{{ config.total_max_reduction }}%</div>
+        </div>
+    </div>
+
+    <!-- Layer Configurations -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Layer 1: Mileage Configuration -->
+        <div class="card bg-base-100 shadow">
+            <div class="card-body">
+                <h2 class="card-title">
+                    <i class="fas fa-tachometer-alt text-warning"></i>
+                    Layer 1: Mileage-based Deduction
+                </h2>
+                
+                {% if layer1_config %}
+                <div class="space-y-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="stat bg-base-200 rounded">
+                            <div class="stat-title">Threshold</div>
+                            <div class="stat-value text-sm">{{ layer1_config.mileage_threshold_percent }}%</div>
+                            <div class="stat-desc">Excess mileage</div>
+                        </div>
+                        <div class="stat bg-base-200 rounded">
+                            <div class="stat-title">Reduction</div>
+                            <div class="stat-value text-sm">{{ layer1_config.reduction_per_threshold }}%</div>
+                            <div class="stat-desc">Per threshold</div>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        <div>
+                            <strong>Logic:</strong> Every {{ layer1_config.mileage_threshold_percent }}% excess mileage = {{ layer1_config.reduction_per_threshold }}% price reduction
+                            <br><strong>Cap:</strong> Maximum {{ config.layer1_max_reduction }}% reduction
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <span>Layer 1 configuration not found</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Layer 2: Conditions Summary -->
+        <div class="card bg-base-100 shadow">
+            <div class="card-body">
+                <h2 class="card-title">
+                    <i class="fas fa-clipboard-check text-info"></i>
+                    Layer 2: Condition Assessment
+                </h2>
+                
+                <div class="space-y-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="stat bg-base-200 rounded">
+                            <div class="stat-title">Conditions</div>
+                            <div class="stat-value text-sm">{{ layer2_conditions|length }}</div>
+                            <div class="stat-desc">Total categories</div>
+                        </div>
+                        <div class="stat bg-base-200 rounded">
+                            <div class="stat-title">Theoretical Max</div>
+                            <div class="stat-value text-sm {% if is_over_cap %}text-error{% else %}text-success{% endif %}">{{ theoretical_max }}%</div>
+                            <div class="stat-desc">Sum of all maximums</div>
+                        </div>
+                    </div>
+                    
+                    {% if is_over_cap %}
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <div>
+                            <strong>Warning:</strong> Theoretical maximum ({{ theoretical_max }}%) exceeds Layer 2 cap ({{ config.layer2_max_reduction }}%)
+                            <br>System will automatically apply the cap.
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-success">
+                        <i class="fas fa-check-circle"></i>
+                        <div>
+                            <strong>Good:</strong> Theoretical maximum ({{ theoretical_max }}%) is within Layer 2 cap ({{ config.layer2_max_reduction }}%)
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Layer 2 Conditions Detail -->
+    <div class="card bg-base-100 shadow">
+        <div class="card-body">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="card-title">
+                    <i class="fas fa-list text-info"></i>
+                    Condition Categories
+                </h2>
+                {% if config.is_draft %}
+                <a href="{% url 'main:condition_manage' config.id %}" class="btn btn-sm btn-primary">
+                    <i class="fas fa-edit"></i>
+                    Manage Conditions
+                </a>
+                {% endif %}
+            </div>
+            
+            <div class="space-y-3">
+                {% for condition in layer2_conditions %}
+                <div class="card bg-base-200 shadow-sm">
+                    <div class="card-body p-4">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <div>
+                                    <h4 class="font-semibold">{{ condition.name }}</h4>
+                                    <div class="text-sm text-base-content/60">{{ condition.options.count }} options</div>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <div class="font-bold">Max: {{ condition.get_max_percentage }}%</div>
+                                <div class="text-sm text-base-content/60">field: {{ condition.field_name }}</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Options -->
+                        <div class="mt-3">
+                            <div class="flex flex-wrap gap-2">
+                                {% for option in condition.options.all %}
+                                <span class="badge badge-ghost">{{ option.label }} (-{{ option.percentage }}%)</span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="text-center py-8 text-base-content/60">
+                    <i class="fas fa-inbox text-3xl mb-2"></i>
+                    <p>No conditions configured</p>
+                    {% if config.is_draft %}
+                    <a href="{% url 'main:condition_manage' config.id %}" class="btn btn-primary mt-2">
+                        Add Conditions
+                    </a>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Configuration Info -->
+    <div class="card bg-base-100 shadow">
+        <div class="card-body">
+            <h2 class="card-title">
+                <i class="fas fa-info-circle"></i>
+                Configuration Information
+            </h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <h4 class="font-semibold mb-2">Creation Details</h4>
+                    <div class="space-y-1 text-sm">
+                        <div><strong>Created:</strong> {{ config.created_at|date:"M d, Y H:i" }}</div>
+                        <div><strong>Created by:</strong> 
+                            {% if config.created_by %}
+                                {{ config.created_by.get_full_name|default:config.created_by.username }}
+                            {% else %}
+                                System
+                            {% endif %}
+                        </div>
+                        <div><strong>Last updated:</strong> {{ config.updated_at|date:"M d, Y H:i" }}</div>
+                        <div><strong>Updated by:</strong> 
+                            {% if config.updated_by %}
+                                {{ config.updated_by.get_full_name|default:config.updated_by.username }}
+                            {% else %}
+                                System
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <div>
+                    <h4 class="font-semibold mb-2">Status</h4>
+                    <div class="space-y-1 text-sm">
+                        <div><strong>Status:</strong> 
+                            {% if config.is_active %}
+                                <span class="badge badge-success">Active</span>
+                            {% elif config.is_draft %}
+                                <span class="badge badge-warning">Draft</span>
+                            {% else %}
+                                <span class="badge badge-ghost">Published</span>
+                            {% endif %}
+                        </div>
+                        {% if config.published_at %}
+                        <div><strong>Published:</strong> {{ config.published_at|date:"M d, Y H:i" }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

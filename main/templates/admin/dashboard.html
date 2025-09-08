@@ -149,10 +149,10 @@
                 Quick Actions
             </h2>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <button class="btn btn-primary btn-outline" onclick="viewUsers()">
-                    <i class="fas fa-users"></i>
-                    Manage Users
-                </button>
+                <a href="{% url 'main:pricing_config_list' %}" class="btn btn-primary btn-outline">
+                    <i class="fas fa-cogs"></i>
+                    Pricing Config
+                </a>
                 <button class="btn btn-secondary btn-outline" onclick="viewPhones()">
                     <i class="fas fa-phone"></i>
                     Verified Phones

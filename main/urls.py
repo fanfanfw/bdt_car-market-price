@@ -19,4 +19,19 @@ urlpatterns = [
     path('api/send-otp/', views.send_otp, name='send_otp'),
     path('api/verify-otp/', views.verify_otp, name='verify_otp'),
     path('api/get-results/', views.get_secure_results, name='get_secure_results'),
+    
+    # Admin pricing configuration URLs
+    path('panel/pricing-config/', views.pricing_config_list, name='pricing_config_list'),
+    path('panel/pricing-config/create/', views.pricing_config_create, name='pricing_config_create'),
+    path('panel/pricing-config/<int:config_id>/', views.pricing_config_detail, name='pricing_config_detail'),
+    path('panel/pricing-config/<int:config_id>/edit/', views.pricing_config_edit, name='pricing_config_edit'),
+    path('panel/pricing-config/<int:config_id>/publish/', views.pricing_config_publish, name='pricing_config_publish'),
+    path('panel/pricing-config/<int:config_id>/delete/', views.pricing_config_delete, name='pricing_config_delete'),
+    path('panel/pricing-config/<int:config_id>/clone/', views.pricing_config_clone, name='pricing_config_clone'),
+    
+    # Condition management URLs
+    path('panel/pricing-config/<int:config_id>/conditions/', views.condition_manage, name='condition_manage'),
+    path('panel/pricing-config/<int:config_id>/conditions/add/', views.condition_add, name='condition_add'),
+    path('panel/pricing-config/<int:config_id>/conditions/<int:condition_id>/edit/', views.condition_edit, name='condition_edit'),
+    path('panel/pricing-config/<int:config_id>/conditions/<int:condition_id>/delete/', views.condition_delete, name='condition_delete'),
 ]

@@ -242,3 +242,173 @@ class OTPSession(models.Model):
     def is_valid(self):
         """Check if OTP is still valid and unused"""
         return not self.is_used and not self.is_expired()
+
+
+# Configuration Models for Dynamic Pricing System
+
+class PricingConfiguration(models.Model):
+    """Main configuration container with versioning"""
+    version = models.PositiveIntegerField(unique=True)
+    name = models.CharField(max_length=100, help_text="Configuration name for identification")
+    description = models.TextField(blank=True, null=True)
+    
+    # Status
+    is_draft = models.BooleanField(default=True, help_text="True = Draft, False = Published")
+    is_active = models.BooleanField(default=False, help_text="Currently active configuration")
+    
+    # Layer caps
+    layer1_max_reduction = models.DecimalField(max_digits=5, decimal_places=2, default=15.0, 
+                                              help_text="Maximum reduction percentage for Layer 1 (Mileage)")
+    layer2_max_reduction = models.DecimalField(max_digits=5, decimal_places=2, default=70.0,
+                                              help_text="Maximum reduction percentage for Layer 2 (Conditions)")
+    total_max_reduction = models.DecimalField(max_digits=5, decimal_places=2, default=85.0,
+                                             help_text="Maximum total reduction percentage")
+    
+    # Audit fields
+    created_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='created_configs')
+    updated_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='updated_configs')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    published_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = 'pricing_configurations'
+        ordering = ['-version']
+
+    def __str__(self):
+        status = "Published" if not self.is_draft else "Draft"
+        active = " (Active)" if self.is_active else ""
+        return f"v{self.version} - {self.name} [{status}]{active}"
+
+    def publish(self, user=None):
+        """Publish this configuration and deactivate others"""
+        if self.is_draft:
+            # Deactivate all other active configs
+            PricingConfiguration.objects.filter(is_active=True).update(is_active=False)
+            
+            # Activate this config
+            self.is_draft = False
+            self.is_active = True
+            self.published_at = timezone.now()
+            if user:
+                self.updated_by = user
+            self.save()
+
+    def get_total_conditions_max(self):
+        """Calculate theoretical maximum from all conditions"""
+        return sum(cond.get_max_percentage() for cond in self.layer2_conditions.all())
+
+
+class Layer1Configuration(models.Model):
+    """Layer 1: Mileage-based reduction configuration"""
+    config = models.OneToOneField(PricingConfiguration, on_delete=models.CASCADE, related_name='layer1_config')
+    
+    # Mileage calculation parameters
+    mileage_threshold_percent = models.DecimalField(max_digits=5, decimal_places=2, default=10.0,
+                                                   help_text="Mileage threshold percentage (e.g., 10 = every 10% excess)")
+    reduction_per_threshold = models.DecimalField(max_digits=5, decimal_places=2, default=2.0,
+                                                 help_text="Reduction percentage per threshold (e.g., 2 = 2% reduction)")
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'layer1_configurations'
+
+    def __str__(self):
+        return f"Layer 1 Config v{self.config.version}: {self.reduction_per_threshold}% per {self.mileage_threshold_percent}%"
+
+    def calculate_reduction(self, user_mileage, avg_mileage):
+        """Calculate Layer 1 reduction percentage"""
+        if user_mileage <= avg_mileage:
+            return 0.0
+        
+        mileage_diff_percent = ((user_mileage - avg_mileage) / avg_mileage) * 100
+        reduction = (mileage_diff_percent / float(self.mileage_threshold_percent)) * float(self.reduction_per_threshold)
+        
+        # Apply cap
+        max_reduction = float(self.config.layer1_max_reduction)
+        return min(reduction, max_reduction)
+
+
+class Layer2Condition(models.Model):
+    """Layer 2: Condition assessment categories"""
+    config = models.ForeignKey(PricingConfiguration, on_delete=models.CASCADE, related_name='layer2_conditions')
+    
+    name = models.CharField(max_length=100, help_text="Display name (e.g., 'Exterior Condition')")
+    field_name = models.CharField(max_length=50, help_text="Form field name (auto-generated)")
+    icon_class = models.CharField(max_length=50, default='fas fa-cog', help_text="Font Awesome icon class")
+    order = models.PositiveIntegerField(default=0, help_text="Display order")
+    is_active = models.BooleanField(default=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'layer2_conditions'
+        ordering = ['order', 'name']
+        unique_together = [['config', 'field_name']]
+
+    def __str__(self):
+        return f"{self.name} (v{self.config.version})"
+
+    def save(self, *args, **kwargs):
+        # Auto-generate field_name from name
+        if not self.field_name:
+            import re
+            self.field_name = re.sub(r'[^a-zA-Z0-9]', '_', self.name.lower()).strip('_')
+        super().save(*args, **kwargs)
+
+    def get_max_percentage(self):
+        """Get maximum reduction percentage from all options"""
+        return max((option.percentage for option in self.options.all()), default=0)
+
+
+class ConditionOption(models.Model):
+    """Options for each condition (radio button choices)"""
+    condition = models.ForeignKey(Layer2Condition, on_delete=models.CASCADE, related_name='options')
+    
+    label = models.CharField(max_length=100, help_text="Display label (e.g., 'Excellent', 'Good')")
+    percentage = models.DecimalField(max_digits=5, decimal_places=2, help_text="Reduction percentage")
+    order = models.PositiveIntegerField(default=0, help_text="Display order")
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'condition_options'
+        ordering = ['order']
+        unique_together = [['condition', 'label']]
+
+    def __str__(self):
+        return f"{self.label} (-{self.percentage}%)"
+
+
+class ConfigurationHistory(models.Model):
+    """History log for configuration changes"""
+    ACTION_CHOICES = [
+        ('created', 'Created'),
+        ('updated', 'Updated'),
+        ('published', 'Published'),
+        ('deactivated', 'Deactivated'),
+        ('deleted', 'Deleted'),
+    ]
+    
+    config = models.ForeignKey(PricingConfiguration, on_delete=models.CASCADE, related_name='history')
+    action = models.CharField(max_length=20, choices=ACTION_CHOICES)
+    description = models.TextField(blank=True, null=True)
+    
+    # Snapshot of key data
+    snapshot_data = models.JSONField(default=dict, help_text="JSON snapshot of configuration")
+    
+    # Audit fields
+    user = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    ip_address = models.GenericIPAddressField(blank=True, null=True)
+
+    class Meta:
+        db_table = 'configuration_history'
+        ordering = ['-timestamp']
+
+    def __str__(self):
+        return f"{self.config.name} v{self.config.version} - {self.get_action_display()} by {self.user}"

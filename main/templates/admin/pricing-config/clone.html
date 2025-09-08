@@ -1,0 +1,174 @@
+{% extends 'admin/base-admin.html' %}
+
+{% block title %}Clone Configuration - Car Market Price Admin{% endblock %}
+{% block page_title %}Clone Configuration{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="breadcrumbs text-sm">
+        <ul>
+            <li><a href="{% url 'main:pricing_config_list' %}">Configurations</a></li>
+            <li><a href="{% url 'main:pricing_config_detail' source_config.id %}">v{{ source_config.version }} - {{ source_config.name }}</a></li>
+            <li>Clone</li>
+        </ul>
+    </div>
+
+    <!-- Info Card -->
+    <div class="card bg-primary text-primary-content shadow">
+        <div class="card-body text-center p-8">
+            <div class="flex justify-center mb-4">
+                <div class="bg-primary-content/20 p-4 rounded-full">
+                    <i class="fas fa-copy text-4xl"></i>
+                </div>
+            </div>
+            <h2 class="card-title text-2xl justify-center mb-4">Clone Configuration</h2>
+            <p class="text-lg">Create a new configuration based on an existing one</p>
+            <div class="text-primary-content/80 mt-2">
+                All settings, conditions, and options will be copied to the new configuration
+            </div>
+        </div>
+    </div>
+
+    <!-- Source Configuration Info -->
+    <div class="card bg-base-100 shadow">
+        <div class="card-body">
+            <h3 class="card-title">
+                <i class="fas fa-info-circle text-info"></i>
+                Source Configuration
+            </h3>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                <div class="space-y-2">
+                    <div><strong>Version:</strong> v{{ source_config.version }}</div>
+                    <div><strong>Name:</strong> {{ source_config.name }}</div>
+                    <div><strong>Status:</strong> 
+                        {% if source_config.is_active %}
+                            <span class="badge badge-success">Active</span>
+                        {% elif source_config.is_draft %}
+                            <span class="badge badge-warning">Draft</span>
+                        {% else %}
+                            <span class="badge badge-ghost">Published</span>
+                        {% endif %}
+                    </div>
+                    <div><strong>Description:</strong> {{ source_config.description|default:"No description" }}</div>
+                </div>
+                
+                <div class="space-y-2">
+                    <div><strong>Layer 1 Cap:</strong> {{ source_config.layer1_max_reduction }}%</div>
+                    <div><strong>Layer 2 Cap:</strong> {{ source_config.layer2_max_reduction }}%</div>
+                    <div><strong>Total Cap:</strong> {{ source_config.total_max_reduction }}%</div>
+                    <div><strong>Conditions:</strong> {{ source_config.layer2_conditions.count }}</div>
+                </div>
+            </div>
+            
+            {% if source_config.layer1_config %}
+            <div class="mt-4">
+                <h4 class="font-semibold mb-2">Layer 1 Configuration:</h4>
+                <div class="text-sm text-base-content/70">
+                    {{ source_config.layer1_config.reduction_per_threshold }}% reduction per {{ source_config.layer1_config.mileage_threshold_percent }}% mileage threshold
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Clone Form -->
+    <form method="post" class="space-y-6">
+        {% csrf_token %}
+        
+        <div class="card bg-base-100 shadow">
+            <div class="card-body">
+                <h3 class="card-title">
+                    <i class="fas fa-edit text-success"></i>
+                    New Configuration Details
+                </h3>
+                
+                <div class="grid grid-cols-1 md:grid-cols-1 gap-4 mt-4">
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text font-medium">Configuration Name</span>
+                        </label>
+                        <input type="text" name="name" class="input input-bordered" 
+                               value="{{ source_config.name }} (Clone)" required>
+                        <label class="label">
+                            <span class="label-text-alt">Will be assigned the next available version number</span>
+                        </label>
+                    </div>
+                    
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text font-medium">Description</span>
+                        </label>
+                        <textarea name="description" class="textarea textarea-bordered" rows="3" 
+                                  placeholder="Describe what changes you plan to make...">Cloned from v{{ source_config.version }} - {{ source_config.name }}</textarea>
+                        <label class="label">
+                            <span class="label-text-alt">Optional description of the new configuration</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- What Will Be Cloned -->
+        <div class="card bg-base-100 shadow">
+            <div class="card-body">
+                <h3 class="card-title">
+                    <i class="fas fa-list-check text-info"></i>
+                    What Will Be Cloned
+                </h3>
+                
+                <div class="space-y-3 mt-4">
+                    <div class="flex items-center gap-3">
+                        <i class="fas fa-check text-success"></i>
+                        <span><strong>Layer 1 Configuration:</strong> Mileage thresholds and reduction percentages</span>
+                    </div>
+                    
+                    <div class="flex items-center gap-3">
+                        <i class="fas fa-check text-success"></i>
+                        <span><strong>Layer 2 Conditions:</strong> All {{ source_config.layer2_conditions.count }} condition categories</span>
+                    </div>
+                    
+                    <div class="flex items-center gap-3">
+                        <i class="fas fa-check text-success"></i>
+                        <span><strong>Condition Options:</strong> All radio button options with their percentages</span>
+                    </div>
+                    
+                    <div class="flex items-center gap-3">
+                        <i class="fas fa-check text-success"></i>
+                        <span><strong>Configuration Caps:</strong> All maximum reduction percentages</span>
+                    </div>
+                    
+                    <div class="flex items-center gap-3">
+                        <i class="fas fa-info text-info"></i>
+                        <span><strong>Status:</strong> New configuration will be created as Draft</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="card bg-base-100 shadow">
+            <div class="card-body">
+                <div class="flex justify-between items-center">
+                    <div class="text-sm text-base-content/70">
+                        The new configuration will be created as a draft. You can modify it before publishing.
+                    </div>
+                    
+                    <div class="flex gap-2">
+                        <a href="{% url 'main:pricing_config_detail' source_config.id %}" class="btn btn-ghost">
+                            <i class="fas fa-arrow-left"></i>
+                            Cancel
+                        </a>
+                        
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-copy"></i>
+                            Clone Configuration
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}
