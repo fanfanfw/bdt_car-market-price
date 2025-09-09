@@ -5,7 +5,11 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build-css": "tailwindcss -i ./main/static/main/css/input.css -o ./main/static/main/css/output.css --watch"
+    "build-css": "tailwindcss -i ./main/static/main/css/input.css -o ./main/static/main/css/output.css --watch",
+    "build-js": "esbuild main/static/main/js/bundle.js --bundle --outfile=main/static/main/js/alpine.min.js --minify",
+    "build-js-watch": "esbuild main/static/main/js/bundle.js --bundle --outfile=main/static/main/js/alpine.min.js --minify --watch",
+    "build": "npm run build-css && npm run build-js",
+    "dev": "npm run build-js && npm run build-css"
   },
   "keywords": [],
   "author": "",
@@ -13,11 +17,13 @@
   "description": "",
   "devDependencies": {
     "autoprefixer": "^10.4.21",
+    "esbuild": "^0.25.9",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.17"
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "^7.0.1",
+    "alpinejs": "^3.15.0",
     "daisyui": "^5.1.7",
     "sweetalert2": "^11.23.0"
   }
