@@ -113,27 +113,25 @@
                 <h3 class="text-xl font-semibold text-base-content mb-4 flex items-center">
                     <i class="fas fa-clipboard-check text-purple-600 mr-2"></i>
                     Vehicle Condition Assessment
-                    {% if pricing_config %}
-                    <span class="badge badge-primary badge-sm ml-2">v{{ pricing_config.version }}</span>
-                    {% endif %}
+                    <span class="badge badge-primary badge-sm ml-2">v4</span>
                 </h3>
                 <p class="text-base-content/70 mb-6">Select the most appropriate condition for each aspect of your vehicle</p>
                 
                 <div class="space-y-4">
-                    {% for condition in layer2_conditions %}
-                    <!-- {{ condition.name }} Row -->
+                    {% for category in condition_categories %}
+                    <!-- {{ category.display_name }} Row -->
                     <div class="card bg-base-100 shadow-sm border border-base-200 hover:shadow-md transition-all duration-300">
                         <div class="card-body p-4">
                             <div class="flex flex-col sm:flex-row sm:items-center gap-4">
                                 <div class="flex items-center min-w-0 sm:w-48">
-                                    <h4 class="font-semibold text-base-content text-sm sm:text-base">{{ condition.name }}</h4>
+                                    <h4 class="font-semibold text-base-content text-sm sm:text-base">{{ category.display_name }}</h4>
                                 </div>
                                 <div class="flex flex-wrap gap-2 sm:gap-4 flex-1">
-                                    {% for option in condition.options.all %}
+                                    {% for option in category.options.all %}
                                     <label class="cursor-pointer flex items-center">
-                                        <input type="radio" name="{{ condition.field_name }}" value="{{ option.percentage }}" 
+                                        <input type="radio" name="{{ category.category_key }}" value="{{ option.reduction_percentage }}" 
                                                class="radio radio-primary radio-sm mr-2" {% if forloop.first %}required{% endif %}>
-                                        <span class="label-text text-sm">{{ option.label }} {% if option.percentage > 0 %}(-{{ option.percentage }}%){% else %}({{ option.percentage }}%){% endif %}</span>
+                                        <span class="label-text text-sm">{{ option.label }} {% if option.reduction_percentage > 0 %}(-{{ option.reduction_percentage }}%){% else %}({{ option.reduction_percentage }}%){% endif %}</span>
                                     </label>
                                     {% endfor %}
                                 </div>

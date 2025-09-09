@@ -15,17 +15,18 @@ import random
 import re
 from .models import (
     CarStandard, CarUnified, Category, BrandCategory, VerifiedPhone, OTPSession,
-    PricingConfiguration, Layer1Configuration, Layer2Condition, ConditionOption, ConfigurationHistory
+    MileageConfiguration, VehicleConditionCategory, ConditionOption
 )
 
 def index(request):
     """Main index page with car price estimation form"""
-    # Get active configuration for dynamic form rendering
-    config = get_active_pricing_config()
+    # Get all active vehicle condition categories with their options
+    categories = VehicleConditionCategory.objects.filter(
+        is_active=True
+    ).prefetch_related('options').order_by('order')
     
     context = {
-        'pricing_config': config,
-        'layer2_conditions': config.layer2_conditions.prefetch_related('options').all() if config else [],
+        'condition_categories': categories,
     }
     return render(request, 'main/index.html', context)
 
@@ -194,36 +195,24 @@ def get_years(request):
         return JsonResponse({'error': str(e)}, status=500)
 
 
-def get_active_pricing_config():
-    """Get the currently active pricing configuration"""
+def get_mileage_config():
+    """Get the mileage configuration"""
     try:
-        return PricingConfiguration.objects.select_related('layer1_config').prefetch_related(
-            'layer2_conditions__options'
-        ).filter(is_active=True).first()
-    except PricingConfiguration.DoesNotExist:
-        return None
+        return MileageConfiguration.objects.first()
+    except MileageConfiguration.DoesNotExist:
+        # Return default values if no config exists
+        return type('obj', (object,), {
+            'threshold_percent': 10.0,
+            'reduction_percent': 2.0,
+            'max_reduction_cap': 15.0
+        })
 
 
 def get_car_statistics(brand, model, variant, year, user_mileage=None, condition_assessments=None):
     """Get car statistics including average mileage and price with condition assessments"""
     try:
-        # Get active configuration
-        config = get_active_pricing_config()
-        if not config:
-            print("Warning: No active pricing configuration found, using fallback values")
-            # Fallback to hardcoded values if no config exists
-            layer1_config = type('obj', (object,), {
-                'mileage_threshold_percent': 10.0,
-                'reduction_per_threshold': 2.0
-            })
-            layer1_max_reduction = 15.0
-            layer2_max_reduction = 70.0
-            total_max_reduction = 85.0
-        else:
-            layer1_config = config.layer1_config
-            layer1_max_reduction = float(config.layer1_max_reduction)
-            layer2_max_reduction = float(config.layer2_max_reduction)
-            total_max_reduction = float(config.total_max_reduction)
+        # Get mileage configuration
+        mileage_config = get_mileage_config()
 
         with connection.cursor() as cursor:
             cursor.execute("""
@@ -271,7 +260,7 @@ def get_car_statistics(brand, model, variant, year, user_mileage=None, condition
                 avg_mileage = float(row[4])
                 avg_price = float(row[5])
                 
-                # Layer 1: Dynamic mileage-based reduction
+                # Layer 1: Mileage-based reduction
                 layer1_reduction = 0
                 mileage_diff_percent = 0
                 
@@ -279,34 +268,27 @@ def get_car_statistics(brand, model, variant, year, user_mileage=None, condition
                     user_mileage = float(user_mileage)
                     if user_mileage > avg_mileage:
                         mileage_diff_percent = ((user_mileage - avg_mileage) / avg_mileage) * 100
-                        # Use dynamic configuration
-                        if layer1_config:
-                            threshold = float(layer1_config.mileage_threshold_percent)
-                            reduction_per_threshold = float(layer1_config.reduction_per_threshold)
-                            layer1_reduction = (mileage_diff_percent / threshold) * reduction_per_threshold
-                        else:
-                            # Fallback calculation
-                            layer1_reduction = (mileage_diff_percent / 10) * 2
-                        
-                        # Apply dynamic cap
-                        layer1_reduction = min(layer1_reduction, layer1_max_reduction)
+                        threshold = float(mileage_config.threshold_percent)
+                        reduction_per_threshold = float(mileage_config.reduction_percent)
+                        layer1_reduction = (mileage_diff_percent / threshold) * reduction_per_threshold
+                        # Apply cap
+                        layer1_reduction = min(layer1_reduction, float(mileage_config.max_reduction_cap))
                     else:
                         mileage_diff_percent = ((user_mileage - avg_mileage) / avg_mileage) * 100
                 
-                # Layer 2: Dynamic condition assessment reduction
+                # Layer 2: Condition assessment reduction
                 layer2_reduction = 0
                 condition_breakdown = {}
                 
                 if condition_assessments is not None:
                     # Calculate total from all assessments
-                    total_condition_reduction = sum(condition_assessments.values())
-                    # Apply dynamic cap
-                    layer2_reduction = min(total_condition_reduction, layer2_max_reduction)
+                    layer2_reduction = sum(condition_assessments.values())
+                    # Apply Layer 2 cap
+                    layer2_reduction = min(layer2_reduction, float(mileage_config.layer2_max_cap))
                     condition_breakdown = condition_assessments.copy()
                 
-                # Total reduction with dynamic cap
+                # Total reduction
                 total_reduction = layer1_reduction + layer2_reduction
-                total_reduction = min(total_reduction, total_max_reduction)
                 
                 # Calculate final adjusted price
                 adjusted_price = avg_price * (1 - total_reduction / 100)
@@ -326,7 +308,7 @@ def get_car_statistics(brand, model, variant, year, user_mileage=None, condition
                     'adjusted_price': round(adjusted_price),
                     'price_savings': round(price_savings),
                     'condition_breakdown': condition_breakdown,
-                    'config_version': config.version if config else 'fallback'
+                    'config_version': 'simplified'
                 })
                 
                 return result
@@ -680,265 +662,73 @@ def admin_logout_view(request):
     return redirect('admin_login')
 
 
-# Pricing Configuration Admin Views
+# Simplified Pricing Configuration Admin Views
 
 @login_required
 @user_passes_test(is_staff_user, login_url='/login/')
-def pricing_config_list(request):
-    """List all pricing configurations"""
-    configs = PricingConfiguration.objects.all()
-    context = {
-        'configs': configs,
-        'active_config': PricingConfiguration.objects.filter(is_active=True).first()
-    }
-    return render(request, 'admin/pricing-config/list.html', context)
-
-
-@login_required 
-@user_passes_test(is_staff_user, login_url='/login/')
-def pricing_config_detail(request, config_id):
-    """View pricing configuration details"""
-    config = get_object_or_404(PricingConfiguration, id=config_id)
-    
-    # Get layer configurations
-    layer1_config = getattr(config, 'layer1_config', None)
-    layer2_conditions = config.layer2_conditions.prefetch_related('options').all()
-    
-    # Calculate total theoretical maximum
-    theoretical_max = sum(cond.get_max_percentage() for cond in layer2_conditions)
-    
-    context = {
-        'config': config,
-        'layer1_config': layer1_config,
-        'layer2_conditions': layer2_conditions,
-        'theoretical_max': theoretical_max,
-        'is_over_cap': theoretical_max > float(config.layer2_max_reduction)
-    }
-    return render(request, 'admin/pricing-config/detail.html', context)
-
-
-@login_required
-@user_passes_test(is_staff_user, login_url='/login/')
-def pricing_config_create(request):
-    """Create new pricing configuration"""
-    if request.method == 'POST':
-        try:
-            # Get next version number
-            last_version = PricingConfiguration.objects.aggregate(
-                max_version=models.Max('version')
-            )['max_version'] or 0
-            next_version = last_version + 1
-            
-            # Create main configuration
-            config = PricingConfiguration.objects.create(
-                version=next_version,
-                name=request.POST.get('name'),
-                description=request.POST.get('description', ''),
-                layer1_max_reduction=float(request.POST.get('layer1_max_reduction', 15.0)),
-                layer2_max_reduction=float(request.POST.get('layer2_max_reduction', 70.0)),
-                total_max_reduction=float(request.POST.get('total_max_reduction', 85.0)),
-                created_by=request.user,
-                updated_by=request.user
-            )
-            
-            # Create Layer 1 configuration
-            Layer1Configuration.objects.create(
-                config=config,
-                mileage_threshold_percent=float(request.POST.get('mileage_threshold_percent', 10.0)),
-                reduction_per_threshold=float(request.POST.get('reduction_per_threshold', 2.0))
-            )
-            
-            # Log creation
-            ConfigurationHistory.objects.create(
-                config=config,
-                action='created',
-                description=f"Configuration '{config.name}' created",
-                user=request.user,
-                ip_address=get_client_ip(request),
-                snapshot_data={'created': True}
-            )
-            
-            messages.success(request, f'Configuration v{config.version} created successfully.')
-            return redirect('main:pricing_config_detail', config_id=config.id)
-            
-        except Exception as e:
-            messages.error(request, f'Error creating configuration: {str(e)}')
-    
-    # Get latest config as template
-    latest_config = PricingConfiguration.objects.first()
-    context = {
-        'latest_config': latest_config
-    }
-    return render(request, 'admin/pricing-config/create.html', context)
-
-
-@login_required
-@user_passes_test(is_staff_user, login_url='/login/')
-def pricing_config_edit(request, config_id):
-    """Edit pricing configuration (only drafts)"""
-    config = get_object_or_404(PricingConfiguration, id=config_id)
-    
-    if not config.is_draft:
-        messages.error(request, 'Only draft configurations can be edited.')
-        return redirect('main:pricing_config_detail', config_id=config.id)
+def formula_config_edit(request):
+    """Edit formula configuration"""
+    config, created = MileageConfiguration.objects.get_or_create(defaults={
+        'threshold_percent': 10.0,
+        'reduction_percent': 2.0,
+        'max_reduction_cap': 15.0,
+        'layer2_max_cap': 70.0
+    })
     
     if request.method == 'POST':
         try:
-            # Update main configuration
-            config.name = request.POST.get('name')
-            config.description = request.POST.get('description', '')
-            config.layer1_max_reduction = float(request.POST.get('layer1_max_reduction', 15.0))
-            config.layer2_max_reduction = float(request.POST.get('layer2_max_reduction', 70.0))
-            config.total_max_reduction = float(request.POST.get('total_max_reduction', 85.0))
-            config.updated_by = request.user
+            config.threshold_percent = float(request.POST.get('threshold_percent', 10.0))
+            config.reduction_percent = float(request.POST.get('reduction_percent', 2.0))
+            config.max_reduction_cap = float(request.POST.get('max_reduction_cap', 15.0))
+            config.layer2_max_cap = float(request.POST.get('layer2_max_cap', 70.0))
             config.save()
             
-            # Update Layer 1 configuration
-            layer1_config, created = Layer1Configuration.objects.get_or_create(config=config)
-            layer1_config.mileage_threshold_percent = float(request.POST.get('mileage_threshold_percent', 10.0))
-            layer1_config.reduction_per_threshold = float(request.POST.get('reduction_per_threshold', 2.0))
-            layer1_config.save()
-            
-            # Log update
-            ConfigurationHistory.objects.create(
-                config=config,
-                action='updated',
-                description=f"Configuration '{config.name}' updated",
-                user=request.user,
-                ip_address=get_client_ip(request),
-                snapshot_data={'updated': True}
-            )
-            
-            messages.success(request, f'Configuration v{config.version} updated successfully.')
-            return redirect('main:pricing_config_detail', config_id=config.id)
-            
+            messages.success(request, 'Formula configuration updated successfully.')
+            return redirect('main:formula_config_edit')
         except Exception as e:
             messages.error(request, f'Error updating configuration: {str(e)}')
     
-    # Get layer configurations
-    layer1_config = getattr(config, 'layer1_config', None)
-    
     context = {
-        'config': config,
-        'layer1_config': layer1_config
+        'config': config
     }
-    return render(request, 'admin/pricing-config/edit.html', context)
+    return render(request, 'admin/formula-config.html', context)
 
 
 @login_required
 @user_passes_test(is_staff_user, login_url='/login/')
-def pricing_config_publish(request, config_id):
-    """Publish configuration"""
-    config = get_object_or_404(PricingConfiguration, id=config_id)
-    
-    if request.method == 'POST':
-        try:
-            config.publish(user=request.user)
-            
-            # Log publication
-            ConfigurationHistory.objects.create(
-                config=config,
-                action='published',
-                description=f"Configuration '{config.name}' published and activated",
-                user=request.user,
-                ip_address=get_client_ip(request),
-                snapshot_data={'published': True, 'activated': True}
-            )
-            
-            messages.success(request, f'Configuration v{config.version} published and activated successfully.')
-        except Exception as e:
-            messages.error(request, f'Error publishing configuration: {str(e)}')
-    
-    return redirect('main:pricing_config_detail', config_id=config.id)
-
-
-@login_required
-@user_passes_test(is_staff_user, login_url='/login/')
-def condition_manage(request, config_id):
-    """Manage Layer 2 conditions for a configuration"""
-    config = get_object_or_404(PricingConfiguration, id=config_id)
-    
-    if not config.is_draft:
-        messages.error(request, 'Only draft configurations can be modified.')
-        return redirect('main:pricing_config_detail', config_id=config.id)
-    
-    conditions = config.layer2_conditions.prefetch_related('options').all()
+def condition_categories_manage(request):
+    """Manage condition categories and their options"""
+    categories = VehicleConditionCategory.objects.prefetch_related('options').order_by('order')
     
     context = {
-        'config': config,
-        'conditions': conditions
+        'categories': categories
     }
-    return render(request, 'admin/pricing-config/conditions.html', context)
+    return render(request, 'admin/condition-categories.html', context)
 
 
 @csrf_exempt
 @login_required
 @user_passes_test(is_staff_user, login_url='/login/')
-def condition_add(request, config_id):
-    """Add new condition to configuration"""
+def condition_option_edit(request, option_id):
+    """Edit a condition option"""
     if request.method != 'POST':
         return JsonResponse({'error': 'POST method required'}, status=400)
     
-    config = get_object_or_404(PricingConfiguration, id=config_id)
-    
-    if not config.is_draft:
-        return JsonResponse({'error': 'Only draft configurations can be modified'}, status=400)
-    
     try:
+        option = get_object_or_404(ConditionOption, id=option_id)
         data = json.loads(request.body)
-        name = data.get('name', '').strip()
-        options = data.get('options', [])
         
-        if not name:
-            return JsonResponse({'error': 'Condition name is required'}, status=400)
+        option.label = data.get('label', '').strip()
+        option.reduction_percentage = float(data.get('reduction_percentage', 0))
         
-        if len(options) < 2 or len(options) > 5:
-            return JsonResponse({'error': 'Must have 2-5 options'}, status=400)
+        if not option.label:
+            return JsonResponse({'error': 'Option label is required'}, status=400)
         
-        # Check for duplicate field names
-        import re
-        field_name = re.sub(r'[^a-zA-Z0-9]', '_', name.lower()).strip('_')
-        if config.layer2_conditions.filter(field_name=field_name).exists():
-            return JsonResponse({'error': 'Condition with similar name already exists'}, status=400)
-        
-        # Create condition
-        condition = Layer2Condition.objects.create(
-            config=config,
-            name=name,
-            field_name=field_name,
-            order=config.layer2_conditions.count()
-        )
-        
-        # Create options
-        for i, option_data in enumerate(options):
-            label = option_data.get('label', '').strip()
-            percentage = float(option_data.get('percentage', 0))
-            
-            if not label:
-                condition.delete()
-                return JsonResponse({'error': 'All option labels are required'}, status=400)
-            
-            ConditionOption.objects.create(
-                condition=condition,
-                label=label,
-                percentage=percentage,
-                order=i
-            )
-        
-        # Log the change
-        ConfigurationHistory.objects.create(
-            config=config,
-            action='updated',
-            description=f"Added condition '{name}' with {len(options)} options",
-            user=request.user,
-            ip_address=get_client_ip(request),
-            snapshot_data={'added_condition': name, 'options_count': len(options)}
-        )
+        option.save()
         
         return JsonResponse({
             'success': True,
-            'message': f'Condition "{name}" added successfully',
-            'condition_id': condition.id
+            'message': f'Option "{option.label}" updated successfully'
         })
         
     except Exception as e:
@@ -948,243 +738,70 @@ def condition_add(request, config_id):
 @csrf_exempt
 @login_required
 @user_passes_test(is_staff_user, login_url='/login/')
-def condition_edit(request, config_id, condition_id):
-    """Edit existing condition"""
-    if request.method == 'GET':
-        # Return condition data for editing
-        condition = get_object_or_404(Layer2Condition, id=condition_id, config_id=config_id)
-        options = list(condition.options.values('id', 'label', 'percentage', 'order').order_by('order'))
-        
-        return JsonResponse({
-            'success': True,
-            'condition': {
-                'id': condition.id,
-                'name': condition.name,
-                'field_name': condition.field_name,
-                'order': condition.order,
-                'options': options
-            }
-        })
-    
-    elif request.method == 'POST':
-        config = get_object_or_404(PricingConfiguration, id=config_id)
-        condition = get_object_or_404(Layer2Condition, id=condition_id, config=config)
-        
-        if not config.is_draft:
-            return JsonResponse({'error': 'Only draft configurations can be modified'}, status=400)
-        
-        try:
-            data = json.loads(request.body)
-            name = data.get('name', '').strip()
-            options = data.get('options', [])
-            
-            if not name:
-                return JsonResponse({'error': 'Condition name is required'}, status=400)
-            
-            if len(options) < 2 or len(options) > 5:
-                return JsonResponse({'error': 'Must have 2-5 options'}, status=400)
-            
-            # Update condition
-            old_name = condition.name
-            condition.name = name
-            condition.save()
-            
-            # Delete existing options and recreate
-            condition.options.all().delete()
-            
-            # Create new options
-            for i, option_data in enumerate(options):
-                label = option_data.get('label', '').strip()
-                percentage = float(option_data.get('percentage', 0))
-                
-                if not label:
-                    return JsonResponse({'error': 'All option labels are required'}, status=400)
-                
-                ConditionOption.objects.create(
-                    condition=condition,
-                    label=label,
-                    percentage=percentage,
-                    order=i
-                )
-            
-            # Log the change
-            ConfigurationHistory.objects.create(
-                config=config,
-                action='updated',
-                description=f"Updated condition '{old_name}' → '{name}' with {len(options)} options",
-                user=request.user,
-                ip_address=get_client_ip(request),
-                snapshot_data={'updated_condition': name, 'options_count': len(options)}
-            )
-            
-            return JsonResponse({
-                'success': True,
-                'message': f'Condition "{name}" updated successfully'
-            })
-            
-        except Exception as e:
-            return JsonResponse({'error': str(e)}, status=500)
-
-
-@csrf_exempt
-@login_required
-@user_passes_test(is_staff_user, login_url='/login/')
-def condition_delete(request, config_id, condition_id):
-    """Delete condition from configuration"""
+def condition_option_add(request, category_id):
+    """Add new option to a category"""
     if request.method != 'POST':
         return JsonResponse({'error': 'POST method required'}, status=400)
     
-    config = get_object_or_404(PricingConfiguration, id=config_id)
-    condition = get_object_or_404(Layer2Condition, id=condition_id, config=config)
-    
-    if not config.is_draft:
-        return JsonResponse({'error': 'Only draft configurations can be modified'}, status=400)
-    
-    # Prevent deleting the last condition
-    if config.layer2_conditions.count() <= 1:
-        return JsonResponse({'error': 'Cannot delete the last condition. At least one condition is required.'}, status=400)
-    
     try:
-        condition_name = condition.name
-        condition.delete()
+        category = get_object_or_404(VehicleConditionCategory, id=category_id)
+        data = json.loads(request.body)
         
-        # Log the change
-        ConfigurationHistory.objects.create(
-            config=config,
-            action='updated',
-            description=f"Deleted condition '{condition_name}'",
-            user=request.user,
-            ip_address=get_client_ip(request),
-            snapshot_data={'deleted_condition': condition_name}
+        label = data.get('label', '').strip()
+        reduction_percentage = float(data.get('reduction_percentage', 0))
+        
+        if not label:
+            return JsonResponse({'error': 'Option label is required'}, status=400)
+        
+        # Check for duplicate labels
+        if category.options.filter(label=label).exists():
+            return JsonResponse({'error': 'Option with this label already exists'}, status=400)
+        
+        # Get next order
+        next_order = category.options.count()
+        
+        option = ConditionOption.objects.create(
+            category=category,
+            label=label,
+            reduction_percentage=reduction_percentage,
+            order=next_order
         )
         
         return JsonResponse({
             'success': True,
-            'message': f'Condition "{condition_name}" deleted successfully'
+            'message': f'Option "{option.label}" added successfully',
+            'option_id': option.id
         })
         
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
 
 
+@csrf_exempt
 @login_required
 @user_passes_test(is_staff_user, login_url='/login/')
-def pricing_config_delete(request, config_id):
-    """Delete pricing configuration with safety validation"""
-    config = get_object_or_404(PricingConfiguration, id=config_id)
+def condition_option_delete(request, option_id):
+    """Delete a condition option"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST method required'}, status=400)
     
-    if request.method == 'POST':
-        try:
-            # Safety validation: Cannot delete if it's the only configuration
-            total_configs = PricingConfiguration.objects.count()
-            if total_configs <= 1:
-                messages.error(request, 'Cannot delete the last configuration. At least one configuration must exist.')
-                return redirect('main:pricing_config_detail', config_id=config.id)
-            
-            # Cannot delete active configuration
-            if config.is_active:
-                messages.error(request, 'Cannot delete the active configuration. Please activate another configuration first.')
-                return redirect('main:pricing_config_detail', config_id=config.id)
-            
-            # Log the deletion
-            ConfigurationHistory.objects.create(
-                config=config,
-                action='deleted',
-                description=f"Configuration '{config.name}' v{config.version} deleted",
-                user=request.user,
-                ip_address=get_client_ip(request),
-                snapshot_data={'deleted': True, 'version': config.version}
-            )
-            
-            config_name = f"{config.name} v{config.version}"
-            config.delete()
-            
-            messages.success(request, f'Configuration "{config_name}" deleted successfully.')
-            return redirect('main:pricing_config_list')
-            
-        except Exception as e:
-            messages.error(request, f'Error deleting configuration: {str(e)}')
-            return redirect('main:pricing_config_detail', config_id=config.id)
-    
-    # GET request - show confirmation
-    context = {
-        'config': config,
-        'total_configs': PricingConfiguration.objects.count(),
-        'can_delete': not config.is_active and PricingConfiguration.objects.count() > 1
-    }
-    return render(request, 'admin/pricing-config/delete.html', context)
-
-
-@login_required
-@user_passes_test(is_staff_user, login_url='/login/')
-def pricing_config_clone(request, config_id):
-    """Clone existing configuration"""
-    source_config = get_object_or_404(PricingConfiguration, id=config_id)
-    
-    if request.method == 'POST':
-        try:
-            # Get next version number
-            last_version = PricingConfiguration.objects.aggregate(
-                max_version=models.Max('version')
-            )['max_version'] or 0
-            next_version = last_version + 1
-            
-            # Clone main configuration
-            new_config = PricingConfiguration.objects.create(
-                version=next_version,
-                name=request.POST.get('name', f"{source_config.name} (Clone)"),
-                description=request.POST.get('description', f"Cloned from v{source_config.version}"),
-                layer1_max_reduction=source_config.layer1_max_reduction,
-                layer2_max_reduction=source_config.layer2_max_reduction,
-                total_max_reduction=source_config.total_max_reduction,
-                created_by=request.user,
-                updated_by=request.user
-            )
-            
-            # Clone Layer 1 configuration
-            if hasattr(source_config, 'layer1_config'):
-                Layer1Configuration.objects.create(
-                    config=new_config,
-                    mileage_threshold_percent=source_config.layer1_config.mileage_threshold_percent,
-                    reduction_per_threshold=source_config.layer1_config.reduction_per_threshold
-                )
-            
-            # Clone Layer 2 conditions and options
-            for condition in source_config.layer2_conditions.all():
-                new_condition = Layer2Condition.objects.create(
-                    config=new_config,
-                    name=condition.name,
-                    field_name=condition.field_name,
-                    order=condition.order,
-                    is_active=condition.is_active
-                )
-                
-                # Clone options
-                for option in condition.options.all():
-                    ConditionOption.objects.create(
-                        condition=new_condition,
-                        label=option.label,
-                        percentage=option.percentage,
-                        order=option.order
-                    )
-            
-            # Log creation
-            ConfigurationHistory.objects.create(
-                config=new_config,
-                action='created',
-                description=f"Configuration cloned from '{source_config.name}' v{source_config.version}",
-                user=request.user,
-                ip_address=get_client_ip(request),
-                snapshot_data={'cloned_from': source_config.version}
-            )
-            
-            messages.success(request, f'Configuration v{new_config.version} cloned successfully.')
-            return redirect('main:pricing_config_detail', config_id=new_config.id)
-            
-        except Exception as e:
-            messages.error(request, f'Error cloning configuration: {str(e)}')
-    
-    context = {
-        'source_config': source_config
-    }
-    return render(request, 'admin/pricing-config/clone.html', context)
+    try:
+        option = get_object_or_404(ConditionOption, id=option_id)
+        category = option.category
+        
+        # Prevent deleting if only one option left
+        if category.options.count() <= 1:
+            return JsonResponse({
+                'error': 'Cannot delete the last option. At least one option is required.'
+            }, status=400)
+        
+        option_label = option.label
+        option.delete()
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Option "{option_label}" deleted successfully'
+        })
+        
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)

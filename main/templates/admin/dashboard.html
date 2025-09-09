@@ -149,14 +149,14 @@
                 Quick Actions
             </h2>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <a href="{% url 'main:pricing_config_list' %}" class="btn btn-primary btn-outline">
-                    <i class="fas fa-cogs"></i>
-                    Pricing Config
+                <a href="{% url 'main:formula_config_edit' %}" class="btn btn-primary btn-outline">
+                    <i class="fas fa-calculator"></i>
+                    Formula Config
                 </a>
-                <button class="btn btn-secondary btn-outline" onclick="viewPhones()">
-                    <i class="fas fa-phone"></i>
-                    Verified Phones
-                </button>
+                <a href="{% url 'main:condition_categories_manage' %}" class="btn btn-secondary btn-outline">
+                    <i class="fas fa-list-check"></i>
+                    Condition Categories
+                </a>
                 <button class="btn btn-accent btn-outline" onclick="viewCarData()">
                     <i class="fas fa-car"></i>
                     Car Database

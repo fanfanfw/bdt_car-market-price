@@ -20,18 +20,12 @@ urlpatterns = [
     path('api/verify-otp/', views.verify_otp, name='verify_otp'),
     path('api/get-results/', views.get_secure_results, name='get_secure_results'),
     
-    # Admin pricing configuration URLs
-    path('panel/pricing-config/', views.pricing_config_list, name='pricing_config_list'),
-    path('panel/pricing-config/create/', views.pricing_config_create, name='pricing_config_create'),
-    path('panel/pricing-config/<int:config_id>/', views.pricing_config_detail, name='pricing_config_detail'),
-    path('panel/pricing-config/<int:config_id>/edit/', views.pricing_config_edit, name='pricing_config_edit'),
-    path('panel/pricing-config/<int:config_id>/publish/', views.pricing_config_publish, name='pricing_config_publish'),
-    path('panel/pricing-config/<int:config_id>/delete/', views.pricing_config_delete, name='pricing_config_delete'),
-    path('panel/pricing-config/<int:config_id>/clone/', views.pricing_config_clone, name='pricing_config_clone'),
+    # Simplified admin configuration URLs
+    path('panel/formula-config/', views.formula_config_edit, name='formula_config_edit'),
+    path('panel/condition-categories/', views.condition_categories_manage, name='condition_categories_manage'),
     
-    # Condition management URLs
-    path('panel/pricing-config/<int:config_id>/conditions/', views.condition_manage, name='condition_manage'),
-    path('panel/pricing-config/<int:config_id>/conditions/add/', views.condition_add, name='condition_add'),
-    path('panel/pricing-config/<int:config_id>/conditions/<int:condition_id>/edit/', views.condition_edit, name='condition_edit'),
-    path('panel/pricing-config/<int:config_id>/conditions/<int:condition_id>/delete/', views.condition_delete, name='condition_delete'),
+    # Condition option management APIs
+    path('api/condition-option/<int:option_id>/edit/', views.condition_option_edit, name='condition_option_edit'),
+    path('api/condition-option/<int:option_id>/delete/', views.condition_option_delete, name='condition_option_delete'),
+    path('api/condition-category/<int:category_id>/option/add/', views.condition_option_add, name='condition_option_add'),
 ]
