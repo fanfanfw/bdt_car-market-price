@@ -6,6 +6,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from django.views.decorators.http import require_http_methods
 from django.utils import timezone
+from datetime import timedelta
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.views import LoginView
 from django.contrib.auth.decorators import login_required, user_passes_test
@@ -21,9 +22,10 @@ from .models import (
 def index(request):
     """Main index page with car price estimation form"""
     # Get all active vehicle condition categories with their options
+    # Exclude brand_category as it will be handled automatically
     categories = VehicleConditionCategory.objects.filter(
         is_active=True
-    ).prefetch_related('options').order_by('order')
+    ).exclude(category_key='brand_category').prefetch_related('options').order_by('order')
     
     context = {
         'condition_categories': categories,
@@ -109,7 +111,6 @@ def result(request):
     
     return response
 
-
 def get_categories(request):
     """API endpoint to get all categories"""
     try:
@@ -117,7 +118,6 @@ def get_categories(request):
         return JsonResponse(list(categories), safe=False)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
-
 
 def get_brands(request):
     """API endpoint to get all brands"""
@@ -127,7 +127,6 @@ def get_brands(request):
         return JsonResponse(list(brands), safe=False)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
-
 
 def get_models(request):
     """API endpoint to get models for selected brand"""
@@ -143,7 +142,6 @@ def get_models(request):
         return JsonResponse(list(models), safe=False)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
-
 
 def get_variants(request):
     """API endpoint to get variants for selected brand and model"""
@@ -162,7 +160,6 @@ def get_variants(request):
         return JsonResponse(list(variants), safe=False)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
-
 
 def get_years(request):
     """API endpoint to get years for selected brand, model, and variant"""
@@ -194,7 +191,6 @@ def get_years(request):
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
 
-
 def get_mileage_config():
     """Get the mileage configuration"""
     try:
@@ -206,7 +202,6 @@ def get_mileage_config():
             'reduction_percent': 2.0,
             'max_reduction_cap': 15.0
         })
-
 
 def get_car_statistics(brand, model, variant, year, user_mileage=None, condition_assessments=None):
     """Get car statistics including average mileage and price with condition assessments"""
@@ -276,16 +271,44 @@ def get_car_statistics(brand, model, variant, year, user_mileage=None, condition
                     else:
                         mileage_diff_percent = ((user_mileage - avg_mileage) / avg_mileage) * 100
                 
-                # Layer 2: Condition assessment reduction
+                # Layer 2: Condition assessment reduction + Brand Category Auto-Detection
                 layer2_reduction = 0
                 condition_breakdown = {}
+                brand_category_reduction = 0
+                brand_category_info = None
+                
+                # Auto-detect brand category reduction
+                try:
+                    brand_category_mapping = BrandCategory.objects.select_related('category').get(brand=brand)
+                    # Get the reduction percentage directly from the category model
+                    brand_category_reduction = float(brand_category_mapping.category.reduction_percentage)
+                    brand_category_info = {
+                        'brand': brand,
+                        'category': brand_category_mapping.category.name,
+                        'reduction': brand_category_reduction
+                    }
+                except BrandCategory.DoesNotExist:
+                    # Brand not classified - use 0% reduction
+                    brand_category_reduction = 0
+                    brand_category_info = {
+                        'brand': brand,
+                        'category': 'Unclassified',
+                        'reduction': 0,
+                        'warning': 'Brand not classified - admin should classify this brand'
+                    }
                 
                 if condition_assessments is not None:
-                    # Calculate total from all assessments
-                    layer2_reduction = sum(condition_assessments.values())
+                    # Calculate total from all assessments (excluding brand_category as it's auto-detected)
+                    manual_assessments_total = sum(condition_assessments.values())
+                    # Add brand category reduction
+                    layer2_reduction = manual_assessments_total + brand_category_reduction
                     # Apply Layer 2 cap
                     layer2_reduction = min(layer2_reduction, float(mileage_config.layer2_max_cap))
                     condition_breakdown = condition_assessments.copy()
+                    condition_breakdown['brand_category'] = brand_category_reduction
+                else:
+                    layer2_reduction = brand_category_reduction
+                    condition_breakdown['brand_category'] = brand_category_reduction
                 
                 # Total reduction
                 total_reduction = layer1_reduction + layer2_reduction
@@ -308,7 +331,8 @@ def get_car_statistics(brand, model, variant, year, user_mileage=None, condition
                     'adjusted_price': round(adjusted_price),
                     'price_savings': round(price_savings),
                     'condition_breakdown': condition_breakdown,
-                    'config_version': 'simplified'
+                    'brand_category_info': brand_category_info,
+                    'config_version': 'simplified_with_auto_brand_detection'
                 })
                 
                 return result
@@ -318,7 +342,6 @@ def get_car_statistics(brand, model, variant, year, user_mileage=None, condition
     
     return None
 
-
 def get_client_ip(request):
     """Get client IP address"""
     x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
@@ -327,7 +350,6 @@ def get_client_ip(request):
     else:
         ip = request.META.get('REMOTE_ADDR')
     return ip
-
 
 def normalize_phone_number(phone, country_code):
     """Normalize phone number format"""
@@ -341,11 +363,9 @@ def normalize_phone_number(phone, country_code):
     
     return '+' + phone_digits
 
-
 def generate_otp():
     """Generate 6-digit OTP"""
     return str(random.randint(100000, 999999))
-
 
 @csrf_exempt
 @require_http_methods(["POST"])
@@ -397,7 +417,6 @@ def check_phone_status(request):
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
 
-
 @csrf_exempt
 @require_http_methods(["POST"])
 def send_otp(request):
@@ -448,7 +467,6 @@ def send_otp(request):
         return JsonResponse({'error': 'Invalid JSON'}, status=400)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
-
 
 @csrf_exempt
 @require_http_methods(["POST"])
@@ -530,7 +548,6 @@ def verify_otp(request):
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
 
-
 @csrf_exempt
 @require_http_methods(["POST"])
 def get_secure_results(request):
@@ -588,7 +605,6 @@ def get_secure_results(request):
         return JsonResponse({'error': 'Invalid JSON'}, status=400)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
-
 
 # Admin Views
 def is_staff_user(user):
@@ -661,9 +677,6 @@ def admin_logout_view(request):
     messages.success(request, 'You have been logged out successfully.')
     return redirect('admin_login')
 
-
-# Simplified Pricing Configuration Admin Views
-
 @login_required
 @user_passes_test(is_staff_user, login_url='/login/')
 def formula_config_edit(request):
@@ -693,18 +706,17 @@ def formula_config_edit(request):
     }
     return render(request, 'admin/formula-config.html', context)
 
-
 @login_required
 @user_passes_test(is_staff_user, login_url='/login/')
 def condition_categories_manage(request):
     """Manage condition categories and their options"""
-    categories = VehicleConditionCategory.objects.prefetch_related('options').order_by('order')
+    # Exclude brand_category as it's now handled automatically
+    categories = VehicleConditionCategory.objects.prefetch_related('options').exclude(category_key='brand_category').order_by('order')
     
     context = {
         'categories': categories
     }
     return render(request, 'admin/condition-categories.html', context)
-
 
 @csrf_exempt
 @login_required
@@ -733,7 +745,6 @@ def condition_option_edit(request, option_id):
         
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
-
 
 @csrf_exempt
 @login_required
@@ -776,7 +787,6 @@ def condition_option_add(request, category_id):
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
 
-
 @csrf_exempt
 @login_required
 @user_passes_test(is_staff_user, login_url='/login/')
@@ -801,6 +811,996 @@ def condition_option_delete(request, option_id):
         return JsonResponse({
             'success': True,
             'message': f'Option "{option_label}" deleted successfully'
+        })
+        
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@login_required
+@user_passes_test(is_staff_user, login_url='/login/')
+def car_data_view(request):
+    """Car database management view with DataTables"""
+    context = {
+        'page_title': 'Car Database',
+        'total_cars': CarUnified.objects.count(),
+        'total_brands': CarUnified.objects.values('brand').distinct().count(),
+        'total_models': CarUnified.objects.values('model').distinct().count(),
+        'sources': CarUnified.SOURCE_CHOICES,
+    }
+    return render(request, 'admin/car-data.html', context)
+
+@csrf_exempt
+@login_required
+@user_passes_test(is_staff_user, login_url='/login/')
+def car_data_api(request):
+    """API endpoint for DataTables car data"""
+    try:
+        # DataTables parameters
+        draw = int(request.GET.get('draw', 1))
+        start = int(request.GET.get('start', 0))
+        length = int(request.GET.get('length', 10))
+        search_value = request.GET.get('search[value]', '').strip()
+        
+        # Ordering
+        order_column_index = int(request.GET.get('order[0][column]', 0))
+        order_direction = request.GET.get('order[0][dir]', 'asc')
+        
+        # Column mapping for ordering
+        columns = ['id', 'source', 'brand', 'model', 'variant', 'year', 'mileage', 'price', 'condition', 'location', 'created_at']
+        order_column = columns[order_column_index] if order_column_index < len(columns) else 'id'
+        
+        if order_direction == 'desc':
+            order_column = '-' + order_column
+        
+        # Base queryset
+        queryset = CarUnified.objects.all()
+        
+        # Additional filtering based on request parameters
+        source_filter = request.GET.get('source_filter')
+        year_filter = request.GET.get('year_filter')
+        price_filter = request.GET.get('price_filter')
+        
+        if source_filter:
+            queryset = queryset.filter(source=source_filter)
+            
+        if year_filter:
+            if year_filter == '2024-':
+                queryset = queryset.filter(year__gte=2024)
+            elif year_filter == '2020-2023':
+                queryset = queryset.filter(year__gte=2020, year__lte=2023)
+            elif year_filter == '2015-2019':
+                queryset = queryset.filter(year__gte=2015, year__lte=2019)
+            elif year_filter == '2010-2014':
+                queryset = queryset.filter(year__gte=2010, year__lte=2014)
+            elif year_filter == '-2009':
+                queryset = queryset.filter(year__lte=2009)
+                
+        if price_filter:
+            if price_filter == '0-50000':
+                queryset = queryset.filter(price__gte=0, price__lte=50000)
+            elif price_filter == '50000-100000':
+                queryset = queryset.filter(price__gte=50000, price__lte=100000)
+            elif price_filter == '100000-200000':
+                queryset = queryset.filter(price__gte=100000, price__lte=200000)
+            elif price_filter == '200000-':
+                queryset = queryset.filter(price__gte=200000)
+        
+        # Search filtering
+        if search_value:
+            from django.db.models import Q
+            queryset = queryset.filter(
+                Q(brand__icontains=search_value) |
+                Q(model__icontains=search_value) |
+                Q(variant__icontains=search_value) |
+                Q(condition__icontains=search_value) |
+                Q(location__icontains=search_value) |
+                Q(source__icontains=search_value)
+            )
+        
+        # Total records
+        total_records = CarUnified.objects.count()
+        filtered_records = queryset.count()
+        
+        # Apply ordering and pagination
+        queryset = queryset.order_by(order_column)[start:start + length]
+        
+        # Build data for DataTables
+        data = []
+        for car in queryset:
+            # Format price
+            price_formatted = f"RM {car.price:,}" if car.price else "-"
+            
+            # Format mileage
+            mileage_formatted = f"{car.mileage:,} km" if car.mileage else "-"
+            
+            # Format year
+            year_formatted = str(car.year) if car.year else "-"
+            
+            # Format condition
+            condition_formatted = car.condition.title() if car.condition else "-"
+            
+            # Format source
+            source_formatted = dict(CarUnified.SOURCE_CHOICES).get(car.source, car.source)
+            
+            # Format location (truncate if too long)
+            location_formatted = (car.location[:30] + '...') if car.location and len(car.location) > 30 else (car.location or "-")
+            
+            # Actions column
+            actions = f'''<div class="btn-group btn-group-sm" role="group">
+                <a href="{car.listing_url}" target="_blank" class="btn btn-info btn-sm" title="View Listing">
+                    <i class="fas fa-external-link-alt"></i>
+                </a>
+                <button type="button" class="btn btn-primary btn-sm" onclick="viewCarDetails({car.id})" title="View Details">
+                    <i class="fas fa-eye"></i>
+                </button>
+            </div>'''
+            
+            data.append([
+                car.id,
+                source_formatted,
+                car.brand,
+                car.model,
+                car.variant or "-",
+                year_formatted,
+                mileage_formatted,
+                price_formatted,
+                condition_formatted,
+                location_formatted,
+                car.created_at.strftime('%Y-%m-%d %H:%M'),
+                actions
+            ])
+        
+        return JsonResponse({
+            'draw': draw,
+            'recordsTotal': total_records,
+            'recordsFiltered': filtered_records,
+            'data': data
+        })
+        
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+@login_required
+@user_passes_test(is_staff_user, login_url='/login/')
+def car_detail_api(request, car_id):
+    """API endpoint to get detailed car information"""
+    try:
+        car = get_object_or_404(CarUnified, id=car_id)
+        
+        # Get related standard car info if available
+        standard_info = None
+        if car.cars_standard:
+            standard_info = {
+                'brand_norm': car.cars_standard.brand_norm,
+                'model_norm': car.cars_standard.model_norm,
+                'variant_norm': car.cars_standard.variant_norm,
+                'model_group_norm': car.cars_standard.model_group_norm,
+            }
+        
+        # Get category info
+        category_info = None
+        if car.category:
+            category_info = {
+                'name': car.category.name,
+                'id': car.category.id
+            }
+        
+        # Parse images if available
+        images = []
+        if car.images:
+            try:
+                import json
+                images = json.loads(car.images) if isinstance(car.images, str) else car.images
+            except:
+                images = []
+        
+        data = {
+            'id': car.id,
+            'source': dict(CarUnified.SOURCE_CHOICES).get(car.source, car.source),
+            'listing_url': car.listing_url,
+            'brand': car.brand,
+            'model': car.model,
+            'model_group': car.model_group,
+            'variant': car.variant,
+            'condition': car.condition,
+            'year': car.year,
+            'mileage': car.mileage,
+            'transmission': car.transmission,
+            'seat_capacity': car.seat_capacity,
+            'engine_cc': car.engine_cc,
+            'fuel_type': car.fuel_type,
+            'price': car.price,
+            'location': car.location,
+            'information_ads': car.information_ads,
+            'images': images,
+            'status': car.status,
+            'ads_tag': car.ads_tag,
+            'is_deleted': car.is_deleted,
+            'last_scraped_at': car.last_scraped_at.strftime('%Y-%m-%d %H:%M:%S') if car.last_scraped_at else None,
+            'version': car.version,
+            'sold_at': car.sold_at.strftime('%Y-%m-%d %H:%M:%S') if car.sold_at else None,
+            'last_status_check': car.last_status_check.strftime('%Y-%m-%d %H:%M:%S') if car.last_status_check else None,
+            'information_ads_date': car.information_ads_date.strftime('%Y-%m-%d') if car.information_ads_date else None,
+            'created_at': car.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+            'updated_at': car.updated_at.strftime('%Y-%m-%d %H:%M:%S'),
+            'standard_info': standard_info,
+            'category_info': category_info
+        }
+        
+        return JsonResponse({
+            'success': True,
+            'data': data
+        })
+        
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+# Verified Phones Management
+@login_required
+@user_passes_test(is_staff_user, login_url='/login/')
+def verified_phones_view(request):
+    """Verified phones management view with DataTables"""
+    from django.utils import timezone
+    
+    context = {
+        'page_title': 'Verified Phones',
+        'total_phones': VerifiedPhone.objects.count(),
+        'active_phones': VerifiedPhone.objects.filter(is_active=True).count(),
+        'expired_phones': VerifiedPhone.objects.filter(is_active=True).filter(
+            verified_at__lt=timezone.now() - timezone.timedelta(days=30)
+        ).count(),
+        'today_verifications': VerifiedPhone.objects.filter(
+            verified_at__date=timezone.now().date()
+        ).count(),
+    }
+    return render(request, 'admin/verified-phones.html', context)
+
+@csrf_exempt
+@login_required
+@user_passes_test(is_staff_user, login_url='/login/')
+def verified_phones_api(request):
+    """API endpoint for DataTables verified phones data"""
+    try:
+        # DataTables parameters
+        draw = int(request.GET.get('draw', 1))
+        start = int(request.GET.get('start', 0))
+        length = int(request.GET.get('length', 10))
+        search_value = request.GET.get('search[value]', '').strip()
+        
+        # Ordering
+        order_column_index = int(request.GET.get('order[0][column]', 0))
+        order_direction = request.GET.get('order[0][dir]', 'asc')
+        
+        # Column mapping for ordering
+        columns = ['id', 'phone_number', 'verified_at', 'last_accessed', 'access_count', 'is_active', 'ip_address']
+        order_column = columns[order_column_index] if order_column_index < len(columns) else 'id'
+        
+        if order_direction == 'desc':
+            order_column = '-' + order_column
+        
+        # Base queryset
+        queryset = VerifiedPhone.objects.all()
+        
+        # Additional filtering
+        status_filter = request.GET.get('status_filter')
+        if status_filter == 'active':
+            queryset = queryset.filter(is_active=True)
+        elif status_filter == 'inactive':
+            queryset = queryset.filter(is_active=False)
+        elif status_filter == 'expired':
+            from django.utils import timezone
+            queryset = queryset.filter(
+                is_active=True,
+                verified_at__lt=timezone.now() - timezone.timedelta(days=30)
+            )
+        
+        # Search filtering
+        if search_value:
+            from django.db.models import Q
+            queryset = queryset.filter(
+                Q(phone_number__icontains=search_value) |
+                Q(ip_address__icontains=search_value) |
+                Q(user_agent__icontains=search_value)
+            )
+        
+        # Total records
+        total_records = VerifiedPhone.objects.count()
+        filtered_records = queryset.count()
+        
+        # Apply ordering and pagination
+        queryset = queryset.order_by(order_column)[start:start + length]
+        
+        # Build data for DataTables
+        data = []
+        for phone in queryset:
+            from django.utils import timezone
+            
+            # Check if expired
+            is_expired = phone.is_expired()
+            
+            # Format status
+            if not phone.is_active:
+                status_badge = '<span class="badge badge-error">Inactive</span>'
+            elif is_expired:
+                status_badge = '<span class="badge badge-warning">Expired</span>'
+            else:
+                status_badge = '<span class="badge badge-success">Active</span>'
+            
+            # Format access count with badge
+            access_count_formatted = f'<span class="badge badge-outline">{phone.access_count}</span>'
+            
+            # Format phone number (mask middle digits for privacy)
+            masked_phone = phone.phone_number[:4] + '*' * (len(phone.phone_number) - 8) + phone.phone_number[-4:]
+            
+            # Actions column
+            actions = f'''<div class="btn-group btn-group-sm" role="group">
+                <button type="button" class="btn btn-info btn-sm" onclick="viewPhoneDetails({phone.id})" title="View Details">
+                    <i class="fas fa-eye"></i>
+                </button>
+                <button type="button" class="btn btn-warning btn-sm" onclick="togglePhoneStatus({phone.id}, {str(phone.is_active).lower()})" title="Toggle Status">
+                    <i class="fas fa-toggle-{'on' if phone.is_active else 'off'}"></i>
+                </button>
+            </div>'''
+            
+            data.append([
+                phone.id,
+                masked_phone,
+                phone.verified_at.strftime('%Y-%m-%d %H:%M'),
+                phone.last_accessed.strftime('%Y-%m-%d %H:%M'),
+                access_count_formatted,
+                status_badge,
+                phone.ip_address or '-',
+                actions
+            ])
+        
+        return JsonResponse({
+            'draw': draw,
+            'recordsTotal': total_records,
+            'recordsFiltered': filtered_records,
+            'data': data
+        })
+        
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+@login_required
+@user_passes_test(is_staff_user, login_url='/login/')
+def verified_phone_detail_api(request, phone_id):
+    """API endpoint to get detailed phone information"""
+    try:
+        phone = get_object_or_404(VerifiedPhone, id=phone_id)
+        
+        data = {
+            'id': phone.id,
+            'phone_number': phone.phone_number,
+            'verified_at': phone.verified_at.strftime('%Y-%m-%d %H:%M:%S'),
+            'last_accessed': phone.last_accessed.strftime('%Y-%m-%d %H:%M:%S'),
+            'access_count': phone.access_count,
+            'is_active': phone.is_active,
+            'is_expired': phone.is_expired(),
+            'user_agent': phone.user_agent,
+            'ip_address': phone.ip_address,
+        }
+        
+        return JsonResponse({
+            'success': True,
+            'data': data
+        })
+        
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+@login_required
+@user_passes_test(is_staff_user, login_url='/login/')
+def toggle_phone_status(request, phone_id):
+    """Toggle phone active status"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST method required'}, status=400)
+        
+    try:
+        phone = get_object_or_404(VerifiedPhone, id=phone_id)
+        phone.is_active = not phone.is_active
+        phone.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Phone status updated to {"Active" if phone.is_active else "Inactive"}',
+            'is_active': phone.is_active
+        })
+        
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+# OTP Sessions Management
+@login_required
+@user_passes_test(is_staff_user, login_url='/login/')
+def otp_sessions_view(request):
+    """OTP sessions management view with DataTables"""
+    from django.utils import timezone
+    
+    context = {
+        'page_title': 'OTP Sessions',
+        'total_sessions': OTPSession.objects.count(),
+        'used_sessions': OTPSession.objects.filter(is_used=True).count(),
+        'active_sessions': OTPSession.objects.filter(is_used=False).count(),
+        'today_sessions': OTPSession.objects.filter(
+            created_at__date=timezone.now().date()
+        ).count(),
+    }
+    return render(request, 'admin/otp-sessions.html', context)
+
+@csrf_exempt
+@login_required
+@user_passes_test(is_staff_user, login_url='/login/')
+def otp_sessions_api(request):
+    """API endpoint for DataTables OTP sessions data"""
+    try:
+        # DataTables parameters
+        draw = int(request.GET.get('draw', 1))
+        start = int(request.GET.get('start', 0))
+        length = int(request.GET.get('length', 10))
+        search_value = request.GET.get('search[value]', '').strip()
+        
+        # Ordering
+        order_column_index = int(request.GET.get('order[0][column]', 0))
+        order_direction = request.GET.get('order[0][dir]', 'asc')
+        
+        # Column mapping for ordering
+        columns = ['id', 'phone_number', 'otp_code', 'created_at', 'is_used', 'ip_address']
+        order_column = columns[order_column_index] if order_column_index < len(columns) else 'id'
+        
+        if order_direction == 'desc':
+            order_column = '-' + order_column
+        
+        # Base queryset
+        queryset = OTPSession.objects.all()
+        
+        # Additional filtering
+        status_filter = request.GET.get('status_filter')
+        if status_filter == 'used':
+            queryset = queryset.filter(is_used=True)
+        elif status_filter == 'unused':
+            queryset = queryset.filter(is_used=False)
+        elif status_filter == 'expired':
+            from django.utils import timezone
+            queryset = queryset.filter(
+                is_used=False,
+                created_at__lt=timezone.now() - timezone.timedelta(minutes=1)
+            )
+        
+        # Search filtering
+        if search_value:
+            from django.db.models import Q
+            queryset = queryset.filter(
+                Q(phone_number__icontains=search_value) |
+                Q(otp_code__icontains=search_value) |
+                Q(ip_address__icontains=search_value)
+            )
+        
+        # Total records
+        total_records = OTPSession.objects.count()
+        filtered_records = queryset.count()
+        
+        # Apply ordering and pagination
+        queryset = queryset.order_by(order_column)[start:start + length]
+        
+        # Build data for DataTables
+        data = []
+        for otp in queryset:
+            from django.utils import timezone
+            
+            # Check if expired
+            is_expired = otp.is_expired()
+            
+            # Format status
+            if otp.is_used:
+                status_badge = '<span class="badge badge-success">Used</span>'
+            elif is_expired:
+                status_badge = '<span class="badge badge-error">Expired</span>'
+            else:
+                status_badge = '<span class="badge badge-warning">Active</span>'
+            
+            # Format phone number (mask middle digits for privacy)
+            masked_phone = otp.phone_number[:4] + '*' * (len(otp.phone_number) - 8) + otp.phone_number[-4:]
+            
+            # Format OTP code (partially masked if not used)
+            masked_otp = otp.otp_code[:2] + '****' if not otp.is_used else otp.otp_code
+            
+            # Actions column
+            actions = f'''<div class="btn-group btn-group-sm" role="group">
+                <button type="button" class="btn btn-info btn-sm" onclick="viewOTPDetails({otp.id})" title="View Details">
+                    <i class="fas fa-eye"></i>
+                </button>
+            </div>'''
+            
+            data.append([
+                otp.id,
+                masked_phone,
+                masked_otp,
+                otp.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                status_badge,
+                otp.ip_address or '-',
+                actions
+            ])
+        
+        return JsonResponse({
+            'draw': draw,
+            'recordsTotal': total_records,
+            'recordsFiltered': filtered_records,
+            'data': data
+        })
+        
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+@login_required
+@user_passes_test(is_staff_user, login_url='/login/')
+def otp_session_detail_api(request, session_id):
+    """API endpoint to get detailed OTP session information"""
+    try:
+        otp = get_object_or_404(OTPSession, id=session_id)
+        
+        data = {
+            'id': otp.id,
+            'phone_number': otp.phone_number,
+            'otp_code': otp.otp_code,
+            'created_at': otp.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+            'is_used': otp.is_used,
+            'is_expired': otp.is_expired(),
+            'is_valid': otp.is_valid(),
+            'ip_address': otp.ip_address,
+            'expires_at': (otp.created_at + timezone.timedelta(minutes=1)).strftime('%Y-%m-%d %H:%M:%S'),
+        }
+        
+        return JsonResponse({
+            'success': True,
+            'data': data
+        })
+        
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+# Categories Management (Brand Categories System)
+@login_required
+@user_passes_test(is_staff_user, login_url='/login/')
+def categories_management_view(request):
+    """Categories management view with CRUD operations"""
+    from django.db.models import Count
+    
+    # Get categories with brand counts
+    categories = Category.objects.annotate(
+        brand_count=Count('brandcategory')
+    ).order_by('name')
+    
+    # Get unclassified brands count
+    classified_brands = BrandCategory.objects.values_list('brand', flat=True)
+    all_brands = CarUnified.objects.values_list('brand', flat=True).distinct()
+    unclassified_count = len(set(all_brands) - set(classified_brands))
+    
+    context = {
+        'page_title': 'Brand Categories Management',
+        'categories': categories,
+        'total_categories': categories.count(),
+        'total_classified_brands': BrandCategory.objects.count(),
+        'unclassified_brands': unclassified_count,
+        'total_unique_brands': CarUnified.objects.values('brand').distinct().count(),
+    }
+    return render(request, 'admin/categories-management.html', context)
+
+@csrf_exempt
+@login_required
+@user_passes_test(is_staff_user, login_url='/login/')
+def category_create(request):
+    """Create new category"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST method required'}, status=400)
+    
+    try:
+        data = json.loads(request.body)
+        name = data.get('name', '').strip()
+        reduction_percentage = data.get('reduction_percentage', 0.0)
+        
+        if not name:
+            return JsonResponse({'error': 'Category name is required'}, status=400)
+        
+        # Validate reduction percentage
+        try:
+            reduction_percentage = float(reduction_percentage)
+            if reduction_percentage < 0 or reduction_percentage > 100:
+                return JsonResponse({'error': 'Reduction percentage must be between 0 and 100'}, status=400)
+        except (TypeError, ValueError):
+            return JsonResponse({'error': 'Invalid reduction percentage'}, status=400)
+        
+        # Check for duplicate
+        if Category.objects.filter(name=name).exists():
+            return JsonResponse({'error': 'Category with this name already exists'}, status=400)
+        
+        category = Category.objects.create(name=name, reduction_percentage=reduction_percentage)
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Category "{category.name}" created successfully',
+            'category_id': category.id,
+            'category_name': category.name
+        })
+        
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+@login_required
+@user_passes_test(is_staff_user, login_url='/login/')
+def category_edit(request, category_id):
+    """Edit existing category"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST method required'}, status=400)
+    
+    try:
+        category = get_object_or_404(Category, id=category_id)
+        data = json.loads(request.body)
+        new_name = data.get('name', '').strip()
+        reduction_percentage = data.get('reduction_percentage', category.reduction_percentage)
+        
+        if not new_name:
+            return JsonResponse({'error': 'Category name is required'}, status=400)
+        
+        # Validate reduction percentage
+        try:
+            reduction_percentage = float(reduction_percentage)
+            if reduction_percentage < 0 or reduction_percentage > 100:
+                return JsonResponse({'error': 'Reduction percentage must be between 0 and 100'}, status=400)
+        except (TypeError, ValueError):
+            return JsonResponse({'error': 'Invalid reduction percentage'}, status=400)
+        
+        # Check for duplicate (excluding current category)
+        if Category.objects.filter(name=new_name).exclude(id=category_id).exists():
+            return JsonResponse({'error': 'Category with this name already exists'}, status=400)
+        
+        old_name = category.name
+        old_reduction = category.reduction_percentage
+        category.name = new_name
+        category.reduction_percentage = reduction_percentage
+        category.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Category updated from "{old_name}" to "{new_name}"',
+            'category_id': category.id,
+            'category_name': category.name
+        })
+        
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+@login_required
+@user_passes_test(is_staff_user, login_url='/login/')
+def category_delete(request, category_id):
+    """Delete category (with safety checks)"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST method required'}, status=400)
+    
+    try:
+        category = get_object_or_404(Category, id=category_id)
+        
+        # Check if category has brands assigned
+        brand_count = category.brandcategory_set.count()
+        if brand_count > 0:
+            return JsonResponse({
+                'error': f'Cannot delete category. It has {brand_count} brands assigned. Please reassign or remove the brands first.'
+            }, status=400)
+        
+        category_name = category.name
+        category.delete()
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Category "{category_name}" deleted successfully'
+        })
+        
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+@login_required
+@user_passes_test(is_staff_user, login_url='/login/')
+def category_brands_api(request, category_id):
+    """Get brands assigned to a specific category"""
+    try:
+        category = get_object_or_404(Category, id=category_id)
+        brand_categories = BrandCategory.objects.filter(category=category).order_by('brand')
+        
+        brands = []
+        for bc in brand_categories:
+            # Count cars for this brand
+            car_count = CarUnified.objects.filter(brand=bc.brand).count()
+            brands.append({
+                'id': bc.id,
+                'brand': bc.brand,
+                'car_count': car_count,
+                'created_at': bc.created_at.strftime('%Y-%m-%d %H:%M')
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'category': {
+                'id': category.id,
+                'name': category.name
+            },
+            'brands': brands,
+            'total_brands': len(brands)
+        })
+        
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+# Brand Classification Interface
+@login_required
+@user_passes_test(is_staff_user, login_url='/login/')
+def brand_classification_view(request):
+    """Brand classification interface"""
+    from django.db.models import Count
+    
+    # Get statistics
+    total_brands = CarUnified.objects.values('brand').distinct().count()
+    classified_brands = BrandCategory.objects.count()
+    unclassified_brands = total_brands - classified_brands
+    total_categories = Category.objects.count()
+    
+    context = {
+        'page_title': 'Brand Classification',
+        'total_brands': total_brands,
+        'classified_brands': classified_brands,
+        'unclassified_brands': unclassified_brands,
+        'total_categories': total_categories,
+        'categories': Category.objects.all().order_by('name'),
+    }
+    return render(request, 'admin/brand-classification.html', context)
+
+@csrf_exempt
+@login_required
+@user_passes_test(is_staff_user, login_url='/login/')
+def brands_data_api(request):
+    """API for brand classification DataTables"""
+    try:
+        # DataTables parameters
+        draw = int(request.GET.get('draw', 1))
+        start = int(request.GET.get('start', 0))
+        length = int(request.GET.get('length', 10))
+        search_value = request.GET.get('search[value]', '').strip()
+        
+        # Filter parameters
+        status_filter = request.GET.get('status_filter', '')  # classified, unclassified, all
+        category_filter = request.GET.get('category_filter', '')
+        
+        # Get all unique brands with car counts
+        from django.db.models import Count, Q
+        
+        # Base query: get all brands with their car counts
+        brands_query = CarUnified.objects.values('brand').annotate(
+            car_count=Count('id')
+        )
+        
+        # Get classified brands mapping
+        brand_categories_map = {}
+        for bc in BrandCategory.objects.select_related('category'):
+            brand_categories_map[bc.brand] = {
+                'category_id': bc.category.id,
+                'category_name': bc.category.name,
+                'mapping_id': bc.id
+            }
+        
+        # Apply search filter
+        if search_value:
+            brands_query = brands_query.filter(brand__icontains=search_value)
+        
+        # Apply status filter
+        if status_filter == 'classified':
+            classified_brand_names = list(brand_categories_map.keys())
+            brands_query = brands_query.filter(brand__in=classified_brand_names)
+        elif status_filter == 'unclassified':
+            classified_brand_names = list(brand_categories_map.keys())
+            brands_query = brands_query.exclude(brand__in=classified_brand_names)
+        
+        # Apply category filter
+        if category_filter:
+            category_brands = BrandCategory.objects.filter(
+                category_id=category_filter
+            ).values_list('brand', flat=True)
+            brands_query = brands_query.filter(brand__in=category_brands)
+        
+        # Get total counts
+        total_records = CarUnified.objects.values('brand').distinct().count()
+        filtered_records = brands_query.count()
+        
+        # Apply pagination and ordering
+        brands_query = brands_query.order_by('brand')[start:start + length]
+        
+        # Build data for DataTables
+        data = []
+        for brand_data in brands_query:
+            brand_name = brand_data['brand']
+            car_count = brand_data['car_count']
+            
+            # Check if brand is classified
+            category_info = brand_categories_map.get(brand_name)
+            
+            if category_info:
+                # Classified
+                status_html = f'<span class="badge badge-success">Classified</span>'
+                category_html = f'<span class="badge badge-primary">{category_info["category_name"]}</span>'
+                action_btn = f'''<button class="btn btn-sm btn-warning" onclick="reassignBrand('{brand_name}', {category_info['category_id']}, {category_info['mapping_id']})" title="Reassign">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="btn btn-sm btn-error" onclick="removeBrandClassification('{brand_name}', {category_info['mapping_id']})" title="Remove">
+                    <i class="fas fa-trash"></i>
+                </button>'''
+            else:
+                # Unclassified
+                status_html = f'<span class="badge badge-error">Unclassified</span>'
+                category_html = '<span class="text-base-content/40">-</span>'
+                action_btn = f'''<button class="btn btn-sm btn-primary" onclick="assignBrand('{brand_name}')" title="Assign">
+                    <i class="fas fa-plus"></i> Assign
+                </button>'''
+            
+            data.append([
+                brand_name,
+                f'{car_count:,}',
+                status_html,
+                category_html,
+                action_btn
+            ])
+        
+        return JsonResponse({
+            'draw': draw,
+            'recordsTotal': total_records,
+            'recordsFiltered': filtered_records,
+            'data': data
+        })
+        
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+@login_required
+@user_passes_test(is_staff_user, login_url='/login/')
+def assign_brand_to_category(request):
+    """Assign a brand to a category"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST method required'}, status=400)
+    
+    try:
+        data = json.loads(request.body)
+        brand_name = data.get('brand_name', '').strip()
+        category_id = data.get('category_id')
+        
+        if not brand_name or not category_id:
+            return JsonResponse({'error': 'Brand name and category are required'}, status=400)
+        
+        # Validate category exists
+        category = get_object_or_404(Category, id=category_id)
+        
+        # Validate brand exists in cars_unified
+        if not CarUnified.objects.filter(brand=brand_name).exists():
+            return JsonResponse({'error': 'Brand not found in database'}, status=400)
+        
+        # Check if brand is already classified
+        if BrandCategory.objects.filter(brand=brand_name).exists():
+            return JsonResponse({'error': 'Brand is already classified'}, status=400)
+        
+        # Create the brand-category mapping
+        brand_category = BrandCategory.objects.create(
+            brand=brand_name,
+            category=category
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Brand "{brand_name}" assigned to category "{category.name}"',
+            'brand_category_id': brand_category.id
+        })
+        
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+    
+@csrf_exempt
+@login_required
+@user_passes_test(is_staff_user, login_url='/login/')
+def reassign_brand_to_category(request):
+    """Reassign a brand to a different category"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST method required'}, status=400)
+    
+    try:
+        data = json.loads(request.body)
+        brand_name = data.get('brand_name', '').strip()
+        new_category_id = data.get('category_id')
+        mapping_id = data.get('mapping_id')
+        
+        if not brand_name or not new_category_id or not mapping_id:
+            return JsonResponse({'error': 'Brand name, category, and mapping ID are required'}, status=400)
+        
+        # Validate new category exists
+        new_category = get_object_or_404(Category, id=new_category_id)
+        
+        # Get existing mapping
+        brand_category = get_object_or_404(BrandCategory, id=mapping_id, brand=brand_name)
+        old_category_name = brand_category.category.name
+        
+        # Update the mapping
+        brand_category.category = new_category
+        brand_category.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Brand "{brand_name}" reassigned from "{old_category_name}" to "{new_category.name}"'
+        })
+        
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+@login_required
+@user_passes_test(is_staff_user, login_url='/login/')
+def remove_brand_classification(request):
+    """Remove brand classification (make it unclassified)"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST method required'}, status=400)
+    
+    try:
+        data = json.loads(request.body)
+        brand_name = data.get('brand_name', '').strip()
+        mapping_id = data.get('mapping_id')
+        
+        if not brand_name or not mapping_id:
+            return JsonResponse({'error': 'Brand name and mapping ID are required'}, status=400)
+        
+        # Get and delete the mapping
+        brand_category = get_object_or_404(BrandCategory, id=mapping_id, brand=brand_name)
+        category_name = brand_category.category.name
+        brand_category.delete()
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Brand "{brand_name}" removed from category "{category_name}"'
+        })
+        
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+@login_required
+@user_passes_test(is_staff_user, login_url='/login/')
+def get_unclassified_brands_api(request):
+    """Get list of unclassified brands"""
+    try:
+        from django.db.models import Count
+        
+        # Get all brands from cars_unified
+        all_brands_query = CarUnified.objects.values('brand').annotate(
+            car_count=Count('id')
+        ).order_by('brand')
+        
+        # Get classified brands
+        classified_brands = set(BrandCategory.objects.values_list('brand', flat=True))
+        
+        # Filter unclassified brands
+        unclassified_brands = []
+        for brand_data in all_brands_query:
+            if brand_data['brand'] not in classified_brands:
+                unclassified_brands.append({
+                    'brand': brand_data['brand'],
+                    'car_count': brand_data['car_count']
+                })
+        
+        return JsonResponse({
+            'success': True,
+            'unclassified_brands': unclassified_brands,
+            'total_unclassified': len(unclassified_brands)
         })
         
     except Exception as e:

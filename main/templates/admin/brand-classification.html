@@ -1,0 +1,670 @@
+{% extends 'admin/base-admin.html' %}
+
+{% block title %}Brand Classification - Admin Panel{% endblock %}
+{% block page_title %}Brand Classification{% endblock %}
+
+{% block extra_css %}
+<style>    
+    .table-container {
+        overflow-x: auto;
+        background: white;
+        border-radius: 0.5rem;
+        box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+    }
+    
+    .brand-name {
+        font-family: monospace;
+        font-weight: 600;
+    }
+    
+    .action-buttons {
+        white-space: nowrap;
+    }
+    
+    .action-buttons .btn {
+        margin-right: 0.25rem;
+    }
+    
+    .sort-header {
+        cursor: pointer;
+        user-select: none;
+    }
+    
+    .sort-header:hover {
+        background-color: rgb(0 0 0 / 0.05);
+    }
+    
+    .sort-icon {
+        opacity: 0.3;
+        transition: opacity 0.2s;
+    }
+    
+    .sort-header.active .sort-icon {
+        opacity: 1;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6" x-data="brandClassificationManager()">
+    <!-- Page Header -->
+    <div class="flex justify-between items-center">
+        <div>
+            <h1 class="text-3xl font-bold">Brand Classification</h1>
+            <p class="text-base-content/60 mt-1">Assign car brands to categories for automatic pricing calculations</p>
+        </div>
+        <div class="flex gap-2">
+            <a href="{% url 'main:categories_management_view' %}" class="btn btn-secondary">
+                <i class="fas fa-tags"></i>
+                Manage Categories
+            </a>
+            <button class="btn btn-primary" onclick="refreshData()">
+                <i class="fas fa-sync-alt"></i>
+                Refresh
+            </button>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="stat bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg">
+            <div class="stat-figure text-white/80">
+                <i class="fas fa-car text-3xl"></i>
+            </div>
+            <div class="stat-title text-white/80">Total Brands</div>
+            <div class="stat-value text-white">{{ total_brands }}</div>
+            <div class="stat-desc text-white/80">Unique brands</div>
+        </div>
+
+        <div class="stat bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg">
+            <div class="stat-figure text-white/80">
+                <i class="fas fa-check-circle text-3xl"></i>
+            </div>
+            <div class="stat-title text-white/80">Classified</div>
+            <div class="stat-value text-white">{{ classified_brands }}</div>
+            <div class="stat-desc text-white/80">Brands assigned</div>
+        </div>
+
+        <div class="stat bg-gradient-to-r from-red-500 to-red-600 text-white rounded-lg">
+            <div class="stat-figure text-white/80">
+                <i class="fas fa-exclamation-triangle text-3xl"></i>
+            </div>
+            <div class="stat-title text-white/80">Unclassified</div>
+            <div class="stat-value text-white">{{ unclassified_brands }}</div>
+            <div class="stat-desc text-white/80">Need classification</div>
+        </div>
+
+        <div class="stat bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg">
+            <div class="stat-figure text-white/80">
+                <i class="fas fa-percentage text-3xl"></i>
+            </div>
+            <div class="stat-title text-white/80">Progress</div>
+            <div class="stat-value text-white">{% widthratio classified_brands total_brands 100 %}%</div>
+            <div class="stat-desc text-white/80">Classification complete</div>
+        </div>
+    </div>
+
+    <!-- Warning for Unclassified Brands -->
+    {% if unclassified_brands > 0 %}
+    <div class="alert alert-warning">
+        <i class="fas fa-exclamation-triangle"></i>
+        <div>
+            <h3 class="font-bold">{{ unclassified_brands }} Brands Need Classification</h3>
+            <div class="text-sm">Users submitting forms with unclassified brands will receive 0% reduction for the brand category layer.</div>
+        </div>
+        <div class="flex gap-2">
+            <button class="btn btn-sm btn-warning" onclick="filterUnclassified()">
+                <i class="fas fa-filter"></i>
+                Show Unclassified
+            </button>
+            <button class="btn btn-sm btn-success" onclick="bulkAssign()">
+                <i class="fas fa-magic"></i>
+                Bulk Assign
+            </button>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Filters -->
+    <div class="card bg-base-100 shadow">
+        <div class="card-body">
+            <h2 class="card-title">
+                <i class="fas fa-filter"></i>
+                Filters
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text">Status</span>
+                    </label>
+                    <select x-model="filters.status" @change="applyFilters()" class="select select-bordered">
+                        <option value="">All Brands</option>
+                        <option value="classified">Classified Only</option>
+                        <option value="unclassified">Unclassified Only</option>
+                    </select>
+                </div>
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text">Category</span>
+                    </label>
+                    <select x-model="filters.category" @change="applyFilters()" class="select select-bordered">
+                        <option value="">All Categories</option>
+                        {% for category in categories %}
+                        <option value="{{ category.id }}">{{ category.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text">Quick Actions</span>
+                    </label>
+                    <div class="flex gap-2">
+                        <button class="btn btn-sm btn-outline" @click="clearFilters()">
+                            <i class="fas fa-times"></i>
+                            Clear
+                        </button>
+                        <button class="btn btn-sm btn-success" @click="refreshData()">
+                            <i class="fas fa-sync-alt"></i>
+                            Refresh
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Data Table -->
+    <div class="card bg-base-100 shadow">
+        <div class="card-body">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="card-title">
+                    <i class="fas fa-table"></i>
+                    Brand Classification
+                </h2>
+                <div class="flex items-center gap-4">
+                    <!-- Search -->
+                    <div class="form-control">
+                        <div class="input-group">
+                            <input type="text" x-model="search" @input="performSearch()" 
+                                   placeholder="Search brands..." class="input input-bordered input-sm">
+                            <button class="btn btn-sm btn-square">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Page Size -->
+                    <div class="form-control">
+                        <select x-model="pageSize" @change="changePageSize()" class="select select-bordered select-sm">
+                            <option value="10">10</option>
+                            <option value="25">25</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Loading State -->
+            <div x-show="loading" class="flex justify-center items-center py-12">
+                <span class="loading loading-spinner loading-md"></span>
+                <span class="ml-2">Loading brands...</span>
+            </div>
+            
+            <!-- Error State -->
+            <div x-show="error" class="alert alert-error mb-4">
+                <i class="fas fa-exclamation-triangle"></i>
+                <span x-text="error"></span>
+            </div>
+            
+            <!-- Table -->
+            <div x-show="!loading && !error" class="table-container">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th @click="sort('brand')" class="sort-header" :class="{ 'active': sortField === 'brand' }">
+                                Brand Name 
+                                <i class="fas fa-sort sort-icon" :class="{
+                                    'fa-sort-up': sortField === 'brand' && sortDirection === 'asc',
+                                    'fa-sort-down': sortField === 'brand' && sortDirection === 'desc'
+                                }"></i>
+                            </th>
+                            <th @click="sort('car_count')" class="sort-header" :class="{ 'active': sortField === 'car_count' }">
+                                Car Count
+                                <i class="fas fa-sort sort-icon" :class="{
+                                    'fa-sort-up': sortField === 'car_count' && sortDirection === 'asc',
+                                    'fa-sort-down': sortField === 'car_count' && sortDirection === 'desc'
+                                }"></i>
+                            </th>
+                            <th>Status</th>
+                            <th>Category</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <template x-for="brand in paginatedData" :key="brand.brand">
+                            <tr>
+                                <td>
+                                    <span class="brand-name" x-text="brand.brand"></span>
+                                </td>
+                                <td>
+                                    <span class="badge badge-neutral" x-text="brand.car_count.toLocaleString()"></span>
+                                </td>
+                                <td>
+                                    <span class="badge" :class="{
+                                        'badge-success': brand.is_classified,
+                                        'badge-warning': !brand.is_classified
+                                    }" x-text="brand.is_classified ? 'Classified' : 'Unclassified'"></span>
+                                </td>
+                                <td>
+                                    <span x-text="brand.category || '-'" class="text-sm"></span>
+                                </td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <template x-if="!brand.is_classified">
+                                            <button @click="assignBrand(brand)" class="btn btn-xs btn-success">
+                                                <i class="fas fa-plus"></i>
+                                                Assign
+                                            </button>
+                                        </template>
+                                        <template x-if="brand.is_classified">
+                                            <div class="dropdown dropdown-end">
+                                                <div tabindex="0" role="button" class="btn btn-xs btn-primary">
+                                                    <i class="fas fa-cog"></i>
+                                                </div>
+                                                <ul class="dropdown-content menu bg-base-100 rounded-box z-[1] w-32 p-2 shadow">
+                                                    <li><a @click="reassignBrand(brand)"><i class="fas fa-exchange-alt"></i> Reassign</a></li>
+                                                    <li><a @click="removeBrand(brand)"><i class="fas fa-trash"></i> Remove</a></li>
+                                                </ul>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </td>
+                            </tr>
+                        </template>
+                        
+                        <!-- Empty state -->
+                        <tr x-show="paginatedData.length === 0 && !loading">
+                            <td colspan="5" class="text-center py-8 text-base-content/60">
+                                <i class="fas fa-search text-4xl mb-4"></i>
+                                <div>No brands found</div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Pagination -->
+            <div x-show="!loading && !error && totalPages > 1" class="flex justify-between items-center mt-4">
+                <div class="text-sm text-base-content/60">
+                    Showing <span x-text="pageInfo"></span> results
+                </div>
+                
+                <div class="join">
+                    <button @click="prevPage()" :disabled="currentPage === 1" class="join-item btn btn-sm">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    
+                    <template x-for="page in pageNumbers" :key="page">
+                        <button @click="goToPage(page)" 
+                                :class="{ 'btn-active': page === currentPage }"
+                                class="join-item btn btn-sm" 
+                                x-text="page">
+                        </button>
+                    </template>
+                    
+                    <button @click="nextPage()" :disabled="currentPage === totalPages" class="join-item btn btn-sm">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Assign Brand Modal -->
+<div class="modal" :class="{ 'modal-open': assignModal.show }" x-show="assignModal.show">
+    <div class="modal-box">
+        <h3 class="font-bold text-lg mb-4">
+            <i class="fas" :class="assignModal.isReassign ? 'fa-exchange-alt' : 'fa-plus'"></i>
+            <span x-text="assignModal.isReassign ? 'Reassign Brand to Category' : 'Assign Brand to Category'"></span>
+        </h3>
+        <form @submit.prevent="confirmAssignment()">
+            <div class="form-control mb-4">
+                <label class="label">
+                    <span class="label-text">Brand Name</span>
+                </label>
+                <input type="text" x-model="assignModal.brandName" class="input input-bordered" readonly>
+            </div>
+            <div class="form-control mb-4">
+                <label class="label">
+                    <span class="label-text">Select Category</span>
+                </label>
+                <select x-model="assignModal.categoryId" class="select select-bordered" required>
+                    <option value="">Choose a category</option>
+                    {% for category in categories %}
+                    <option value="{{ category.id }}">{{ category.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </form>
+        <div class="modal-action">
+            <button class="btn" @click="closeAssignModal()">Cancel</button>
+            <button class="btn btn-primary" @click="confirmAssignment()" :disabled="assignModal.saving">
+                <span x-show="!assignModal.saving">
+                    <i class="fas fa-check"></i>
+                    <span x-text="assignModal.isReassign ? 'Reassign Brand' : 'Assign Brand'"></span>
+                </span>
+                <span x-show="assignModal.saving">
+                    <span class="loading loading-spinner loading-xs"></span>
+                    Saving...
+                </span>
+            </button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+
+<script>
+function brandClassificationManager() {
+    return {
+        // Data
+        data: [],
+        filteredData: [],
+        loading: false,
+        error: null,
+        
+        // Pagination
+        currentPage: 1,
+        pageSize: 25,
+        totalPages: 1,
+        totalRecords: 0,
+        
+        // Sorting
+        sortField: 'brand',
+        sortDirection: 'asc',
+        
+        // Search & Filters
+        search: '',
+        filters: {
+            status: '',
+            category: ''
+        },
+        
+        // Modal state
+        assignModal: {
+            show: false,
+            brandName: '',
+            brandData: null,
+            categoryId: '',
+            isReassign: false,
+            saving: false
+        },
+        
+        // Initialize
+        async init() {
+            await this.loadData();
+        },
+        
+        // Load brands data
+        async loadData() {
+            this.loading = true;
+            this.error = null;
+            
+            try {
+                const params = new URLSearchParams({
+                    page: this.currentPage,
+                    size: this.pageSize,
+                    search: this.search,
+                    sort: this.sortField,
+                    direction: this.sortDirection,
+                    status_filter: this.filters.status,
+                    category_filter: this.filters.category
+                });
+                
+                const response = await fetch(`{% url "main:brands_data_api" %}?${params}`);
+                const result = await response.json();
+                
+                if (result.data) {
+                    this.data = result.data;
+                    this.totalRecords = result.recordsFiltered || result.recordsTotal || this.data.length;
+                    this.calculatePagination();
+                } else {
+                    throw new Error('Invalid response format');
+                }
+            } catch (error) {
+                console.error('Error loading brands:', error);
+                this.error = 'Failed to load brand data';
+            } finally {
+                this.loading = false;
+            }
+        },
+        
+        // Pagination
+        calculatePagination() {
+            this.totalPages = Math.ceil(this.totalRecords / this.pageSize);
+        },
+        
+        get paginatedData() {
+            // Server-side pagination handles this
+            return this.data;
+        },
+        
+        get pageInfo() {
+            if (this.totalRecords === 0) return '0-0 of 0';
+            const start = (this.currentPage - 1) * this.pageSize + 1;
+            const end = Math.min(this.currentPage * this.pageSize, this.totalRecords);
+            return `${start}-${end} of ${this.totalRecords}`;
+        },
+        
+        get pageNumbers() {
+            const pages = [];
+            const maxPages = 5;
+            let startPage = Math.max(1, this.currentPage - Math.floor(maxPages / 2));
+            let endPage = Math.min(this.totalPages, startPage + maxPages - 1);
+            
+            if (endPage - startPage + 1 < maxPages) {
+                startPage = Math.max(1, endPage - maxPages + 1);
+            }
+            
+            for (let i = startPage; i <= endPage; i++) {
+                pages.push(i);
+            }
+            return pages;
+        },
+        
+        // Navigation
+        goToPage(page) {
+            if (page >= 1 && page <= this.totalPages) {
+                this.currentPage = page;
+                this.loadData();
+            }
+        },
+        
+        nextPage() {
+            this.goToPage(this.currentPage + 1);
+        },
+        
+        prevPage() {
+            this.goToPage(this.currentPage - 1);
+        },
+        
+        // Sorting
+        sort(field) {
+            if (this.sortField === field) {
+                this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                this.sortField = field;
+                this.sortDirection = 'asc';
+            }
+            this.currentPage = 1;
+            this.loadData();
+        },
+        
+        // Search and filters
+        async performSearch() {
+            this.currentPage = 1;
+            await this.loadData();
+        },
+        
+        async applyFilters() {
+            this.currentPage = 1;
+            await this.loadData();
+        },
+        
+        clearFilters() {
+            this.filters.status = '';
+            this.filters.category = '';
+            this.search = '';
+            this.currentPage = 1;
+            this.loadData();
+        },
+        
+        async changePageSize() {
+            this.currentPage = 1;
+            await this.loadData();
+        },
+        
+        async refreshData() {
+            await this.loadData();
+        },
+        
+        // Brand actions
+        assignBrand(brand) {
+            this.assignModal = {
+                show: true,
+                brandName: brand.brand,
+                brandData: brand,
+                categoryId: '',
+                isReassign: false,
+                saving: false
+            };
+        },
+        
+        reassignBrand(brand) {
+            this.assignModal = {
+                show: true,
+                brandName: brand.brand,
+                brandData: brand,
+                categoryId: brand.category_id || '',
+                isReassign: true,
+                saving: false
+            };
+        },
+        
+        async removeBrand(brand) {
+            const result = await Swal.fire({
+                title: 'Remove Brand Classification',
+                text: `Remove "${brand.brand}" from category "${brand.category}"?`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Yes, Remove',
+                cancelButtonText: 'Cancel',
+                confirmButtonColor: '#dc2626'
+            });
+            
+            if (result.isConfirmed) {
+                try {
+                    const response = await fetch('{% url "main:remove_brand_classification" %}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': this.getCsrfToken()
+                        },
+                        body: JSON.stringify({
+                            brand: brand.brand
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        await Swal.fire('Removed!', data.message, 'success');
+                        this.loadData();
+                    } else {
+                        throw new Error(data.error || 'Failed to remove brand');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    Swal.fire('Error', error.message, 'error');
+                }
+            }
+        },
+        
+        // Modal functions
+        closeAssignModal() {
+            this.assignModal.show = false;
+        },
+        
+        async confirmAssignment() {
+            if (!this.assignModal.categoryId) {
+                Swal.fire('Error', 'Please select a category', 'error');
+                return;
+            }
+            
+            this.assignModal.saving = true;
+            
+            try {
+                const url = this.assignModal.isReassign ? 
+                    '{% url "main:reassign_brand_to_category" %}' :
+                    '{% url "main:assign_brand_to_category" %}';
+                
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': this.getCsrfToken()
+                    },
+                    body: JSON.stringify({
+                        brand: this.assignModal.brandName,
+                        category_id: this.assignModal.categoryId
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    await Swal.fire('Success!', data.message, 'success');
+                    this.closeAssignModal();
+                    this.loadData();
+                } else {
+                    throw new Error(data.error || 'Failed to assign brand');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                Swal.fire('Error', error.message, 'error');
+            } finally {
+                this.assignModal.saving = false;
+            }
+        },
+        
+        // Utility functions
+        getCsrfToken() {
+            return document.querySelector('[name=csrfmiddlewaretoken]')?.value || 
+                   this.getCookie('csrftoken');
+        },
+        
+        getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+    }
+}
+
+// Note: Brand Classification page migrated from jQuery + DataTables to Alpine.js
+// All functionality preserved with modern Alpine.js reactive components
+</script>
+{% endblock %}

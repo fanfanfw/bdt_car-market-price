@@ -1,0 +1,666 @@
+{% extends 'admin/base-admin.html' %}
+
+{% block title %}Verified Phones - Admin Panel{% endblock %}
+{% block page_title %}Verified Phones{% endblock %}
+
+{% block extra_css %}
+<style>
+    .table-container {
+        overflow-x: auto;
+        background: white;
+        border-radius: 0.5rem;
+        box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+    }
+    
+    .sort-header {
+        cursor: pointer;
+        user-select: none;
+        transition: all 0.2s ease;
+    }
+    
+    .sort-header:hover {
+        background-color: rgba(0, 0, 0, 0.05);
+    }
+    
+    .sort-icon {
+        opacity: 0.5;
+        transition: opacity 0.2s ease;
+    }
+    
+    .sort-header:hover .sort-icon {
+        opacity: 1;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6" x-data="verifiedPhonesManager()">
+    <!-- Page Header -->
+    <div class="flex justify-between items-center">
+        <div>
+            <h1 class="text-3xl font-bold">Verified Phones</h1>
+            <p class="text-base-content/60 mt-1">Manage phone number verifications and access tracking</p>
+        </div>
+        <div class="flex gap-2">
+            <button class="btn btn-primary" @click="refreshData()">
+                <i class="fas fa-sync-alt"></i>
+                Refresh
+            </button>
+            <button class="btn btn-secondary" @click="exportData()">
+                <i class="fas fa-download"></i>
+                Export
+            </button>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="stat bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg">
+            <div class="stat-figure text-white/80">
+                <i class="fas fa-phone text-3xl"></i>
+            </div>
+            <div class="stat-title text-white/80">Total Phones</div>
+            <div class="stat-value text-white">{{ total_phones }}</div>
+            <div class="stat-desc text-white/80">All verifications</div>
+        </div>
+
+        <div class="stat bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg">
+            <div class="stat-figure text-white/80">
+                <i class="fas fa-check-circle text-3xl"></i>
+            </div>
+            <div class="stat-title text-white/80">Active Phones</div>
+            <div class="stat-value text-white">{{ active_phones }}</div>
+            <div class="stat-desc text-white/80">Currently active</div>
+        </div>
+
+        <div class="stat bg-gradient-to-r from-yellow-500 to-yellow-600 text-white rounded-lg">
+            <div class="stat-figure text-white/80">
+                <i class="fas fa-clock text-3xl"></i>
+            </div>
+            <div class="stat-title text-white/80">Expired</div>
+            <div class="stat-value text-white">{{ expired_phones }}</div>
+            <div class="stat-desc text-white/80">Need re-verification</div>
+        </div>
+
+        <div class="stat bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg">
+            <div class="stat-figure text-white/80">
+                <i class="fas fa-calendar-day text-3xl"></i>
+            </div>
+            <div class="stat-title text-white/80">Today</div>
+            <div class="stat-value text-white">{{ today_verifications }}</div>
+            <div class="stat-desc text-white/80">New verifications</div>
+        </div>
+    </div>
+
+    <!-- Status Filter -->
+    <div class="card bg-base-100 shadow">
+        <div class="card-body">
+            <h2 class="card-title">
+                <i class="fas fa-filter"></i>
+                Filters
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text">Status</span>
+                    </label>
+                    <select x-model="filters.status" @change="applyFilters()" class="select select-bordered">
+                        <option value="">All Status</option>
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                        <option value="expired">Expired</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Data Table -->
+    <div class="card bg-base-100 shadow">
+        <div class="card-body">
+            <!-- Search and Controls -->
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+                <h2 class="card-title">
+                    <i class="fas fa-table"></i>
+                    Phone Verifications
+                </h2>
+                <div class="flex flex-col md:flex-row gap-4 items-end">
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">Search phones</span>
+                        </label>
+                        <input 
+                            type="text" 
+                            x-model="search" 
+                            @input.debounce.300ms="performSearch()"
+                            placeholder="Search by phone number, IP..."
+                            class="input input-bordered w-full max-w-xs"
+                        >
+                    </div>
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">Show entries</span>
+                        </label>
+                        <select x-model="pageSize" @change="changePageSize()" class="select select-bordered">
+                            <option value="10">10</option>
+                            <option value="25">25</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Loading State -->
+            <div x-show="loading" class="flex items-center justify-center p-8">
+                <span class="loading loading-spinner loading-md mr-2"></span>
+                Loading phones...
+            </div>
+
+            <!-- Error State -->
+            <div x-show="error" class="alert alert-error mb-4">
+                <i class="fas fa-exclamation-circle"></i>
+                <span x-text="error"></span>
+            </div>
+
+            <!-- Data Table -->
+            <div class="table-container" x-show="!loading">
+                <table class="table table-striped w-full">
+                    <thead>
+                        <tr>
+                            <th @click="sort('id')" class="sort-header">
+                                ID
+                                <i class="fas fa-sort sort-icon ml-1"></i>
+                            </th>
+                            <th @click="sort('phone_number')" class="sort-header">
+                                Phone Number
+                                <i class="fas fa-sort sort-icon ml-1"></i>
+                            </th>
+                            <th @click="sort('verified_at')" class="sort-header">
+                                Verified At
+                                <i class="fas fa-sort sort-icon ml-1"></i>
+                            </th>
+                            <th @click="sort('last_accessed')" class="sort-header">
+                                Last Accessed
+                                <i class="fas fa-sort sort-icon ml-1"></i>
+                            </th>
+                            <th @click="sort('access_count')" class="sort-header">
+                                Access Count
+                                <i class="fas fa-sort sort-icon ml-1"></i>
+                            </th>
+                            <th>Status</th>
+                            <th>IP Address</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <template x-for="phone in paginatedData" :key="phone.id">
+                            <tr>
+                                <td x-text="phone.id"></td>
+                                <td>
+                                    <span class="font-mono" x-text="phone.phone_number"></span>
+                                </td>
+                                <td x-text="phone.verified_at"></td>
+                                <td x-text="phone.last_accessed"></td>
+                                <td>
+                                    <span class="badge badge-outline" x-text="phone.access_count"></span>
+                                </td>
+                                <td>
+                                    <span class="badge" :class="{
+                                        'badge-success': phone.status === 'active' && !phone.is_expired,
+                                        'badge-warning': phone.status === 'active' && phone.is_expired,
+                                        'badge-error': phone.status === 'inactive'
+                                    }" x-text="phone.status_display"></span>
+                                </td>
+                                <td>
+                                    <span class="font-mono" x-text="phone.ip_address || '-'"></span>
+                                </td>
+                                <td>
+                                    <div class="flex gap-1">
+                                        <button 
+                                            @click="viewPhoneDetail(phone)" 
+                                            class="btn btn-xs btn-primary"
+                                            title="View Details"
+                                        >
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                        <button 
+                                            @click="togglePhoneStatus(phone.id, phone.status === 'active')" 
+                                            class="btn btn-xs" 
+                                            :class="phone.status === 'active' ? 'btn-warning' : 'btn-success'"
+                                            :title="phone.status === 'active' ? 'Deactivate' : 'Activate'"
+                                        >
+                                            <i class="fas" :class="phone.status === 'active' ? 'fa-pause' : 'fa-play'"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+                
+                <!-- Empty State -->
+                <div x-show="paginatedData.length === 0 && !loading" class="text-center p-8">
+                    <i class="fas fa-phone text-4xl mb-4 opacity-50"></i>
+                    <h3 class="text-lg font-semibold mb-2">No Phone Verifications Found</h3>
+                    <p class="text-base-content/60">No phone verifications match your current filters</p>
+                </div>
+            </div>
+
+            <!-- Pagination -->
+            <div x-show="totalPages > 1" class="flex flex-col md:flex-row justify-between items-center mt-6">
+                <div class="text-sm text-base-content/60 mb-4 md:mb-0" x-text="pageInfo"></div>
+                <div class="flex gap-1">
+                    <button 
+                        @click="prevPage()" 
+                        :disabled="currentPage === 1"
+                        class="btn btn-sm btn-outline"
+                    >
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    
+                    <template x-for="page in pageNumbers" :key="page">
+                        <button 
+                            @click="goToPage(page)" 
+                            class="btn btn-sm"
+                            :class="page === currentPage ? 'btn-primary' : 'btn-outline'"
+                            x-text="page"
+                        ></button>
+                    </template>
+                    
+                    <button 
+                        @click="nextPage()" 
+                        :disabled="currentPage === totalPages"
+                        class="btn btn-sm btn-outline"
+                    >
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Phone Detail Modal -->
+<div class="modal" :class="{ 'modal-open': phoneDetailModal.show }" x-show="phoneDetailModal.show">
+    <div class="modal-box w-11/12 max-w-3xl">
+        <h3 class="font-bold text-lg mb-4">
+            <i class="fas fa-phone"></i>
+            Phone Details
+        </h3>
+        
+        <!-- Loading State -->
+        <div x-show="phoneDetailModal.loading" class="flex items-center justify-center p-8">
+            <span class="loading loading-spinner loading-md"></span>
+            Loading phone details...
+        </div>
+        
+        <!-- Phone Details Content -->
+        <div x-show="!phoneDetailModal.loading && phoneDetailModal.phone" x-data="{ phone: phoneDetailModal.phone }">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Basic Information -->
+                <div class="card bg-base-200">
+                    <div class="card-body">
+                        <h4 class="card-title">
+                            <i class="fas fa-info-circle"></i>
+                            Basic Information
+                        </h4>
+                        <div class="space-y-2">
+                            <div class="flex justify-between">
+                                <span class="font-medium">ID:</span>
+                                <span x-text="phone?.id"></span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="font-medium">Phone Number:</span>
+                                <span class="font-mono" x-text="phone?.phone_number"></span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="font-medium">Status:</span>
+                                <span class="badge" 
+                                      :class="{
+                                          'badge-success': phone?.is_active && !phone?.is_expired,
+                                          'badge-warning': phone?.is_active && phone?.is_expired,
+                                          'badge-error': !phone?.is_active
+                                      }"
+                                      x-text="phone?.is_active ? (phone?.is_expired ? 'Expired' : 'Active') : 'Inactive'"></span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="font-medium">Access Count:</span>
+                                <span class="badge badge-outline" x-text="phone?.access_count"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Timing Information -->
+                <div class="card bg-base-200">
+                    <div class="card-body">
+                        <h4 class="card-title">
+                            <i class="fas fa-clock"></i>
+                            Timing Information
+                        </h4>
+                        <div class="space-y-2">
+                            <div class="flex justify-between">
+                                <span class="font-medium">Verified At:</span>
+                                <span x-text="phone?.verified_at"></span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="font-medium">Last Accessed:</span>
+                                <span x-text="phone?.last_accessed"></span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="font-medium">Is Expired:</span>
+                                <span class="badge" 
+                                      :class="phone?.is_expired ? 'badge-warning' : 'badge-success'"
+                                      x-text="phone?.is_expired ? 'Yes' : 'No'"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Technical Information -->
+                <div class="card bg-base-200 lg:col-span-2">
+                    <div class="card-body">
+                        <h4 class="card-title">
+                            <i class="fas fa-server"></i>
+                            Technical Information
+                        </h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="space-y-2">
+                                <div class="flex justify-between">
+                                    <span class="font-medium">IP Address:</span>
+                                    <span class="font-mono" x-text="phone?.ip_address || '-'"></span>
+                                </div>
+                            </div>
+                            <div class="space-y-2">
+                                <div class="flex justify-between">
+                                    <span class="font-medium">User Agent:</span>
+                                    <span class="text-sm break-all" x-text="phone?.user_agent ? (phone.user_agent.substring(0, 50) + (phone.user_agent.length > 50 ? '...' : '')) : '-'"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="modal-action">
+            <button class="btn" @click="closePhoneDetailModal()">Close</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function verifiedPhonesManager() {
+    return {
+        // Core data
+        data: [],
+        filteredData: [],
+        loading: false,
+        error: null,
+        
+        // Pagination
+        currentPage: 1,
+        pageSize: 25,
+        totalPages: 1,
+        totalRecords: 0,
+        
+        // Sorting
+        sortField: 'id',
+        sortDirection: 'desc',
+        
+        // Searching & Filtering
+        search: '',
+        filters: {
+            status: ''
+        },
+        
+        // Modal state
+        phoneDetailModal: {
+            show: false,
+            phone: null,
+            loading: false
+        },
+        
+        // Initialize
+        async init() {
+            await this.loadData();
+        },
+        
+        // Load phone data
+        async loadData() {
+            this.loading = true;
+            this.error = null;
+            
+            try {
+                const params = new URLSearchParams({
+                    page: this.currentPage,
+                    size: this.pageSize,
+                    search: this.search,
+                    sort: this.sortField,
+                    direction: this.sortDirection,
+                    status_filter: this.filters.status
+                });
+                
+                const response = await fetch(`{% url "main:verified_phones_api" %}?${params}`);
+                const result = await response.json();
+                
+                if (result.data) {
+                    this.data = result.data;
+                    this.totalRecords = result.recordsFiltered || result.recordsTotal || this.data.length;
+                    this.calculatePagination();
+                } else {
+                    throw new Error('Invalid response format');
+                }
+            } catch (error) {
+                console.error('Error loading phone data:', error);
+                this.error = 'Failed to load phone data';
+            } finally {
+                this.loading = false;
+            }
+        },
+        
+        // Pagination
+        calculatePagination() {
+            this.totalPages = Math.ceil(this.totalRecords / this.pageSize);
+        },
+        
+        get paginatedData() {
+            return this.data;
+        },
+        
+        get pageInfo() {
+            if (this.totalRecords === 0) return '0-0 of 0';
+            const start = (this.currentPage - 1) * this.pageSize + 1;
+            const end = Math.min(this.currentPage * this.pageSize, this.totalRecords);
+            return `${start}-${end} of ${this.totalRecords}`;
+        },
+        
+        get pageNumbers() {
+            const pages = [];
+            const maxPages = 5;
+            let startPage = Math.max(1, this.currentPage - Math.floor(maxPages / 2));
+            let endPage = Math.min(this.totalPages, startPage + maxPages - 1);
+            
+            if (endPage - startPage + 1 < maxPages) {
+                startPage = Math.max(1, endPage - maxPages + 1);
+            }
+            
+            for (let i = startPage; i <= endPage; i++) {
+                pages.push(i);
+            }
+            return pages;
+        },
+        
+        // Navigation
+        goToPage(page) {
+            if (page >= 1 && page <= this.totalPages) {
+                this.currentPage = page;
+                this.loadData();
+            }
+        },
+        
+        nextPage() {
+            this.goToPage(this.currentPage + 1);
+        },
+        
+        prevPage() {
+            this.goToPage(this.currentPage - 1);
+        },
+        
+        // Sorting
+        sort(field) {
+            if (this.sortField === field) {
+                this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                this.sortField = field;
+                this.sortDirection = 'asc';
+            }
+            this.currentPage = 1;
+            this.loadData();
+        },
+        
+        // Search and filters
+        async performSearch() {
+            this.currentPage = 1;
+            await this.loadData();
+        },
+        
+        async applyFilters() {
+            this.currentPage = 1;
+            await this.loadData();
+        },
+        
+        async changePageSize() {
+            this.currentPage = 1;
+            await this.loadData();
+        },
+        
+        async refreshData() {
+            await this.loadData();
+            Swal.fire({
+                title: 'Refreshed!',
+                text: 'Phone data has been refreshed',
+                icon: 'success',
+                timer: 2000,
+                showConfirmButton: false
+            });
+        },
+        
+        // Phone detail modal
+        async viewPhoneDetail(phone) {
+            this.phoneDetailModal = {
+                show: true,
+                phone: null,
+                loading: true
+            };
+            
+            try {
+                const response = await fetch(`{% url "main:verified_phone_detail_api" 0 %}`.replace('0', phone.id));
+                const result = await response.json();
+                
+                if (result.success) {
+                    this.phoneDetailModal.phone = result.data;
+                } else {
+                    throw new Error(result.error || 'Failed to load phone details');
+                }
+            } catch (error) {
+                console.error('Error loading phone details:', error);
+                Swal.fire('Error', error.message, 'error');
+                this.closePhoneDetailModal();
+            } finally {
+                this.phoneDetailModal.loading = false;
+            }
+        },
+        
+        closePhoneDetailModal() {
+            this.phoneDetailModal = {
+                show: false,
+                phone: null,
+                loading: false
+            };
+        },
+        
+        // Toggle phone status
+        async togglePhoneStatus(phoneId, currentStatus) {
+            const result = await Swal.fire({
+                title: 'Change Status',
+                text: `Are you sure you want to ${currentStatus ? 'deactivate' : 'activate'} this phone?`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: currentStatus ? 'Deactivate' : 'Activate',
+                cancelButtonText: 'Cancel'
+            });
+            
+            if (result.isConfirmed) {
+                try {
+                    const response = await fetch(`{% url "main:toggle_phone_status" 0 %}`.replace('0', phoneId), {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': this.getCsrfToken()
+                        }
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        await Swal.fire('Success!', data.message, 'success');
+                        await this.loadData();
+                    } else {
+                        throw new Error(data.error || 'Failed to update phone status');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    Swal.fire('Error', error.message, 'error');
+                }
+            }
+        },
+        
+        // Export data
+        exportData() {
+            Swal.fire({
+                title: 'Export Data',
+                text: 'Choose export format',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Excel',
+                cancelButtonText: 'CSV'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    window.open('{% url "main:verified_phones_api" %}?export=excel', '_blank');
+                } else if (result.dismiss === Swal.DismissReason.cancel) {
+                    window.open('{% url "main:verified_phones_api" %}?export=csv', '_blank');
+                }
+            });
+        },
+        
+        // Utility functions
+        getCsrfToken() {
+            return document.querySelector('[name=csrfmiddlewaretoken]')?.value || 
+                   this.getCookie('csrftoken');
+        },
+        
+        getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+    }
+}
+
+// Note: Verified Phones management migrated from jQuery + DataTables to Alpine.js
+// All functionality preserved with modern Alpine.js reactive components
+</script>
+{% endblock %}

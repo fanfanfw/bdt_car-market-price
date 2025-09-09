@@ -1,0 +1,429 @@
+{% extends 'admin/base-admin.html' %}
+
+{% block title %}Brand Categories - Admin Panel{% endblock %}
+{% block page_title %}Brand Categories{% endblock %}
+
+{% block extra_css %}
+<style>
+    .category-card {
+        transition: all 0.2s ease;
+        border: 1px solid #e5e7eb;
+    }
+    
+    .category-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    
+    .brand-chip {
+        display: inline-block;
+        background: #f3f4f6;
+        color: #374151;
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        margin: 0.125rem;
+        transition: all 0.2s ease;
+    }
+    
+    .brand-chip:hover {
+        background: #e5e7eb;
+    }
+    
+    .stats-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+    
+    .category-actions {
+        opacity: 0;
+        transition: opacity 0.2s ease;
+    }
+    
+    .category-card:hover .category-actions {
+        opacity: 1;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 3rem;
+        color: #6b7280;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6" x-data="categoriesManager()">
+    <!-- Page Header -->
+    <div class="flex justify-between items-center">
+        <div>
+            <h1 class="text-3xl font-bold">Brand Categories Management</h1>
+            <p class="text-base-content/60 mt-1">Manage categories and classify car brands for pricing calculations</p>
+        </div>
+        <div class="flex gap-2">
+            <button class="btn btn-primary" @click="showCreateModal()">
+                <i class="fas fa-plus"></i>
+                Add Category
+            </button>
+            <button class="btn btn-secondary" @click="refreshData()">
+                <i class="fas fa-sync-alt"></i>
+                Refresh
+            </button>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="stat bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg">
+            <div class="stat-figure text-white/80">
+                <i class="fas fa-tags text-3xl"></i>
+            </div>
+            <div class="stat-title text-white/80">Total Categories</div>
+            <div class="stat-value text-white">{{ total_categories }}</div>
+            <div class="stat-desc text-white/80">Active categories</div>
+        </div>
+
+        <div class="stat bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg">
+            <div class="stat-figure text-white/80">
+                <i class="fas fa-car text-3xl"></i>
+            </div>
+            <div class="stat-title text-white/80">Classified Brands</div>
+            <div class="stat-value text-white">{{ total_classified_brands }}</div>
+            <div class="stat-desc text-white/80">Brands assigned</div>
+        </div>
+
+        <div class="stat bg-gradient-to-r from-yellow-500 to-yellow-600 text-white rounded-lg">
+            <div class="stat-figure text-white/80">
+                <i class="fas fa-exclamation-triangle text-3xl"></i>
+            </div>
+            <div class="stat-title text-white/80">Unclassified</div>
+            <div class="stat-value text-white">{{ unclassified_brands }}</div>
+            <div class="stat-desc text-white/80">Need classification</div>
+        </div>
+
+        <div class="stat bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg">
+            <div class="stat-figure text-white/80">
+                <i class="fas fa-list text-3xl"></i>
+            </div>
+            <div class="stat-title text-white/80">Total Brands</div>
+            <div class="stat-value text-white">{{ total_unique_brands }}</div>
+            <div class="stat-desc text-white/80">Unique brands</div>
+        </div>
+    </div>
+
+    <!-- Warning for Unclassified Brands -->
+    {% if unclassified_brands > 0 %}
+    <div class="alert alert-warning">
+        <i class="fas fa-exclamation-triangle"></i>
+        <div>
+            <h3 class="font-bold">Action Required!</h3>
+            <div class="text-sm">{{ unclassified_brands }} brands are not classified yet. Users submitting forms with unclassified brands will get 0% reduction for brand category.</div>
+        </div>
+        <div>
+            <button class="btn btn-sm btn-warning" @click="showUnclassifiedModal()">
+                View Unclassified
+            </button>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Categories Grid -->
+    <div class="card bg-base-100 shadow">
+        <div class="card-body">
+            <h2 class="card-title">
+                <i class="fas fa-th-large"></i>
+                Categories
+            </h2>
+            
+            {% if categories %}
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {% for category in categories %}
+                <div class="category-card card bg-base-200 relative">
+                    <div class="card-body">
+                        <div class="flex justify-between items-start">
+                            <h3 class="card-title text-lg">{{ category.name }}</h3>
+                            <div class="category-actions flex gap-1">
+                                <button class="btn btn-xs btn-primary" @click="showEditModal({id: {{ category.id }}, name: '{{ category.name }}', reduction_percentage: {{ category.reduction_percentage }}})" title="Edit">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="btn btn-xs btn-error" @click="deleteCategory({{ category.id }}, '{{ category.name }}', {{ category.brand_count }})" title="Delete">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-center gap-2 text-sm text-base-content/60 mb-2">
+                            <i class="fas fa-car"></i>
+                            <span>{{ category.brand_count }} brand{{ category.brand_count|pluralize }}</span>
+                        </div>
+                        
+                        <div class="flex items-center gap-2 text-sm mb-2">
+                            <i class="fas fa-percentage text-primary"></i>
+                            <span class="font-medium">Reduction: {{ category.reduction_percentage }}%</span>
+                            {% if category.reduction_percentage == 0 %}
+                            <span class="badge badge-warning badge-xs">Not Set</span>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="flex justify-between items-center">
+                            <a href="{% url 'main:brand_classification_view' %}" class="btn btn-sm btn-outline">
+                                <i class="fas fa-eye"></i>
+                                View Brands
+                            </a>
+                            <div class="badge badge-primary">{{ category.brand_count }}</div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <i class="fas fa-tags text-6xl mb-4"></i>
+                <h3 class="text-xl font-semibold mb-2">No Categories Yet</h3>
+                <p class="text-base-content/60 mb-4">Create your first category to start classifying car brands</p>
+                <button class="btn btn-primary" @click="showCreateModal()">
+                    <i class="fas fa-plus"></i>
+                    Create First Category
+                </button>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Create/Edit Category Modal -->
+<div class="modal" :class="{ 'modal-open': showModal }" x-show="showModal">
+    <div class="modal-box">
+        <h3 class="font-bold text-lg mb-4">
+            <i class="fas" :class="editingCategory ? 'fa-edit' : 'fa-plus'"></i>
+            <span x-text="editingCategory ? 'Edit Category' : 'Create New Category'"></span>
+        </h3>
+        <form @submit.prevent="saveCategory()">
+            <div class="form-control">
+                <label class="label">
+                    <span class="label-text">Category Name</span>
+                </label>
+                <input 
+                    type="text" 
+                    x-model="form.name"
+                    class="input input-bordered" 
+                    placeholder="e.g., Continental, Japanese, Luxury"
+                    required
+                >
+                <label class="label">
+                    <span class="label-text-alt">Choose a descriptive name for the brand category</span>
+                </label>
+            </div>
+            <div class="form-control mt-4">
+                <label class="label">
+                    <span class="label-text">Reduction Percentage</span>
+                </label>
+                <div class="input-group">
+                    <input 
+                        type="number" 
+                        x-model="form.reduction_percentage"
+                        class="input input-bordered flex-1" 
+                        placeholder="10.0"
+                        min="0"
+                        max="100"
+                        step="0.01"
+                        required
+                    >
+                    <span class="input-group-text">%</span>
+                </div>
+                <label class="label">
+                    <span class="label-text-alt">Percentage reduction applied to cars in this category (0-100%)</span>
+                </label>
+            </div>
+        </form>
+        <div class="modal-action">
+            <button class="btn" @click="closeModal()">Cancel</button>
+            <button class="btn btn-primary" @click="saveCategory()" :disabled="saving">
+                <i class="fas fa-save"></i>
+                <span x-text="saving ? 'Saving...' : (editingCategory ? 'Update Category' : 'Create Category')"></span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Note: Category brands and unclassified brands modals removed in favor of direct navigation to brand classification page -->
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function categoriesManager() {
+    return {
+        // Modal state
+        showModal: false,
+        editingCategory: null,
+        saving: false,
+        
+        // Form data
+        form: {
+            name: '',
+            reduction_percentage: 0.00
+        },
+        
+        // Show create modal
+        showCreateModal() {
+            this.editingCategory = null;
+            this.form = {
+                name: '',
+                reduction_percentage: 0.00
+            };
+            this.showModal = true;
+        },
+        
+        // Show edit modal
+        showEditModal(category) {
+            this.editingCategory = category;
+            this.form = {
+                name: category.name,
+                reduction_percentage: category.reduction_percentage
+            };
+            this.showModal = true;
+        },
+        
+        // Close modal
+        closeModal() {
+            this.showModal = false;
+            this.editingCategory = null;
+            this.form = {
+                name: '',
+                reduction_percentage: 0.00
+            };
+        },
+        
+        // Save category
+        async saveCategory() {
+            if (!this.form.name.trim()) {
+                Swal.fire('Error', 'Please enter a category name', 'error');
+                return;
+            }
+            
+            if (isNaN(this.form.reduction_percentage) || this.form.reduction_percentage < 0 || this.form.reduction_percentage > 100) {
+                Swal.fire('Error', 'Please enter a valid reduction percentage (0-100%)', 'error');
+                return;
+            }
+            
+            this.saving = true;
+            
+            try {
+                const url = this.editingCategory ? 
+                    `{% url "main:category_edit" 0 %}`.replace('0', this.editingCategory.id) :
+                    '{% url "main:category_create" %}';
+                
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': this.getCsrfToken()
+                    },
+                    body: JSON.stringify({
+                        name: this.form.name.trim(),
+                        reduction_percentage: parseFloat(this.form.reduction_percentage)
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    await Swal.fire('Success!', data.message, 'success');
+                    this.closeModal();
+                    location.reload(); // Refresh to show updated data
+                } else {
+                    throw new Error(data.error || 'Failed to save category');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                Swal.fire('Error', error.message, 'error');
+            } finally {
+                this.saving = false;
+            }
+        },
+        
+        // Utility functions
+        getCsrfToken() {
+            return document.querySelector('[name=csrfmiddlewaretoken]')?.value || 
+                   this.getCookie('csrftoken');
+        },
+        
+        getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        },
+        
+        // Refresh data
+        refreshData() {
+            location.reload();
+        },
+        
+        // Show unclassified modal
+        showUnclassifiedModal() {
+            // This will be implemented next
+            window.location.href = '{% url "main:brand_classification_view" %}';
+        },
+        
+        // Delete category
+        async deleteCategory(categoryId, categoryName, brandCount) {
+            if (brandCount > 0) {
+                Swal.fire({
+                    title: 'Cannot Delete Category',
+                    text: `This category has ${brandCount} brands assigned. Please reassign or remove the brands first.`,
+                    icon: 'warning',
+                    confirmButtonText: 'OK'
+                });
+                return;
+            }
+            
+            const result = await Swal.fire({
+                title: 'Delete Category',
+                text: `Are you sure you want to delete "${categoryName}"? This action cannot be undone.`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Yes, Delete',
+                cancelButtonText: 'Cancel',
+                confirmButtonColor: '#dc2626'
+            });
+            
+            if (result.isConfirmed) {
+                try {
+                    const response = await fetch(`{% url "main:category_delete" 0 %}`.replace('0', categoryId), {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': this.getCsrfToken()
+                        }
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        await Swal.fire('Deleted!', data.message, 'success');
+                        location.reload();
+                    } else {
+                        throw new Error(data.error || 'Failed to delete category');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    Swal.fire('Error', error.message, 'error');
+                }
+            }
+        }
+    }
+}
+
+// Note: This file has been migrated from jQuery to Alpine.js
+// The old functions have been replaced with reactive Alpine.js methods
+</script>
+{% endblock %}

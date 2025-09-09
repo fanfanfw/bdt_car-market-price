@@ -6,6 +6,7 @@ from datetime import timedelta
 class Category(models.Model):
     """Category reference table"""
     name = models.CharField(max_length=100, unique=True)
+    reduction_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=0.00, help_text="Reduction percentage for this category (0-100%)")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

@@ -13,6 +13,9 @@
     <!-- Font Awesome -->
     <link rel="stylesheet" href="{% static '@fortawesome/fontawesome-free/css/all.min.css' %}">
     
+    <!-- Alpine.js -->
+    <script src="{% static 'main/js/alpine.min.js' %}" defer></script>
+    
     <!-- SweetAlert2 -->
     <script src="{% static 'sweetalert2/dist/sweetalert2.min.js' %}"></script>
     <link rel="stylesheet" href="{% static 'sweetalert2/dist/sweetalert2.min.css' %}">
@@ -96,19 +99,30 @@
                     <li><a href="#">
                         <i class="fas fa-users"></i> Users
                     </a></li>
-                    <li><a href="#">
+                    <li><a href="{% url 'main:car_data_view' %}" class="{% if request.resolver_match.url_name == 'car_data_view' %}active{% endif %}">
                         <i class="fas fa-car"></i> Car Data
                     </a></li>
-                    <li><a href="#">
+                    <li><a href="{% url 'main:verified_phones_view' %}" class="{% if request.resolver_match.url_name == 'verified_phones_view' %}active{% endif %}">
                         <i class="fas fa-phone"></i> Verified Phones
                     </a></li>
-                    <li><a href="#">
+                    <li><a href="{% url 'main:otp_sessions_view' %}" class="{% if request.resolver_match.url_name == 'otp_sessions_view' %}active{% endif %}">
                         <i class="fas fa-key"></i> OTP Sessions
                     </a></li>
                     <li><hr class="border-base-300"></li>
                     <li class="menu-title">Settings</li>
-                    <li><a href="#">
-                        <i class="fas fa-cog"></i> Configuration
+                    <li><a href="{% url 'main:formula_config_edit' %}" class="{% if request.resolver_match.url_name == 'formula_config_edit' %}active{% endif %}">
+                        <i class="fas fa-calculator"></i> Formula Config
+                    </a></li>
+                    <li><a href="{% url 'main:condition_categories_manage' %}" class="{% if request.resolver_match.url_name == 'condition_categories_manage' %}active{% endif %}">
+                        <i class="fas fa-list-check"></i> Condition Categories
+                    </a></li>
+                    <li><hr class="border-base-300"></li>
+                    <li class="menu-title">Brand Categories</li>
+                    <li><a href="{% url 'main:categories_management_view' %}" class="{% if request.resolver_match.url_name == 'categories_management_view' %}active{% endif %}">
+                        <i class="fas fa-tags"></i> Manage Categories
+                    </a></li>
+                    <li><a href="{% url 'main:brand_classification_view' %}" class="{% if request.resolver_match.url_name == 'brand_classification_view' %}active{% endif %}">
+                        <i class="fas fa-cog"></i> Classify Brands
                     </a></li>
                 </ul>
             </aside>

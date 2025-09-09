@@ -157,14 +157,18 @@
                     <i class="fas fa-list-check"></i>
                     Condition Categories
                 </a>
-                <button class="btn btn-accent btn-outline" onclick="viewCarData()">
+                <a href="{% url 'main:car_data_view' %}" class="btn btn-accent btn-outline">
                     <i class="fas fa-car"></i>
                     Car Database
-                </button>
-                <button class="btn btn-info btn-outline" onclick="viewLogs()">
-                    <i class="fas fa-list"></i>
-                    System Logs
-                </button>
+                </a>
+                <a href="{% url 'main:verified_phones_view' %}" class="btn btn-info btn-outline">
+                    <i class="fas fa-phone"></i>
+                    Verified Phones
+                </a>
+                <a href="{% url 'main:otp_sessions_view' %}" class="btn btn-warning btn-outline">
+                    <i class="fas fa-key"></i>
+                    OTP Sessions
+                </a>
             </div>
         </div>
     </div>
@@ -177,17 +181,11 @@ function viewUsers() {
     Swal.fire('Coming Soon', 'User management feature will be available soon.', 'info');
 }
 
-function viewPhones() {
-    Swal.fire('Coming Soon', 'Phone verification management feature will be available soon.', 'info');
-}
+// Phone verification functionality is now handled by the dedicated verified-phones page
 
-function viewCarData() {
-    Swal.fire('Coming Soon', 'Car database management feature will be available soon.', 'info');
-}
+// Car data functionality is now handled by the dedicated car-data page
 
-function viewLogs() {
-    Swal.fire('Coming Soon', 'System logs feature will be available soon.', 'info');
-}
+// OTP sessions functionality is now handled by the dedicated otp-sessions page
 
 // Auto-refresh stats every 5 minutes
 setTimeout(() => {
