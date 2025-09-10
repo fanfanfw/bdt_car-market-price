@@ -6,135 +6,153 @@
 {% block content %}
 <div class="space-y-6">
     <!-- Welcome Section -->
-    <div class="card bg-gradient-to-r from-primary to-secondary text-primary-content">
-        <div class="card-body">
-            <h1 class="card-title text-2xl">
-                <i class="fas fa-user-shield"></i>
-                Welcome, {{ user.first_name|default:user.username }}!
-            </h1>
-            <p class="opacity-90">Car Market Price Administration Panel</p>
-            <div class="text-sm opacity-75 mt-2">
-                Last login: {{ user.last_login|date:"M d, Y H:i" }}
+    <div class="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
+        <div class="flex items-center gap-4">
+            <div class="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center">
+                <i class="fas fa-user-shield text-xl text-white"></i>
+            </div>
+            <div>
+                <h1 class="text-2xl font-bold text-gray-900">
+                    Welcome, {{ user.first_name|default:user.username }}!
+                </h1>
+                <p class="text-gray-600">Car Market Price Administration Panel</p>
+                <div class="text-sm text-gray-500 mt-1">
+                    Last login: {{ user.last_login|date:"M d, Y H:i" }}
+                </div>
             </div>
         </div>
     </div>
 
     <!-- Stats Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <!-- Total Users -->
-        <div class="stat bg-base-100 shadow rounded-lg">
-            <div class="stat-figure text-primary">
-                <i class="fas fa-users text-3xl"></i>
+        <div class="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                    <i class="fas fa-users text-xl text-blue-600"></i>
+                </div>
+                <div>
+                    <p class="text-sm text-gray-600">Total Users</p>
+                    <p class="text-2xl font-bold text-gray-900">{{ stats.total_users }}</p>
+                    <p class="text-xs text-gray-500">System users</p>
+                </div>
             </div>
-            <div class="stat-title">Total Users</div>
-            <div class="stat-value text-primary">{{ stats.total_users }}</div>
-            <div class="stat-desc">System users</div>
         </div>
 
         <!-- Verified Phones -->
-        <div class="stat bg-base-100 shadow rounded-lg">
-            <div class="stat-figure text-success">
-                <i class="fas fa-phone-check text-3xl"></i>
+        <div class="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+                    <i class="fas fa-phone-check text-xl text-green-600"></i>
+                </div>
+                <div>
+                    <p class="text-sm text-gray-600">Verified Phones</p>
+                    <p class="text-2xl font-bold text-gray-900">{{ stats.verified_phones }}</p>
+                    <p class="text-xs text-gray-500">Active verifications</p>
+                </div>
             </div>
-            <div class="stat-title">Verified Phones</div>
-            <div class="stat-value text-success">{{ stats.verified_phones }}</div>
-            <div class="stat-desc">Active verifications</div>
         </div>
 
         <!-- Car Records -->
-        <div class="stat bg-base-100 shadow rounded-lg">
-            <div class="stat-figure text-info">
-                <i class="fas fa-car text-3xl"></i>
+        <div class="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
+                    <i class="fas fa-car text-xl text-purple-600"></i>
+                </div>
+                <div>
+                    <p class="text-sm text-gray-600">Car Records</p>
+                    <p class="text-2xl font-bold text-gray-900">{{ stats.car_records }}</p>
+                    <p class="text-xs text-gray-500">Total database records</p>
+                </div>
             </div>
-            <div class="stat-title">Car Records</div>
-            <div class="stat-value text-info">{{ stats.car_records }}</div>
-            <div class="stat-desc">Total database records</div>
         </div>
 
         <!-- Today's Calculations -->
-        <div class="stat bg-base-100 shadow rounded-lg">
-            <div class="stat-figure text-warning">
-                <i class="fas fa-calculator text-3xl"></i>
+        <div class="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
+                    <i class="fas fa-calculator text-xl text-orange-600"></i>
+                </div>
+                <div>
+                    <p class="text-sm text-gray-600">Today's Calculations</p>
+                    <p class="text-2xl font-bold text-gray-900">{{ stats.today_calculations }}</p>
+                    <p class="text-xs text-gray-500">Price estimates</p>
+                </div>
             </div>
-            <div class="stat-title">Today's Calculations</div>
-            <div class="stat-value text-warning">{{ stats.today_calculations }}</div>
-            <div class="stat-desc">Price estimates</div>
         </div>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <!-- Recent Activity -->
-        <div class="card bg-base-100 shadow">
-            <div class="card-body">
-                <h2 class="card-title">
-                    <i class="fas fa-clock"></i>
-                    Recent Activity
-                </h2>
-                <div class="space-y-3">
-                    {% for activity in recent_activities %}
-                    <div class="flex items-center gap-3 p-3 bg-base-200 rounded-lg">
-                        <div class="avatar placeholder">
-                            <div class="bg-primary text-primary-content rounded-full w-8">
-                                <i class="fas fa-{{ activity.icon }} text-xs"></i>
-                            </div>
-                        </div>
-                        <div class="flex-1">
-                            <p class="text-sm">{{ activity.description }}</p>
-                            <p class="text-xs text-base-content/60">{{ activity.timestamp|timesince }} ago</p>
-                        </div>
-                    </div>
-                    {% empty %}
-                    <div class="text-center text-base-content/60 py-4">
-                        <i class="fas fa-inbox text-2xl mb-2"></i>
-                        <p>No recent activity</p>
-                    </div>
-                    {% endfor %}
+        <div class="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
+            <div class="flex items-center gap-3 mb-6">
+                <div class="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
+                    <i class="fas fa-clock text-gray-600"></i>
                 </div>
+                <h2 class="text-lg font-semibold text-gray-900">Recent Activity</h2>
+            </div>
+            <div class="space-y-4">
+                {% for activity in recent_activities %}
+                <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                    <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                        <i class="fas fa-{{ activity.icon }} text-xs text-blue-600"></i>
+                    </div>
+                    <div class="flex-1">
+                        <p class="text-sm text-gray-900">{{ activity.description }}</p>
+                        <p class="text-xs text-gray-500">{{ activity.timestamp|timesince }} ago</p>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="text-center text-gray-500 py-8">
+                    <i class="fas fa-inbox text-3xl mb-3 text-gray-400"></i>
+                    <p>No recent activity</p>
+                </div>
+                {% endfor %}
             </div>
         </div>
 
         <!-- System Status -->
-        <div class="card bg-base-100 shadow">
-            <div class="card-body">
-                <h2 class="card-title">
-                    <i class="fas fa-server"></i>
-                    System Status
-                </h2>
-                <div class="space-y-4">
-                    <!-- Database Status -->
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center gap-2">
-                            <i class="fas fa-database text-primary"></i>
-                            <span>Database</span>
-                        </div>
-                        <div class="badge badge-success gap-2">
-                            <i class="fas fa-check"></i>
-                            Connected
-                        </div>
+        <div class="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
+            <div class="flex items-center gap-3 mb-6">
+                <div class="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
+                    <i class="fas fa-server text-gray-600"></i>
+                </div>
+                <h2 class="text-lg font-semibold text-gray-900">System Status</h2>
+            </div>
+            <div class="space-y-4">
+                <!-- Database Status -->
+                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div class="flex items-center gap-3">
+                        <i class="fas fa-database text-blue-600"></i>
+                        <span class="text-gray-900">Database</span>
                     </div>
-
-                    <!-- OTP Service Status -->
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center gap-2">
-                            <i class="fas fa-key text-info"></i>
-                            <span>OTP Service</span>
-                        </div>
-                        <div class="badge badge-success gap-2">
-                            <i class="fas fa-check"></i>
-                            Active
-                        </div>
+                    <div class="flex items-center gap-2 px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">
+                        <i class="fas fa-check text-xs"></i>
+                        <span>Connected</span>
                     </div>
+                </div>
 
-                    <!-- Storage Status -->
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center gap-2">
-                            <i class="fas fa-hdd text-warning"></i>
-                            <span>Storage</span>
-                        </div>
-                        <div class="badge badge-success gap-2">
-                            <i class="fas fa-check"></i>
-                            OK
-                        </div>
+                <!-- OTP Service Status -->
+                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div class="flex items-center gap-3">
+                        <i class="fas fa-key text-purple-600"></i>
+                        <span class="text-gray-900">OTP Service</span>
+                    </div>
+                    <div class="flex items-center gap-2 px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">
+                        <i class="fas fa-check text-xs"></i>
+                        <span>Active</span>
+                    </div>
+                </div>
+
+                <!-- Storage Status -->
+                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div class="flex items-center gap-3">
+                        <i class="fas fa-hdd text-orange-600"></i>
+                        <span class="text-gray-900">Storage</span>
+                    </div>
+                    <div class="flex items-center gap-2 px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">
+                        <i class="fas fa-check text-xs"></i>
+                        <span>OK</span>
                     </div>
                 </div>
             </div>
@@ -142,34 +160,44 @@
     </div>
 
     <!-- Quick Actions -->
-    <div class="card bg-base-100 shadow">
-        <div class="card-body">
-            <h2 class="card-title">
-                <i class="fas fa-bolt"></i>
-                Quick Actions
-            </h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <a href="{% url 'main:formula_config_edit' %}" class="btn btn-primary btn-outline">
-                    <i class="fas fa-calculator"></i>
-                    Formula Config
-                </a>
-                <a href="{% url 'main:condition_categories_manage' %}" class="btn btn-secondary btn-outline">
-                    <i class="fas fa-list-check"></i>
-                    Condition Categories
-                </a>
-                <a href="{% url 'main:car_data_view' %}" class="btn btn-accent btn-outline">
-                    <i class="fas fa-car"></i>
-                    Car Database
-                </a>
-                <a href="{% url 'main:verified_phones_view' %}" class="btn btn-info btn-outline">
-                    <i class="fas fa-phone"></i>
-                    Verified Phones
-                </a>
-                <a href="{% url 'main:otp_sessions_view' %}" class="btn btn-warning btn-outline">
-                    <i class="fas fa-key"></i>
-                    OTP Sessions
-                </a>
+    <div class="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
+        <div class="flex items-center gap-3 mb-6">
+            <div class="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
+                <i class="fas fa-bolt text-gray-600"></i>
             </div>
+            <h2 class="text-lg font-semibold text-gray-900">Quick Actions</h2>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <a href="{% url 'main:formula_config_edit' %}" class="flex items-center gap-3 p-4 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors group">
+                <div class="w-10 h-10 bg-blue-100 group-hover:bg-blue-200 rounded-lg flex items-center justify-center">
+                    <i class="fas fa-calculator text-blue-600"></i>
+                </div>
+                <span class="text-gray-900 group-hover:text-blue-600 font-medium">Formula Config</span>
+            </a>
+            <a href="{% url 'main:condition_categories_manage' %}" class="flex items-center gap-3 p-4 border border-gray-200 rounded-lg hover:border-green-300 hover:bg-green-50 transition-colors group">
+                <div class="w-10 h-10 bg-green-100 group-hover:bg-green-200 rounded-lg flex items-center justify-center">
+                    <i class="fas fa-list-check text-green-600"></i>
+                </div>
+                <span class="text-gray-900 group-hover:text-green-600 font-medium">Condition Categories</span>
+            </a>
+            <a href="{% url 'main:car_data_view' %}" class="flex items-center gap-3 p-4 border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 transition-colors group">
+                <div class="w-10 h-10 bg-purple-100 group-hover:bg-purple-200 rounded-lg flex items-center justify-center">
+                    <i class="fas fa-car text-purple-600"></i>
+                </div>
+                <span class="text-gray-900 group-hover:text-purple-600 font-medium">Car Database</span>
+            </a>
+            <a href="{% url 'main:verified_phones_view' %}" class="flex items-center gap-3 p-4 border border-gray-200 rounded-lg hover:border-indigo-300 hover:bg-indigo-50 transition-colors group">
+                <div class="w-10 h-10 bg-indigo-100 group-hover:bg-indigo-200 rounded-lg flex items-center justify-center">
+                    <i class="fas fa-phone text-indigo-600"></i>
+                </div>
+                <span class="text-gray-900 group-hover:text-indigo-600 font-medium">Verified Phones</span>
+            </a>
+            <a href="{% url 'main:otp_sessions_view' %}" class="flex items-center gap-3 p-4 border border-gray-200 rounded-lg hover:border-orange-300 hover:bg-orange-50 transition-colors group">
+                <div class="w-10 h-10 bg-orange-100 group-hover:bg-orange-200 rounded-lg flex items-center justify-center">
+                    <i class="fas fa-key text-orange-600"></i>
+                </div>
+                <span class="text-gray-900 group-hover:text-orange-600 font-medium">OTP Sessions</span>
+            </a>
         </div>
     </div>
 </div>
@@ -177,19 +205,14 @@
 
 {% block extra_js %}
 <script>
+// Simple user management placeholder
 function viewUsers() {
-    Swal.fire('Coming Soon', 'User management feature will be available soon.', 'info');
+    alert('User management feature will be available soon.');
 }
 
-// Phone verification functionality is now handled by the dedicated verified-phones page
-
-// Car data functionality is now handled by the dedicated car-data page
-
-// OTP sessions functionality is now handled by the dedicated otp-sessions page
-
-// Auto-refresh stats every 5 minutes
-setTimeout(() => {
-    location.reload();
-}, 300000);
+// Auto-refresh stats every 5 minutes (optional)
+// setTimeout(() => {
+//     location.reload();
+// }, 300000);
 </script>
 {% endblock %}

@@ -4,229 +4,220 @@
 {% block page_title %}Brand Categories{% endblock %}
 
 {% block extra_css %}
-<style>
-    .category-card {
-        transition: all 0.2s ease;
-        border: 1px solid #e5e7eb;
-    }
-    
-    .category-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    }
-    
-    .category-actions {
-        opacity: 0;
-        transition: opacity 0.2s ease;
-    }
-    
-    .category-card:hover .category-actions {
-        opacity: 1;
-    }
-    
-    .empty-state {
-        text-align: center;
-        padding: 3rem;
-        color: #6b7280;
-    }
-</style>
 {% endblock %}
 
 {% block content %}
 {% csrf_token %}
 <div class="space-y-6">
     <!-- Page Header -->
-    <div class="flex justify-between items-center">
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-            <h1 class="text-3xl font-bold">Brand Categories Management</h1>
-            <p class="text-base-content/60 mt-1">Manage categories and classify car brands for pricing calculations</p>
+            <h1 class="text-2xl font-bold text-gray-900">Brand Categories Management</h1>
+            <p class="text-gray-600 mt-1">Manage categories and classify car brands for pricing calculations</p>
         </div>
         <div class="flex gap-2">
-            <button class="btn btn-primary" id="addCategoryBtn">
-                <i class="fas fa-plus"></i>
-                Add Category
+            <button class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors" id="addCategoryBtn">
+                <i class="fas fa-plus mr-2"></i>Add Category
             </button>
-            <button class="btn btn-secondary" onclick="location.reload()">
-                <i class="fas fa-sync-alt"></i>
-                Refresh
+            <button class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-lg hover:bg-gray-200 transition-colors" onclick="location.reload()">
+                <i class="fas fa-sync-alt mr-2"></i>Refresh
             </button>
         </div>
     </div>
 
     <!-- Statistics Cards -->
     <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div class="stat bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg">
-            <div class="stat-figure text-white">
-                <i class="fas fa-tags text-3xl"></i>
+        <div class="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-600">Total Categories</p>
+                    <p class="text-2xl font-bold text-gray-900">{{ total_categories }}</p>
+                    <p class="text-xs text-gray-500">Brand categories</p>
+                </div>
+                <div class="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
+                    <i class="fas fa-tags text-xl text-purple-600"></i>
+                </div>
             </div>
-            <div class="stat-title text-white">Total Categories</div>
-            <div class="stat-value text-white">{{ total_categories }}</div>
-            <div class="stat-desc text-white">Brand categories</div>
         </div>
 
-        <div class="stat bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg">
-            <div class="stat-figure text-white">
-                <i class="fas fa-check text-3xl"></i>
+        <div class="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-600">Classified Brands</p>
+                    <p class="text-2xl font-bold text-gray-900">{{ total_classified_brands }}</p>
+                    <p class="text-xs text-gray-500">Brands assigned</p>
+                </div>
+                <div class="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+                    <i class="fas fa-check text-xl text-green-600"></i>
+                </div>
             </div>
-            <div class="stat-title text-white">Classified Brands</div>
-            <div class="stat-value text-white">{{ total_classified_brands }}</div>
-            <div class="stat-desc text-white">Brands assigned</div>
         </div>
 
-        <div class="stat bg-gradient-to-r from-red-500 to-red-600 text-white rounded-lg">
-            <div class="stat-figure text-white">
-                <i class="fas fa-exclamation-triangle text-3xl"></i>
+        <div class="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-600">Unclassified</p>
+                    <p class="text-2xl font-bold text-gray-900">{{ unclassified_brands }}</p>
+                    <p class="text-xs text-gray-500">Need classification</p>
+                </div>
+                <div class="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
+                    <i class="fas fa-exclamation-triangle text-xl text-red-600"></i>
+                </div>
             </div>
-            <div class="stat-title text-white">Unclassified</div>
-            <div class="stat-value text-white">{{ unclassified_brands }}</div>
-            <div class="stat-desc text-white">Need classification</div>
         </div>
 
-        <div class="stat bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg">
-            <div class="stat-figure text-white">
-                <i class="fas fa-car text-3xl"></i>
+        <div class="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-600">Total Brands</p>
+                    <p class="text-2xl font-bold text-gray-900">{{ total_unique_brands }}</p>
+                    <p class="text-xs text-gray-500">Unique brands</p>
+                </div>
+                <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                    <i class="fas fa-car text-xl text-blue-600"></i>
+                </div>
             </div>
-            <div class="stat-title text-white">Total Brands</div>
-            <div class="stat-value text-white">{{ total_unique_brands }}</div>
-            <div class="stat-desc text-white">Unique brands</div>
         </div>
     </div>
 
     {% if unclassified_brands > 0 %}
-    <div class="alert alert-warning">
-        <i class="fas fa-exclamation-triangle"></i>
-        <div>
-            <h3 class="font-bold">{{ unclassified_brands }} Brands Need Classification</h3>
-            <div class="text-sm">Users submitting forms with unclassified brands will receive 0% reduction for the brand category layer.</div>
-        </div>
-        <div class="flex gap-2">
-            <button class="btn btn-sm btn-primary" onclick="window.location.href='{% url 'main:brand_classification_view' %}'">
-                <i class="fas fa-eye"></i>
-                View Unclassified
-            </button>
+    <div class="bg-yellow-50 border border-yellow-200 rounded-2xl p-4">
+        <div class="flex items-start gap-3">
+            <div class="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                <i class="fas fa-exclamation-triangle text-yellow-600"></i>
+            </div>
+            <div class="flex-1">
+                <h3 class="font-semibold text-yellow-800">{{ unclassified_brands }} Brands Need Classification</h3>
+                <p class="text-sm text-yellow-700 mt-1">Users submitting forms with unclassified brands will receive 0% reduction for the brand category layer.</p>
+                <div class="mt-3">
+                    <button class="px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-100 border border-blue-300 rounded-lg hover:bg-blue-200 transition-colors" onclick="window.location.href='{% url 'main:brand_classification_view' %}'">
+                        <i class="fas fa-eye mr-1"></i>View Unclassified
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
     {% endif %}
 
     <!-- Categories Grid -->
-    <div class="card bg-base-100 shadow">
-        <div class="card-body">
-            <h2 class="card-title">
-                <i class="fas fa-th-large"></i>
-                Categories
-            </h2>
+    <div class="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
+        <div class="flex items-center gap-3 mb-6">
+            <div class="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
+                <i class="fas fa-th-large text-gray-600"></i>
+            </div>
+            <h2 class="text-lg font-semibold text-gray-900">Categories</h2>
+        </div>
             
             {% if categories %}
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {% for category in categories %}
-                <div class="category-card card bg-base-200 relative">
-                    <div class="card-body">
-                        <div class="flex justify-between items-start">
-                            <h3 class="card-title text-lg">{{ category.name }}</h3>
-                            <div class="category-actions flex gap-1">
-                                <button class="btn btn-xs btn-primary edit-btn" 
-                                        data-id="{{ category.id }}"
-                                        data-name="{{ category.name }}"
-                                        data-reduction="{{ category.reduction_percentage }}"
-                                        title="Edit">
-                                    <i class="fas fa-edit"></i>
-                                </button>
-                                <button class="btn btn-xs btn-error delete-btn" 
-                                        data-id="{{ category.id }}"
-                                        data-name="{{ category.name }}"
-                                        data-brand-count="{{ category.brand_count }}"
-                                        title="Delete">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </div>
-                        </div>
-                        
-                        <div class="flex items-center gap-2 text-sm text-base-content/60 mb-2">
-                            <i class="fas fa-car"></i>
-                            <span>{{ category.brand_count }} brand{{ category.brand_count|pluralize }}</span>
-                        </div>
-                        
-                        <div class="flex items-center gap-2 text-sm">
-                            <i class="fas fa-percentage"></i>
-                            <span class="font-semibold text-success">{{ category.reduction_percentage }}% reduction</span>
-                        </div>
-                        
-                        <div class="card-actions justify-end mt-4">
-                            <button class="btn btn-xs btn-outline" onclick="window.location.href='{% url 'main:brand_classification_view' %}'">
-                                <i class="fas fa-eye"></i>
-                                View Brands
+                <div class="bg-gray-50 rounded-2xl border border-gray-200 p-6 hover:shadow-lg hover:-translate-y-1 transition-all duration-200 relative group">
+                    <div class="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                        <div class="flex gap-1">
+                            <button class="w-8 h-8 bg-blue-100 hover:bg-blue-200 rounded-lg flex items-center justify-center transition-colors edit-btn" 
+                                    data-id="{{ category.id }}"
+                                    data-name="{{ category.name }}"
+                                    data-reduction="{{ category.reduction_percentage }}"
+                                    title="Edit">
+                                <i class="fas fa-edit text-blue-600 text-sm"></i>
+                            </button>
+                            <button class="w-8 h-8 bg-red-100 hover:bg-red-200 rounded-lg flex items-center justify-center transition-colors delete-btn" 
+                                    data-id="{{ category.id }}"
+                                    data-name="{{ category.name }}"
+                                    data-brand-count="{{ category.brand_count }}"
+                                    title="Delete">
+                                <i class="fas fa-trash text-red-600 text-sm"></i>
                             </button>
                         </div>
+                    </div>
+                    
+                    <h3 class="text-lg font-semibold text-gray-900 mb-3 pr-16">{{ category.name }}</h3>
+                    
+                    <div class="flex items-center gap-2 text-sm text-gray-600 mb-2">
+                        <i class="fas fa-car text-gray-400"></i>
+                        <span>{{ category.brand_count }} brand{{ category.brand_count|pluralize }}</span>
+                    </div>
+                    
+                    <div class="flex items-center gap-2 text-sm mb-4">
+                        <i class="fas fa-percentage text-gray-400"></i>
+                        <span class="font-semibold text-green-600">{{ category.reduction_percentage }}% reduction</span>
+                    </div>
+                    
+                    <div class="flex justify-end">
+                        <button class="px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-lg hover:bg-gray-200 transition-colors" onclick="window.location.href='{% url 'main:brand_classification_view' %}'">
+                            <i class="fas fa-eye mr-1"></i>View Brands
+                        </button>
                     </div>
                 </div>
                 {% endfor %}
             </div>
             {% else %}
-            <div class="empty-state">
-                <i class="fas fa-tags text-6xl mb-4"></i>
-                <h3 class="text-xl font-semibold mb-2">No Categories Yet</h3>
-                <p class="text-base-content/60 mb-4">Create your first category to start classifying car brands</p>
-                <button class="btn btn-primary" id="firstCategoryBtn">
-                    <i class="fas fa-plus"></i>
-                    Create First Category
+            <div class="text-center py-12">
+                <div class="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-tags text-2xl text-gray-400"></i>
+                </div>
+                <h3 class="text-lg font-semibold text-gray-900 mb-2">No Categories Yet</h3>
+                <p class="text-gray-600 mb-6">Create your first category to start classifying car brands</p>
+                <button class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors" id="firstCategoryBtn">
+                    <i class="fas fa-plus mr-2"></i>Create First Category
                 </button>
             </div>
             {% endif %}
-        </div>
     </div>
 </div>
 
 <!-- Create/Edit Category Modal -->
-<div class="modal" id="categoryModal">
-    <div class="modal-box">
-        <h3 class="font-bold text-lg mb-4" id="modalTitle">
-            <i class="fas fa-plus"></i>
-            Create New Category
-        </h3>
-        <form id="categoryForm">
-            <div class="form-control">
-                <label class="label">
-                    <span class="label-text">Category Name</span>
-                </label>
-                <input 
-                    type="text" 
-                    id="categoryName"
-                    class="input input-bordered" 
-                    placeholder="e.g., Continental, Japanese, Luxury"
-                    required
-                >
-                <label class="label">
-                    <span class="label-text-alt">Choose a descriptive name for the brand category</span>
-                </label>
-            </div>
-            <div class="form-control mt-4">
-                <label class="label">
-                    <span class="label-text">Reduction Percentage</span>
-                </label>
-                <div class="input-group">
-                    <input 
-                        type="number" 
-                        id="categoryReduction"
-                        class="input input-bordered flex-1" 
-                        placeholder="10.0"
-                        min="0"
-                        max="100"
-                        step="0.01"
-                        required
-                    >
-                    <span class="input-group-text">%</span>
+<div class="fixed inset-0 z-50 hidden" id="categoryModal">
+    <div class="flex items-center justify-center min-h-screen px-4">
+        <div class="fixed inset-0 bg-black opacity-50" onclick="document.getElementById('cancelBtn').click()"></div>
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full z-10">
+            <div class="p-6 border-b border-gray-200">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-plus text-blue-600"></i>
+                    </div>
+                    <h3 class="text-lg font-semibold text-gray-900" id="modalTitle">Create New Category</h3>
                 </div>
-                <label class="label">
-                    <span class="label-text-alt">Percentage reduction applied to cars in this category (0-100%)</span>
-                </label>
             </div>
-        </form>
-        <div class="modal-action">
-            <button class="btn" id="cancelBtn">Cancel</button>
-            <button class="btn btn-primary" id="saveBtn">
-                <i class="fas fa-save"></i>
-                Create Category
-            </button>
+            
+            <div class="p-6">
+                <form id="categoryForm" class="space-y-4">
+                    <div class="space-y-2">
+                        <label class="block text-sm font-medium text-gray-700">Category Name</label>
+                        <input 
+                            type="text" 
+                            id="categoryName"
+                            class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                            placeholder="e.g., Continental, Japanese, Luxury"
+                            required
+                        >
+                        <p class="text-xs text-gray-500">Choose a descriptive name for the brand category</p>
+                    </div>
+                    <div class="space-y-2">
+                        <label class="block text-sm font-medium text-gray-700">Reduction Percentage</label>
+                        <div class="relative">
+                            <input 
+                                type="number" 
+                                id="categoryReduction"
+                                class="block w-full px-3 py-2 pr-8 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                                placeholder="10.0"
+                                min="0"
+                                max="100"
+                                step="0.01"
+                                required
+                            >
+                            <span class="absolute right-3 top-2 text-sm text-gray-500">%</span>
+                        </div>
+                        <p class="text-xs text-gray-500">Percentage reduction applied to cars in this category (0-100%)</p>
+                    </div>
+                    <div class="flex gap-3 mt-6">
+                        <button type="button" class="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-lg hover:bg-gray-200 transition-colors" id="cancelBtn">Cancel</button>
+                        <button type="button" class="flex-1 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors" id="saveBtn">
+                            <i class="fas fa-save mr-2"></i>Create Category
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 </div>
@@ -240,11 +231,11 @@ $(document).ready(function() {
     // Add Category Button
     $('#addCategoryBtn, #firstCategoryBtn').on('click', function() {
         editingCategoryId = null;
-        $('#modalTitle').html('<i class="fas fa-plus"></i> Create New Category');
-        $('#saveBtn').html('<i class="fas fa-save"></i> Create Category');
+        $('#modalTitle').text('Create New Category');
+        $('#saveBtn').html('<i class="fas fa-save mr-2"></i>Create Category');
         $('#categoryName').val('');
         $('#categoryReduction').val('');
-        $('#categoryModal').addClass('modal-open');
+        $('#categoryModal').removeClass('hidden');
     });
     
     // Edit Category Button  
@@ -253,16 +244,16 @@ $(document).ready(function() {
         const name = $(this).data('name');
         const reduction = $(this).data('reduction');
         
-        $('#modalTitle').html('<i class="fas fa-edit"></i> Edit Category');
-        $('#saveBtn').html('<i class="fas fa-save"></i> Update Category');
+        $('#modalTitle').text('Edit Category');
+        $('#saveBtn').html('<i class="fas fa-save mr-2"></i>Update Category');
         $('#categoryName').val(name);
         $('#categoryReduction').val(reduction);
-        $('#categoryModal').addClass('modal-open');
+        $('#categoryModal').removeClass('hidden');
     });
     
     // Cancel Button
     $('#cancelBtn').on('click', function() {
-        $('#categoryModal').removeClass('modal-open');
+        $('#categoryModal').addClass('hidden');
         editingCategoryId = null;
     });
     
@@ -287,7 +278,7 @@ $(document).ready(function() {
             
         const saveBtn = $('#saveBtn');
         const originalContent = saveBtn.html();
-        saveBtn.html('<span class="loading loading-spinner loading-xs"></span> Saving...').prop('disabled', true);
+        saveBtn.html('<i class="fas fa-spinner fa-spin mr-2"></i>Saving...').prop('disabled', true);
         
         $.ajax({
             url: url,
@@ -303,7 +294,7 @@ $(document).ready(function() {
             success: function(data) {
                 if (data.success) {
                     Swal.fire('Success!', data.message, 'success').then(() => {
-                        $('#categoryModal').removeClass('modal-open');
+                        $('#categoryModal').addClass('hidden');
                         location.reload();
                     });
                 } else {
@@ -380,7 +371,7 @@ $(document).ready(function() {
     // Close modal on click outside
     $(document).on('click', '.modal', function(e) {
         if (e.target === this) {
-            $(this).removeClass('modal-open');
+            $(this).addClass('hidden');
             editingCategoryId = null;
         }
     });

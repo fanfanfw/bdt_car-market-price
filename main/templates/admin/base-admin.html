@@ -28,25 +28,27 @@
 </head>
 <body class="min-h-screen bg-base-100">
     {% if user.is_authenticated %}
-    <!-- Admin Navigation -->
-    <div class="navbar bg-primary text-primary-content">
+    <!-- Clean Admin Navigation -->
+    <div class="navbar bg-white shadow-sm border-b border-gray-200">
         <div class="flex-1">
-            <a href="{% url 'admin_dashboard' %}" class="btn btn-ghost text-xl">
-                <i class="fas fa-tachometer-alt"></i>
+            <a href="{% url 'admin_dashboard' %}" class="btn btn-ghost text-xl text-gray-800 hover:text-blue-600">
+                <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center mr-3">
+                    <i class="fas fa-shield-alt text-white text-sm"></i>
+                </div>
                 Admin Panel
             </a>
         </div>
         <div class="flex-none gap-2">
             <!-- User Info -->
             <div class="dropdown dropdown-end">
-                <div tabindex="0" role="button" class="btn btn-ghost">
+                <div tabindex="0" role="button" class="btn btn-ghost text-gray-700 hover:text-gray-900">
                     <i class="fas fa-user"></i>
                     {{ user.username }}
                 </div>
-                <ul tabindex="0" class="dropdown-content menu bg-base-100 text-base-content rounded-box z-[1] w-52 p-2 shadow">
-                    <li><a href="{% url 'admin_dashboard' %}"><i class="fas fa-home"></i> Dashboard</a></li>
-                    <li><hr class="border-base-300"></li>
-                    <li><a href="{% url 'admin_logout' %}"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+                <ul tabindex="0" class="dropdown-content menu bg-white border border-gray-200 rounded-lg z-[1] w-52 p-2 shadow-lg">
+                    <li><a href="{% url 'admin_dashboard' %}" class="text-gray-700 hover:text-blue-600 hover:bg-blue-50"><i class="fas fa-home"></i> Dashboard</a></li>
+                    <li><hr class="border-gray-200"></li>
+                    <li><a href="{% url 'admin_logout' %}" class="text-gray-700 hover:text-red-600 hover:bg-red-50"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
                 </ul>
             </div>
         </div>
@@ -59,22 +61,22 @@
         <!-- Main Content -->
         <div class="drawer-content flex flex-col">
             <!-- Mobile Header -->
-            <div class="navbar bg-base-200 lg:hidden">
+            <div class="navbar bg-white border-b border-gray-200 lg:hidden">
                 <div class="flex-none">
-                    <label for="drawer-toggle" class="btn btn-square btn-ghost">
+                    <label for="drawer-toggle" class="btn btn-square btn-ghost text-gray-600">
                         <i class="fas fa-bars"></i>
                     </label>
                 </div>
                 <div class="flex-1">
-                    <span class="text-xl font-semibold">{% block page_title %}Dashboard{% endblock %}</span>
+                    <span class="text-xl font-semibold text-gray-900">{% block page_title %}Dashboard{% endblock %}</span>
                 </div>
             </div>
             
             <!-- Content -->
-            <main class="flex-1 p-6">
+            <main class="flex-1 p-6 bg-gray-50">
                 {% if messages %}
                     {% for message in messages %}
-                        <div class="alert alert-{{ message.tags|default:'info' }} mb-4">
+                        <div class="mb-4 p-4 rounded-lg border {% if message.tags == 'error' %}bg-red-50 border-red-200 text-red-800{% elif message.tags == 'success' %}bg-green-50 border-green-200 text-green-800{% elif message.tags == 'warning' %}bg-yellow-50 border-yellow-200 text-yellow-800{% else %}bg-blue-50 border-blue-200 text-blue-800{% endif %}">
                             <span>{{ message }}</span>
                         </div>
                     {% endfor %}
@@ -84,61 +86,108 @@
             </main>
         </div>
         
-        <!-- Sidebar -->
+        <!-- Clean Sidebar -->
         <div class="drawer-side">
             <label for="drawer-toggle" class="drawer-overlay"></label>
-            <aside class="min-h-full w-64 bg-base-200">
+            <aside class="min-h-full w-64 bg-white border-r border-gray-200">
                 <!-- Sidebar Header -->
-                <div class="p-4 border-b border-base-300">
-                    <h2 class="text-xl font-bold">Admin Menu</h2>
+                <div class="p-4 border-b border-gray-200">
+                    <h2 class="text-lg font-semibold text-gray-900">Admin Menu</h2>
                 </div>
                 
                 <!-- Sidebar Menu -->
-                <ul class="menu p-4 w-full">
-                    <li><a href="{% url 'admin_dashboard' %}" class="{% if request.resolver_match.url_name == 'admin_dashboard' %}active{% endif %}">
-                        <i class="fas fa-tachometer-alt"></i> Dashboard
-                    </a></li>
-                    <li><hr class="border-base-300"></li>
-                    <li class="menu-title">System</li>
-                    <li><a href="#">
-                        <i class="fas fa-users"></i> Users
-                    </a></li>
-                    <li><a href="{% url 'main:car_data_view' %}" class="{% if request.resolver_match.url_name == 'car_data_view' %}active{% endif %}">
-                        <i class="fas fa-car"></i> Car Data
-                    </a></li>
-                    <li><a href="{% url 'main:verified_phones_view' %}" class="{% if request.resolver_match.url_name == 'verified_phones_view' %}active{% endif %}">
-                        <i class="fas fa-phone"></i> Verified Phones
-                    </a></li>
-                    <li><a href="{% url 'main:otp_sessions_view' %}" class="{% if request.resolver_match.url_name == 'otp_sessions_view' %}active{% endif %}">
-                        <i class="fas fa-key"></i> OTP Sessions
-                    </a></li>
-                    <li><hr class="border-base-300"></li>
-                    <li class="menu-title">Settings</li>
-                    <li><a href="{% url 'main:formula_config_edit' %}" class="{% if request.resolver_match.url_name == 'formula_config_edit' %}active{% endif %}">
-                        <i class="fas fa-calculator"></i> Formula Config
-                    </a></li>
-                    <li><a href="{% url 'main:condition_categories_manage' %}" class="{% if request.resolver_match.url_name == 'condition_categories_manage' %}active{% endif %}">
-                        <i class="fas fa-list-check"></i> Condition Categories
-                    </a></li>
-                    <li><hr class="border-base-300"></li>
-                    <li class="menu-title">Categories</li>
-                    <li><a href="{% url 'main:categories_management_view' %}" class="{% if request.resolver_match.url_name == 'categories_management_view' %}active{% endif %}">
-                        <i class="fas fa-tags"></i> Brand Categories
-                    </a></li>
-                    <li><a href="{% url 'main:brand_classification_view' %}" class="{% if request.resolver_match.url_name == 'brand_classification_view' %}active{% endif %}">
-                        <i class="fas fa-cog"></i> Classify Brands
-                    </a></li>
-                    <li><a href="{% url 'main:price_tiers_management_view' %}" class="{% if request.resolver_match.url_name == 'price_tiers_management_view' %}active{% endif %}">
-                        <i class="fas fa-layer-group"></i> Price Tiers
-                    </a></li>
-                </ul>
+                <nav class="p-4">
+                    <ul class="space-y-2">
+                        <li>
+                            <a href="{% url 'admin_dashboard' %}" class="flex items-center gap-3 px-3 py-2 text-gray-700 rounded-lg hover:bg-blue-50 hover:text-blue-600 transition-colors {% if request.resolver_match.url_name == 'admin_dashboard' %}bg-blue-50 text-blue-600{% endif %}">
+                                <i class="fas fa-home w-5"></i>
+                                <span>Dashboard</span>
+                            </a>
+                        </li>
+                    </ul>
+                    
+                    <!-- System Section -->
+                    <div class="mt-6">
+                        <h3 class="px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">System</h3>
+                        <ul class="space-y-2">
+                            <li>
+                                <a href="#" class="flex items-center gap-3 px-3 py-2 text-gray-700 rounded-lg hover:bg-gray-50 hover:text-gray-900 transition-colors">
+                                    <i class="fas fa-users w-5"></i>
+                                    <span>Users</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="{% url 'main:car_data_view' %}" class="flex items-center gap-3 px-3 py-2 text-gray-700 rounded-lg hover:bg-gray-50 hover:text-gray-900 transition-colors {% if request.resolver_match.url_name == 'car_data_view' %}bg-gray-50 text-gray-900{% endif %}">
+                                    <i class="fas fa-car w-5"></i>
+                                    <span>Car Data</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="{% url 'main:verified_phones_view' %}" class="flex items-center gap-3 px-3 py-2 text-gray-700 rounded-lg hover:bg-gray-50 hover:text-gray-900 transition-colors {% if request.resolver_match.url_name == 'verified_phones_view' %}bg-gray-50 text-gray-900{% endif %}">
+                                    <i class="fas fa-phone w-5"></i>
+                                    <span>Verified Phones</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="{% url 'main:otp_sessions_view' %}" class="flex items-center gap-3 px-3 py-2 text-gray-700 rounded-lg hover:bg-gray-50 hover:text-gray-900 transition-colors {% if request.resolver_match.url_name == 'otp_sessions_view' %}bg-gray-50 text-gray-900{% endif %}">
+                                    <i class="fas fa-key w-5"></i>
+                                    <span>OTP Sessions</span>
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                    
+                    <!-- Settings Section -->
+                    <div class="mt-6">
+                        <h3 class="px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Settings</h3>
+                        <ul class="space-y-2">
+                            <li>
+                                <a href="{% url 'main:formula_config_edit' %}" class="flex items-center gap-3 px-3 py-2 text-gray-700 rounded-lg hover:bg-gray-50 hover:text-gray-900 transition-colors {% if request.resolver_match.url_name == 'formula_config_edit' %}bg-gray-50 text-gray-900{% endif %}">
+                                    <i class="fas fa-calculator w-5"></i>
+                                    <span>Formula Config</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="{% url 'main:condition_categories_manage' %}" class="flex items-center gap-3 px-3 py-2 text-gray-700 rounded-lg hover:bg-gray-50 hover:text-gray-900 transition-colors {% if request.resolver_match.url_name == 'condition_categories_manage' %}bg-gray-50 text-gray-900{% endif %}">
+                                    <i class="fas fa-list-check w-5"></i>
+                                    <span>Condition Categories</span>
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                    
+                    <!-- Categories Section -->
+                    <div class="mt-6">
+                        <h3 class="px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Categories</h3>
+                        <ul class="space-y-2">
+                            <li>
+                                <a href="{% url 'main:categories_management_view' %}" class="flex items-center gap-3 px-3 py-2 text-gray-700 rounded-lg hover:bg-gray-50 hover:text-gray-900 transition-colors {% if request.resolver_match.url_name == 'categories_management_view' %}bg-gray-50 text-gray-900{% endif %}">
+                                    <i class="fas fa-tags w-5"></i>
+                                    <span>Brand Categories</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="{% url 'main:brand_classification_view' %}" class="flex items-center gap-3 px-3 py-2 text-gray-700 rounded-lg hover:bg-gray-50 hover:text-gray-900 transition-colors {% if request.resolver_match.url_name == 'brand_classification_view' %}bg-gray-50 text-gray-900{% endif %}">
+                                    <i class="fas fa-cog w-5"></i>
+                                    <span>Classify Brands</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="{% url 'main:price_tiers_management_view' %}" class="flex items-center gap-3 px-3 py-2 text-gray-700 rounded-lg hover:bg-gray-50 hover:text-gray-900 transition-colors {% if request.resolver_match.url_name == 'price_tiers_management_view' %}bg-gray-50 text-gray-900{% endif %}">
+                                    <i class="fas fa-layer-group w-5"></i>
+                                    <span>Price Tiers</span>
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </nav>
             </aside>
         </div>
     </div>
     {% else %}
-    <!-- Login Layout -->
-    <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary to-secondary">
-        <div class="w-full max-w-md">
+    <!-- Simple Login Layout -->
+    <div class="min-h-screen flex items-center justify-center bg-gray-50">
+        <div class="w-full max-w-md px-4">
             {% block login_content %}{% endblock %}
         </div>
     </div>

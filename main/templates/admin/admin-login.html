@@ -3,112 +3,123 @@
 {% block title %}Admin Login - Car Market Price{% endblock %}
 
 {% block login_content %}
-<div class="card bg-base-100 shadow-2xl">
-    <div class="card-body">
-        <!-- Logo/Title -->
-        <div class="text-center mb-6">
-            <h1 class="text-3xl font-bold text-primary">
-                <i class="fas fa-shield-alt"></i>
-                Admin Login
-            </h1>
-            <p class="text-base-content/60 mt-2">Car Market Price System</p>
-        </div>
-
-        <!-- Login Form -->
-        <form method="post" id="loginForm">
-            {% csrf_token %}
-            
-            <!-- Username Field -->
-            <div class="form-control mb-4">
-                <label class="label">
-                    <span class="label-text font-semibold">Username</span>
-                </label>
-                <div class="input-group">
-                    <span class="input-group-text bg-base-200">
-                        <i class="fas fa-user"></i>
-                    </span>
-                    <input type="text" 
-                           name="username" 
-                           class="input input-bordered w-full" 
-                           placeholder="Enter your username"
-                           required
-                           {% if form.username.value %}value="{{ form.username.value }}"{% endif %}>
+<!-- Simple Login Container -->
+<div class="w-full max-w-md mx-auto">
+    <!-- Clean Login Card -->
+    <div class="bg-white rounded-2xl shadow-lg border border-gray-200">
+        <div class="p-8">
+            <!-- Simple Brand Header -->
+            <div class="text-center mb-8">
+                <div class="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                    <i class="fas fa-shield-alt text-2xl text-white"></i>
                 </div>
-                {% if form.username.errors %}
-                    <label class="label">
-                        <span class="label-text-alt text-error">{{ form.username.errors.0 }}</span>
+                
+                <h1 class="text-2xl font-bold text-gray-900 mb-2">
+                    Admin Login
+                </h1>
+                <p class="text-gray-600">
+                    Sign in to manage your dashboard
+                </p>
+            </div>
+
+            <!-- Clean Login Form -->
+            <form method="post" id="loginForm" class="space-y-6">
+                {% csrf_token %}
+                
+                <!-- Username Field -->
+                <div class="space-y-2">
+                    <label class="block text-sm font-medium text-gray-700">
+                        Username
                     </label>
-                {% endif %}
-            </div>
-
-            <!-- Password Field -->
-            <div class="form-control mb-6">
-                <label class="label">
-                    <span class="label-text font-semibold">Password</span>
-                </label>
-                <div class="input-group">
-                    <span class="input-group-text bg-base-200">
-                        <i class="fas fa-lock"></i>
-                    </span>
-                    <input type="password" 
-                           name="password" 
-                           class="input input-bordered w-full" 
-                           placeholder="Enter your password"
-                           required>
-                    <button type="button" 
-                            class="input-group-text bg-base-200 hover:bg-base-300 cursor-pointer"
-                            onclick="togglePassword()">
-                        <i class="fas fa-eye" id="toggleIcon"></i>
-                    </button>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fas fa-user text-gray-400"></i>
+                        </div>
+                        <input type="text" 
+                               name="username" 
+                               class="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
+                               placeholder="Enter your username"
+                               required
+                               {% if form.username.value %}value="{{ form.username.value }}"{% endif %}>
+                    </div>
+                    {% if form.username.errors %}
+                        <p class="text-red-600 text-sm flex items-center gap-1">
+                            <i class="fas fa-exclamation-circle"></i>
+                            {{ form.username.errors.0 }}
+                        </p>
+                    {% endif %}
                 </div>
-                {% if form.password.errors %}
-                    <label class="label">
-                        <span class="label-text-alt text-error">{{ form.password.errors.0 }}</span>
+
+                <!-- Password Field -->
+                <div class="space-y-2">
+                    <label class="block text-sm font-medium text-gray-700">
+                        Password
                     </label>
-                {% endif %}
-            </div>
-
-            <!-- Error Messages -->
-            {% if form.non_field_errors %}
-                <div class="alert alert-error mb-4">
-                    <i class="fas fa-exclamation-circle"></i>
-                    <span>{{ form.non_field_errors.0 }}</span>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fas fa-lock text-gray-400"></i>
+                        </div>
+                        <input type="password" 
+                               name="password" 
+                               id="passwordInput"
+                               class="block w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
+                               placeholder="Enter your password"
+                               required>
+                        <button type="button" 
+                                class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                                onclick="togglePassword()">
+                            <i class="fas fa-eye" id="toggleIcon"></i>
+                        </button>
+                    </div>
+                    {% if form.password.errors %}
+                        <p class="text-red-600 text-sm flex items-center gap-1">
+                            <i class="fas fa-exclamation-circle"></i>
+                            {{ form.password.errors.0 }}
+                        </p>
+                    {% endif %}
                 </div>
-            {% endif %}
 
-            <!-- Remember Me -->
-            <div class="form-control mb-6">
-                <label class="cursor-pointer label justify-start gap-3">
-                    <input type="checkbox" name="remember_me" class="checkbox checkbox-primary">
-                    <span class="label-text">Remember me</span>
-                </label>
-            </div>
+                <!-- Error Messages -->
+                {% if form.non_field_errors %}
+                    <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+                        <div class="flex items-center gap-2 text-red-800">
+                            <i class="fas fa-exclamation-circle"></i>
+                            <span class="text-sm">{{ form.non_field_errors.0 }}</span>
+                        </div>
+                    </div>
+                {% endif %}
 
-            <!-- Submit Button -->
-            <div class="form-control">
-                <button type="submit" class="btn btn-primary btn-block" id="loginBtn">
-                    <i class="fas fa-sign-in-alt"></i>
-                    Login
+                <!-- Remember Me -->
+                <div class="flex items-center">
+                    <input type="checkbox" name="remember_me" id="remember_me" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                    <label for="remember_me" class="ml-2 text-sm text-gray-600">
+                        Keep me signed in
+                    </label>
+                </div>
+
+                <!-- Submit Button -->
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors" id="loginBtn">
+                    Sign In
                 </button>
-            </div>
-        </form>
-
-        <!-- Back to Main Site -->
-        <div class="divider"></div>
-        <div class="text-center">
-            <a href="{% url 'main:index' %}" class="btn btn-ghost btn-sm">
-                <i class="fas fa-arrow-left"></i>
-                Back to Main Site
-            </a>
+            </form>
         </div>
+    </div>
+
+    <!-- Back to Main Site -->
+    <div class="text-center mt-6">
+        <a href="{% url 'main:index' %}" class="text-gray-600 hover:text-gray-900 text-sm flex items-center justify-center gap-2 transition-colors">
+            <i class="fas fa-arrow-left"></i>
+            <span>Back to Main Site</span>
+        </a>
     </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
+// Simple password toggle
 function togglePassword() {
-    const passwordInput = document.querySelector('input[name="password"]');
+    const passwordInput = document.getElementById('passwordInput');
     const toggleIcon = document.getElementById('toggleIcon');
     
     if (passwordInput.type === 'password') {
@@ -120,14 +131,40 @@ function togglePassword() {
     }
 }
 
-// Handle form submission with loading state
+// Simple form submission handling
 document.getElementById('loginForm').addEventListener('submit', function(e) {
     const loginBtn = document.getElementById('loginBtn');
-    loginBtn.innerHTML = '<span class="loading loading-spinner loading-sm"></span> Logging in...';
+    const originalText = loginBtn.textContent;
+    
+    loginBtn.textContent = 'Signing in...';
     loginBtn.disabled = true;
+    loginBtn.classList.add('opacity-75');
+    
+    // Re-enable button if form validation fails
+    setTimeout(() => {
+        if (loginBtn.disabled) {
+            loginBtn.textContent = originalText;
+            loginBtn.disabled = false;
+            loginBtn.classList.remove('opacity-75');
+        }
+    }, 5000);
 });
 
 // Auto-focus username field
-document.querySelector('input[name="username"]').focus();
+document.addEventListener('DOMContentLoaded', function() {
+    const usernameInput = document.querySelector('input[name="username"]');
+    const passwordInput = document.querySelector('input[name="password"]');
+    
+    // Focus first input
+    usernameInput.focus();
+    
+    // Enter key navigation
+    usernameInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            passwordInput.focus();
+        }
+    });
+});
 </script>
 {% endblock %}

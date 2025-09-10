@@ -754,8 +754,8 @@ def formula_config_edit(request):
 @user_passes_test(is_staff_user, login_url='/login/')
 def condition_categories_manage(request):
     """Manage condition categories and their options"""
-    # Exclude brand_category as it's now handled automatically
-    categories = VehicleConditionCategory.objects.prefetch_related('options').exclude(category_key='brand_category').order_by('order')
+    # Exclude brand_category and price_tier as they are now handled automatically
+    categories = VehicleConditionCategory.objects.prefetch_related('options').exclude(category_key__in=['brand_category', 'price_tier']).order_by('order')
     
     context = {
         'categories': categories
@@ -890,7 +890,7 @@ def car_data_api(request):
         order_direction = request.GET.get('order[0][dir]', 'asc')
         
         # Column mapping for ordering
-        columns = ['id', 'source', 'brand', 'model', 'variant', 'year', 'mileage', 'price', 'condition', 'location', 'created_at']
+        columns = ['id', 'source', 'brand', 'model', 'variant', 'year', 'mileage', 'price']
         order_column = columns[order_column_index] if order_column_index < len(columns) else 'id'
         
         if order_direction == 'desc':
@@ -986,11 +986,8 @@ def car_data_api(request):
                 car.model,
                 car.variant or "-",
                 year_formatted,
-                mileage_formatted,
-                price_formatted,
-                condition_formatted,
-                location_formatted,
-                car.created_at.strftime('%Y-%m-%d %H:%M'),
+                car.mileage,  # Raw mileage data
+                car.price,    # Raw price data
                 actions
             ])
         
@@ -1886,12 +1883,12 @@ def price_tiers_management_view(request):
         for i, tier in enumerate(active_price_tiers):
             if i > 0:
                 prev_tier = active_price_tiers[i-1]
-                if prev_tier.max_price and float(prev_tier.max_price) < float(tier.min_price) - 1:
-                    # Gap detected
+                if prev_tier.max_price and float(prev_tier.max_price) < float(tier.min_price):
+                    # Gap detected (only if there's actually a gap, not just different by 1)
                     has_issues = True
                     issues.append(f"Price gap between {prev_tier.name} and {tier.name}")
-                elif prev_tier.max_price and float(prev_tier.max_price) >= float(tier.min_price):
-                    # Overlap detected
+                elif prev_tier.max_price and float(prev_tier.max_price) > float(tier.min_price):
+                    # Overlap detected (only if max price is greater than min price of next tier)
                     has_issues = True
                     issues.append(f"Price overlap between {prev_tier.name} and {tier.name}")
         

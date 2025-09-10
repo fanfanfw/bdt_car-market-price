@@ -3,476 +3,306 @@
 {% block title %}Brand Classification - Admin Panel{% endblock %}
 {% block page_title %}Brand Classification{% endblock %}
 
-{% block extra_css %}
-<style>    
-    /* Modern DataTables Styling with Glass Morphism */
-    .dataTables_wrapper {
-        @apply w-full;
-    }
-    
-    .dataTables_length,
-    .dataTables_filter,
-    .dataTables_info,
-    .dataTables_paginate {
-        @apply text-sm text-base-content;
-    }
-    
-    .dataTables_length select {
-        @apply select select-bordered select-sm mx-2 bg-base-100/80 backdrop-blur-sm border-base-300/50;
-        transition: all 0.3s ease;
-    }
-    
-    .dataTables_length select:focus {
-        @apply border-primary/50 ring-2 ring-primary/20;
-    }
-    
-    .dataTables_filter input {
-        @apply input input-bordered input-sm bg-base-100/80 backdrop-blur-sm border-base-300/50;
-        transition: all 0.3s ease;
-    }
-    
-    .dataTables_filter input:focus {
-        @apply border-primary/50 ring-2 ring-primary/20;
-    }
-    
-    .dataTables_length,
-    .dataTables_filter {
-        @apply mb-4;
-    }
-    
-    .dataTables_info {
-        @apply text-base-content/60;
-    }
-    
-    /* Modern Table styling with glass morphism */
-    table.dataTable {
-        @apply w-full table border-collapse rounded-xl overflow-hidden;
-        background: rgba(255, 255, 255, 0.05);
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-    }
-    
-    table.dataTable thead th {
-        @apply bg-gradient-to-r from-primary/10 to-secondary/10 text-base-content font-semibold p-4 text-left border-b border-base-300/30;
-        cursor: pointer;
-        position: relative;
-        transition: all 0.3s ease;
-    }
-    
-    table.dataTable thead th:hover {
-        @apply bg-gradient-to-r from-primary/20 to-secondary/20;
-        transform: translateY(-1px);
-    }
-    
-    table.dataTable thead th::after {
-        content: '';
-        position: absolute;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        height: 2px;
-        background: linear-gradient(90deg, transparent, var(--primary), transparent);
-        opacity: 0;
-        transition: opacity 0.3s ease;
-    }
-    
-    table.dataTable thead th:hover::after {
-        opacity: 1;
-    }
-    
-    table.dataTable tbody td {
-        @apply p-4 border-b border-base-200/30;
-        transition: all 0.3s ease;
-    }
-    
-    table.dataTable tbody tr {
-        transition: all 0.3s ease;
-    }
-    
-    table.dataTable tbody tr:hover {
-        @apply bg-gradient-to-r from-primary/5 to-secondary/5;
-        transform: translateX(4px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    }
-    
-    /* Modern Pagination styling */
-    .dataTables_paginate .paginate_button {
-        @apply btn btn-sm btn-ghost mx-1 rounded-full;
-        transition: all 0.3s ease;
-    }
-    
-    .dataTables_paginate .paginate_button:hover {
-        @apply btn-primary transform scale-105;
-    }
-    
-    .dataTables_paginate .paginate_button.current {
-        @apply btn-primary shadow-lg;
-        background: linear-gradient(135deg, var(--primary), var(--secondary));
-    }
-    
-    .dataTables_paginate .paginate_button.disabled {
-        @apply btn-disabled opacity-30;
-    }
-    
-    /* Modern Loading overlay with glassmorphism */
-    .dataTables_processing {
-        @apply fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 p-6 rounded-2xl z-50;
-        background: rgba(255, 255, 255, 0.9);
-        backdrop-filter: blur(15px);
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-    }
-    
-    .brand-name {
-        font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Roboto Mono', monospace;
-        font-weight: 600;
-        @apply text-primary;
-        transition: all 0.3s ease;
-    }
-    
-    .brand-name:hover {
-        @apply text-secondary;
-    }
-    
-    .action-buttons {
-        white-space: nowrap;
-    }
-    
-    .action-buttons .btn {
-        margin-right: 0.25rem;
-        transition: all 0.3s ease;
-    }
-    
-    .action-buttons .btn:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-    }
-    
-    /* Modern stats cards animation */
-    .stat-card {
-        transition: all 0.3s ease;
-        position: relative;
-        overflow: hidden;
-    }
-    
-    .stat-card::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: -100%;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-        transition: left 0.5s ease;
-    }
-    
-    .stat-card:hover::before {
-        left: 100%;
-    }
-    
-    .stat-card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
-    }
-    
-    /* Modern filter section */
-    .filter-card {
-        @apply bg-gradient-to-br from-base-100 to-base-200/50;
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        transition: all 0.3s ease;
-    }
-    
-    .filter-card:hover {
-        @apply shadow-2xl;
-        transform: translateY(-2px);
-    }
-</style>
-{% endblock %}
-
 {% block content %}
-{% csrf_token %}
 <div class="space-y-6">
-    <!-- Page Header -->
-    <div class="flex justify-between items-center">
-        <div>
-            <h1 class="text-3xl font-bold">Brand Classification</h1>
-            <p class="text-base-content/60 mt-1">Assign car brands to categories for automatic pricing calculations</p>
-        </div>
-        <div class="flex gap-2">
-            <a href="{% url 'main:categories_management_view' %}" class="btn btn-secondary">
-                <i class="fas fa-tags"></i>
-                Manage Categories
-            </a>
-            <button class="btn btn-primary" onclick="refreshTable()">
-                <i class="fas fa-sync-alt"></i>
-                Refresh
-            </button>
-        </div>
-    </div>
-
-    <!-- Statistics Cards -->
+    <!-- Basic content test -->
+    <h1 class="text-2xl font-bold text-gray-900">Brand Classification</h1>
+    <p class="text-gray-600">Basic test content</p>
+    
+    <!-- Statistics Cards Test -->
     <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div class="stat bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg">
-            <div class="stat-figure text-white/80">
-                <i class="fas fa-car text-3xl"></i>
+        <div class="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-600">Total Brands</p>
+                    <p class="text-2xl font-bold text-gray-900">{{ total_brands }}</p>
+                    <p class="text-xs text-gray-500">Unique brands</p>
+                </div>
+                <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                    <i class="fas fa-car text-xl text-blue-600"></i>
+                </div>
             </div>
-            <div class="stat-title text-white/80">Total Brands</div>
-            <div class="stat-value text-white">{{ total_brands }}</div>
-            <div class="stat-desc text-white/80">Unique brands</div>
         </div>
 
-        <div class="stat bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg">
-            <div class="stat-figure text-white/80">
-                <i class="fas fa-check-circle text-3xl"></i>
+        <div class="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-600">Classified</p>
+                    <p class="text-2xl font-bold text-gray-900">{{ classified_brands }}</p>
+                    <p class="text-xs text-gray-500">Brands assigned</p>
+                </div>
+                <div class="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+                    <i class="fas fa-check-circle text-xl text-green-600"></i>
+                </div>
             </div>
-            <div class="stat-title text-white/80">Classified</div>
-            <div class="stat-value text-white">{{ classified_brands }}</div>
-            <div class="stat-desc text-white/80">Brands assigned</div>
         </div>
 
-        <div class="stat bg-gradient-to-r from-red-500 to-red-600 text-white rounded-lg">
-            <div class="stat-figure text-white/80">
-                <i class="fas fa-exclamation-triangle text-3xl"></i>
+        <div class="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-600">Unclassified</p>
+                    <p class="text-2xl font-bold text-gray-900">{{ unclassified_brands }}</p>
+                    <p class="text-xs text-gray-500">Need classification</p>
+                </div>
+                <div class="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
+                    <i class="fas fa-exclamation-triangle text-xl text-red-600"></i>
+                </div>
             </div>
-            <div class="stat-title text-white/80">Unclassified</div>
-            <div class="stat-value text-white">{{ unclassified_brands }}</div>
-            <div class="stat-desc text-white/80">Need classification</div>
         </div>
 
-        <div class="stat bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg">
-            <div class="stat-figure text-white/80">
-                <i class="fas fa-percentage text-3xl"></i>
+        <div class="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-600">Progress</p>
+                    <p class="text-2xl font-bold text-gray-900">{% widthratio classified_brands total_brands 100 %}%</p>
+                    <p class="text-xs text-gray-500">Classification complete</p>
+                </div>
+                <div class="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
+                    <i class="fas fa-percentage text-xl text-purple-600"></i>
+                </div>
             </div>
-            <div class="stat-title text-white/80">Progress</div>
-            <div class="stat-value text-white">{% widthratio classified_brands total_brands 100 %}%</div>
-            <div class="stat-desc text-white/80">Classification complete</div>
         </div>
     </div>
 
-    <!-- Warning for Unclassified Brands -->
+    <!-- Warning for Unclassified Brands Test -->
     {% if unclassified_brands > 0 %}
-    <div class="alert alert-warning">
-        <i class="fas fa-exclamation-triangle"></i>
-        <div>
-            <h3 class="font-bold">{{ unclassified_brands }} Brands Need Classification</h3>
-            <div class="text-sm">Users submitting forms with unclassified brands will receive 0% reduction for the brand category layer.</div>
-        </div>
-        <div class="flex gap-2">
-            <button class="btn btn-sm btn-warning" onclick="filterUnclassified()">
-                <i class="fas fa-filter"></i>
-                Show Unclassified
-            </button>
-            <button class="btn btn-sm btn-success" onclick="bulkAssign()">
-                <i class="fas fa-magic"></i>
-                Bulk Assign
-            </button>
+    <div class="bg-yellow-50 border border-yellow-200 rounded-2xl p-4">
+        <div class="flex items-start gap-3">
+            <div class="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                <i class="fas fa-exclamation-triangle text-yellow-600"></i>
+            </div>
+            <div class="flex-1">
+                <h3 class="font-semibold text-yellow-800">{{ unclassified_brands }} Brands Need Classification</h3>
+                <p class="text-sm text-yellow-700 mt-1">Users submitting forms with unclassified brands will receive 0% reduction for the brand category layer.</p>
+                <div class="flex gap-2 mt-3">
+                    <button class="px-3 py-1.5 text-xs font-medium text-yellow-700 bg-yellow-100 border border-yellow-300 rounded-lg hover:bg-yellow-200 transition-colors" onclick="filterUnclassified()">
+                        <i class="fas fa-filter mr-1"></i>Show Unclassified
+                    </button>
+                    <button class="px-3 py-1.5 text-xs font-medium text-green-700 bg-green-100 border border-green-300 rounded-lg hover:bg-green-200 transition-colors" onclick="bulkAssign()">
+                        <i class="fas fa-magic mr-1"></i>Bulk Assign
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
     {% endif %}
 
-    <!-- Filters -->
-    <div class="card bg-base-100 shadow">
-        <div class="card-body">
-            <h2 class="card-title">
-                <i class="fas fa-filter"></i>
-                Filters
-            </h2>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div class="form-control">
-                    <label class="label">
-                        <span class="label-text">Status</span>
-                    </label>
-                    <select id="statusFilter" class="select select-bordered">
-                        <option value="">All Brands</option>
-                        <option value="classified">Classified Only</option>
-                        <option value="unclassified">Unclassified Only</option>
-                    </select>
-                </div>
-                <div class="form-control">
-                    <label class="label">
-                        <span class="label-text">Category</span>
-                    </label>
-                    <select id="categoryFilter" class="select select-bordered">
-                        <option value="">All Categories</option>
-                        {% for category in categories %}
-                        <option value="{{ category.id }}">{{ category.name }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="form-control">
-                    <label class="label">
-                        <span class="label-text">Quick Actions</span>
-                    </label>
-                    <div class="flex gap-2">
-                        <button class="btn btn-sm btn-outline" onclick="clearFilters()">
-                            <i class="fas fa-times"></i>
-                            Clear
-                        </button>
-                        <button class="btn btn-sm btn-success" onclick="refreshTable()">
-                            <i class="fas fa-sync-alt"></i>
-                            Refresh
-                        </button>
-                    </div>
-                </div>
+    <!-- Filters Test -->
+    <div class="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
+        <div class="flex items-center gap-3 mb-6">
+            <div class="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
+                <i class="fas fa-filter text-gray-600"></i>
             </div>
+            <h2 class="text-lg font-semibold text-gray-900">Filters</h2>
         </div>
-    </div>
-
-    <!-- Data Table -->
-    <div class="card bg-base-100 shadow">
-        <div class="card-body">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="card-title">
-                    <i class="fas fa-table"></i>
-                    Brand Classification
-                </h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="space-y-2">
+                <label class="block text-sm font-medium text-gray-700">Status</label>
+                <select id="statusFilter" class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    <option value="">All Status</option>
+                    <option value="classified">Classified</option>
+                    <option value="unclassified">Unclassified</option>
+                </select>
             </div>
-            
-            <!-- Table -->
-            <div class="overflow-x-auto">
-                <table id="brandsTable" class="table table-striped">
-                    <thead>
-                        <tr>
-                            <th>Brand Name</th>
-                            <th>Car Count</th>
-                            <th>Status</th>
-                            <th>Category</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <!-- DataTables will populate this -->
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Assign Brand Modal -->
-<div class="modal" id="assignModal">
-    <div class="modal-box">
-        <h3 class="font-bold text-lg mb-4">
-            <i class="fas fa-plus" id="assignIcon"></i>
-            <span id="assignModalTitle">Assign Brand to Category</span>
-        </h3>
-        <form id="assignForm">
-            <div class="form-control mb-4">
-                <label class="label">
-                    <span class="label-text">Brand Name</span>
-                </label>
-                <input type="text" id="assignBrandName" class="input input-bordered" readonly>
-            </div>
-            <div class="form-control mb-4">
-                <label class="label">
-                    <span class="label-text">Select Category</span>
-                </label>
-                <select id="assignCategoryId" class="select select-bordered" required>
-                    <option value="">Choose a category</option>
+            <div class="space-y-2">
+                <label class="block text-sm font-medium text-gray-700">Category</label>
+                <select id="categoryFilter" class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    <option value="">All Categories</option>
                     {% for category in categories %}
                     <option value="{{ category.id }}">{{ category.name }}</option>
                     {% endfor %}
                 </select>
             </div>
-        </form>
-        <div class="modal-action">
-            <button class="btn" onclick="closeAssignModal()">Cancel</button>
-            <button class="btn btn-primary" id="confirmAssignBtn" onclick="confirmAssignment()">
-                <i class="fas fa-check"></i>
-                <span id="assignBtnText">Assign Brand</span>
-            </button>
+            <div class="space-y-2">
+                <label class="block text-sm font-medium text-gray-700">Actions</label>
+                <div class="flex gap-2">
+                    <button class="flex-1 px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-lg hover:bg-gray-200 transition-colors" onclick="clearFilters()">
+                        <i class="fas fa-times mr-1"></i>Clear
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Data Table Test -->
+    <div class="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
+        <div class="flex items-center gap-3 mb-6">
+            <div class="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
+                <i class="fas fa-table text-gray-600"></i>
+            </div>
+            <h2 class="text-lg font-semibold text-gray-900">Brand Classification</h2>
+        </div>
+        
+        <!-- Table Structure Test -->
+        <div class="overflow-x-auto">
+            <table id="brandsTable" class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Brand Name</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Car Count</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Test Brand</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">100</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Classified</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Continental</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Actions</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<!-- Assign Brand Modal -->
+<div class="fixed inset-0 z-50 hidden" id="assignModal">
+    <div class="flex items-center justify-center min-h-screen px-4">
+        <div class="fixed inset-0 bg-black opacity-50" onclick="closeAssignModal()"></div>
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full z-10">
+            <div class="p-6 border-b border-gray-200">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-plus text-blue-600" id="assignIcon"></i>
+                    </div>
+                    <h3 class="text-lg font-semibold text-gray-900" id="assignModalTitle">Assign Brand to Category</h3>
+                </div>
+            </div>
+            
+            <div class="p-6">
+                <form id="assignForm" class="space-y-4">
+                    {% csrf_token %}
+                    <div class="space-y-2">
+                        <label class="block text-sm font-medium text-gray-700">Brand Name</label>
+                        <input type="text" id="assignBrandName" class="block w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50" readonly>
+                    </div>
+                    <div class="space-y-2">
+                        <label class="block text-sm font-medium text-gray-700">Select Category</label>
+                        <select id="assignCategoryId" class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+                            <option value="">Choose a category</option>
+                            {% for category in categories %}
+                            <option value="{{ category.id }}">{{ category.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="flex gap-3 mt-6">
+                        <button type="button" class="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-lg hover:bg-gray-200 transition-colors" onclick="closeAssignModal()">Cancel</button>
+                        <button type="button" class="flex-1 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors" id="confirmAssignBtn" onclick="confirmAssignment()">
+                            <i class="fas fa-check mr-2"></i><span id="assignBtnText">Assign Brand</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 </div>
-
 {% endblock %}
 
 {% block extra_js %}
 <script>
-let brandsTable;
-let currentAssignData = {};
+console.log('Brand classification JS loaded - testing DataTable init');
 
 $(document).ready(function() {
-    // Initialize DataTable
-    brandsTable = $('#brandsTable').DataTable({
-        processing: true,
-        serverSide: true,
-        ajax: {
-            url: '{% url "main:brands_data_api" %}',
-            type: 'GET',
-            data: function(d) {
-                d.status_filter = $('#statusFilter').val();
-                d.category_filter = $('#categoryFilter').val();
-            }
-        },
-        columns: [
-            { 
-                data: 0,
-                render: function(data, type, row) {
-                    return `<span class="brand-name">${data}</span>`;
+    console.log('Initializing DataTable...');
+    
+    try {
+        $('#brandsTable').DataTable({
+            processing: true,
+            serverSide: true,
+            ajax: {
+                url: '{% url "main:brands_data_api" %}',
+                type: 'GET',
+                data: function(d) {
+                    d.status_filter = $('#statusFilter').val();
+                    d.category_filter = $('#categoryFilter').val();
                 }
             },
-            { data: 1 },
-            { data: 2 },
-            { data: 3 },
-            { 
-                data: 4,
-                orderable: false,
-                searchable: false,
-                className: 'action-buttons'
+            columns: [
+                { 
+                    data: 0,
+                    render: function(data, type, row) {
+                        return `<span class="brand-name">${data}</span>`;
+                    }
+                },
+                { data: 1 },
+                { data: 2 },
+                { data: 3 },
+                { 
+                    data: 4,
+                    orderable: false,
+                    searchable: false,
+                    className: 'action-buttons'
+                }
+            ],
+            pageLength: 25,
+            lengthMenu: [10, 25, 50, 100],
+            order: [[0, 'asc']],
+            dom: '<"flex justify-between items-center mb-4"lf>rtip',
+            language: {
+                processing: '<div class="flex items-center gap-2"><i class="fas fa-spinner fa-spin text-blue-600"></i>Loading brands...</div>',
+                search: '',
+                searchPlaceholder: 'Search brands...',
+                lengthMenu: 'Show _MENU_ entries',
+                info: 'Showing _START_ to _END_ of _TOTAL_ entries',
+                infoEmpty: 'Showing 0 to 0 of 0 entries',
+                infoFiltered: '(filtered from _MAX_ total entries)',
+                paginate: {
+                    first: '<<',
+                    last: '>>',
+                    next: '>',
+                    previous: '<'
+                }
+            },
+            drawCallback: function(settings) {
+                // Apply Tailwind classes after redraw
+                $('.dataTables_length select').addClass('px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500');
+                $('.dataTables_filter input').addClass('px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500');
             }
-        ],
-        pageLength: 25,
-        lengthMenu: [10, 25, 50, 100],
-        order: [[0, 'asc']],
-        dom: '<"flex justify-between items-center mb-4"lf>rtip',
-        language: {
-            processing: '<div class="flex items-center gap-2"><span class="loading loading-spinner loading-md"></span>Loading brands...</div>',
-            search: '',
-            searchPlaceholder: 'Search brands...',
-            lengthMenu: 'Show _MENU_ entries',
-            info: 'Showing _START_ to _END_ of _TOTAL_ entries',
-            infoEmpty: 'Showing 0 to 0 of 0 entries',
-            infoFiltered: '(filtered from _MAX_ total entries)',
-            paginate: {
-                first: '<<',
-                last: '>>',
-                next: '>',
-                previous: '<'
-            }
-        },
-        drawCallback: function(settings) {
-            // Reapply Tailwind classes after redraw
-            $('.dataTables_length select').addClass('select select-bordered select-sm mx-2');
-            $('.dataTables_filter input').addClass('input input-bordered input-sm');
-        }
-    });
-    
-    // Filter event listeners
-    $('#statusFilter, #categoryFilter').on('change', function() {
-        brandsTable.ajax.reload();
-    });
+        });
+        console.log('DataTable initialized successfully');
+        
+        // Filter event listeners
+        $('#statusFilter, #categoryFilter').on('change', function() {
+            $('#brandsTable').DataTable().ajax.reload();
+        });
+        
+    } catch(error) {
+        console.error('DataTable initialization error:', error);
+    }
 });
 
 // Filter functions
 function clearFilters() {
     $('#statusFilter').val('');
     $('#categoryFilter').val('');
-    brandsTable.ajax.reload();
+    $('#brandsTable').DataTable().ajax.reload();
 }
 
 function filterUnclassified() {
     $('#statusFilter').val('unclassified');
-    brandsTable.ajax.reload();
+    $('#brandsTable').DataTable().ajax.reload();
 }
 
 function refreshTable() {
-    brandsTable.ajax.reload(null, false); // Keep current page
+    $('#brandsTable').DataTable().ajax.reload(null, false);
 }
 
-// Brand assignment functions
+function bulkAssign() {
+    Swal.fire({
+        title: 'Bulk Assignment',
+        text: 'This feature will be implemented in future updates.',
+        icon: 'info'
+    });
+}
+
+// Brand assignment functions  
+let currentAssignData = {};
+
 function assignBrand(brandName) {
     currentAssignData = {
         brand: brandName,
@@ -485,7 +315,7 @@ function assignBrand(brandName) {
     $('#assignBrandName').val(brandName);
     $('#assignCategoryId').val('');
     
-    document.getElementById('assignModal').classList.add('modal-open');
+    document.getElementById('assignModal').classList.remove('hidden');
 }
 
 function reassignBrand(brandName, categoryId, mappingId) {
@@ -502,7 +332,60 @@ function reassignBrand(brandName, categoryId, mappingId) {
     $('#assignBrandName').val(brandName);
     $('#assignCategoryId').val(categoryId);
     
-    document.getElementById('assignModal').classList.add('modal-open');
+    document.getElementById('assignModal').classList.remove('hidden');
+}
+
+function closeAssignModal() {
+    document.getElementById('assignModal').classList.add('hidden');
+}
+
+function confirmAssignment() {
+    const categoryId = $('#assignCategoryId').val();
+    if (!categoryId) {
+        Swal.fire('Error', 'Please select a category', 'error');
+        return;
+    }
+    
+    const confirmBtn = document.getElementById('confirmAssignBtn');
+    const originalContent = confirmBtn.innerHTML;
+    
+    confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Saving...';
+    confirmBtn.disabled = true;
+    
+    const url = currentAssignData.isReassign ? 
+        '{% url "main:reassign_brand_to_category" %}' :
+        '{% url "main:assign_brand_to_category" %}';
+    
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken()
+        },
+        body: JSON.stringify({
+            brand_name: currentAssignData.brand,
+            category_id: categoryId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            Swal.fire('Success!', data.message, 'success');
+            closeAssignModal();
+            $('#brandsTable').DataTable().ajax.reload();
+            setTimeout(() => window.location.reload(), 1500);
+        } else {
+            throw new Error(data.error || 'Failed to assign brand');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        Swal.fire('Error', error.message, 'error');
+    })
+    .finally(() => {
+        confirmBtn.innerHTML = originalContent;
+        confirmBtn.disabled = false;
+    });
 }
 
 function removeBrandClassification(brandName, mappingId) {
@@ -530,8 +413,7 @@ function removeBrandClassification(brandName, mappingId) {
             .then(data => {
                 if (data.success) {
                     Swal.fire('Removed!', data.message, 'success');
-                    brandsTable.ajax.reload();
-                    // Refresh page to update statistics
+                    $('#brandsTable').DataTable().ajax.reload();
                     setTimeout(() => window.location.reload(), 1500);
                 } else {
                     throw new Error(data.error || 'Failed to remove brand');
@@ -542,68 +424,6 @@ function removeBrandClassification(brandName, mappingId) {
                 Swal.fire('Error', error.message, 'error');
             });
         }
-    });
-}
-
-function closeAssignModal() {
-    document.getElementById('assignModal').classList.remove('modal-open');
-}
-
-function confirmAssignment() {
-    const categoryId = $('#assignCategoryId').val();
-    if (!categoryId) {
-        Swal.fire('Error', 'Please select a category', 'error');
-        return;
-    }
-    
-    const confirmBtn = document.getElementById('confirmAssignBtn');
-    const originalContent = confirmBtn.innerHTML;
-    
-    confirmBtn.innerHTML = '<span class="loading loading-spinner loading-xs"></span> Saving...';
-    confirmBtn.disabled = true;
-    
-    const url = currentAssignData.isReassign ? 
-        '{% url "main:reassign_brand_to_category" %}' :
-        '{% url "main:assign_brand_to_category" %}';
-    
-    fetch(url, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': getCsrfToken()
-        },
-        body: JSON.stringify({
-            brand_name: currentAssignData.brand,
-            category_id: categoryId
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            Swal.fire('Success!', data.message, 'success');
-            closeAssignModal();
-            brandsTable.ajax.reload();
-            // Refresh page to update statistics
-            setTimeout(() => window.location.reload(), 1500);
-        } else {
-            throw new Error(data.error || 'Failed to assign brand');
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        Swal.fire('Error', error.message, 'error');
-    })
-    .finally(() => {
-        confirmBtn.innerHTML = originalContent;
-        confirmBtn.disabled = false;
-    });
-}
-
-function bulkAssign() {
-    Swal.fire({
-        title: 'Bulk Assignment',
-        text: 'This feature will be implemented in future updates.',
-        icon: 'info'
     });
 }
 
