@@ -16,40 +16,58 @@
 {% endblock %}
 
 {% block content %}
-<!-- Header -->
+<!-- Simple Hero Section -->
 <div class="text-center mb-12">
-    <div class="flex justify-center items-center mb-4">
-        <div class="bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 p-4 rounded-full shadow-lg">
-            <i class="fas fa-car text-3xl text-white"></i>
-        </div>
+    <div class="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-6">
+        <i class="fas fa-car text-2xl text-white"></i>
     </div>
-    <h1 class="text-5xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent mb-3">
+    
+    <h1 class="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
         Car Market Price
     </h1>
-    <p class="text-base-content/70 text-lg max-w-2xl mx-auto">
-        Vehicle price estimation based on mileage and accurate market data
+    <p class="text-lg text-gray-600 max-w-2xl mx-auto mb-8">
+        Get accurate vehicle price estimation based on real market data and current conditions
     </p>
+    
+    <!-- Simple Stats -->
+    <div class="flex flex-wrap justify-center gap-6 text-sm text-gray-500">
+        <div class="flex items-center gap-2">
+            <i class="fas fa-database text-blue-500"></i>
+            <span>Real Market Data</span>
+        </div>
+        <div class="flex items-center gap-2">
+            <i class="fas fa-lock text-green-500"></i>
+            <span>Verified & Secure</span>
+        </div>
+        <div class="flex items-center gap-2">
+            <i class="fas fa-bolt text-yellow-500"></i>
+            <span>Instant Results</span>
+        </div>
+    </div>
 </div>
 
-<!-- Form Card -->
-<div class="card bg-base-100 shadow-2xl border-0 mb-8">
-    <div class="card-body p-8">
+<!-- Simple Form Card -->
+<div class="bg-white rounded-2xl shadow-lg border border-gray-200 mb-8">
+    <div class="p-8">
         <form id="mileageForm" method="POST" action="{% url 'main:result' %}">
             {% csrf_token %}
             
             <!-- Vehicle Selection Section -->
-            <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-6 mb-8">
-                <h3 class="text-xl font-semibold text-base-content mb-4 flex items-center">
-                    <i class="fas fa-car-side text-blue-600 mr-2"></i>
-                    Vehicle Specifications
-                </h3>
+            <div class="mb-10">
+                <div class="flex items-center mb-6">
+                    <div class="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
+                        <span class="text-sm font-semibold text-blue-600">1</span>
+                    </div>
+                    <h3 class="text-xl font-semibold text-gray-900">Vehicle Information</h3>
+                </div>
+                
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     <!-- Brand -->
                     <div class="form-control">
                         <label class="label">
-                            <span class="label-text font-medium">Brand</span>
+                            <span class="label-text font-medium text-gray-700">Brand</span>
                         </label>
-                        <select name="brand" id="brandSelect" class="select select-bordered w-full focus:select-primary" required>
+                        <select name="brand" id="brandSelect" class="select select-bordered w-full focus:border-blue-500 focus:outline-none" required>
                             <option value="" disabled selected>Select Brand</option>
                         </select>
                     </div>
@@ -57,9 +75,9 @@
                     <!-- Model -->
                     <div class="form-control">
                         <label class="label">
-                            <span class="label-text font-medium">Model</span>
+                            <span class="label-text font-medium text-gray-700">Model</span>
                         </label>
-                        <select name="model" id="modelSelect" class="select select-bordered w-full focus:select-primary" disabled required>
+                        <select name="model" id="modelSelect" class="select select-bordered w-full focus:border-blue-500 focus:outline-none" disabled required>
                             <option value="" disabled selected>Select Model</option>
                         </select>
                     </div>
@@ -67,9 +85,9 @@
                     <!-- Variant -->
                     <div class="form-control">
                         <label class="label">
-                            <span class="label-text font-medium">Variant</span>
+                            <span class="label-text font-medium text-gray-700">Variant</span>
                         </label>
-                        <select name="variant" id="variantSelect" class="select select-bordered w-full focus:select-primary" disabled required>
+                        <select name="variant" id="variantSelect" class="select select-bordered w-full focus:border-blue-500 focus:outline-none" disabled required>
                             <option value="" disabled selected>Select Variant</option>
                         </select>
                     </div>
@@ -77,64 +95,85 @@
                     <!-- Year -->
                     <div class="form-control">
                         <label class="label">
-                            <span class="label-text font-medium">Year</span>
+                            <span class="label-text font-medium text-gray-700">Year</span>
                         </label>
-                        <select name="year" id="yearSelect" class="select select-bordered w-full focus:select-primary" disabled required>
+                        <select name="year" id="yearSelect" class="select select-bordered w-full focus:border-blue-500 focus:outline-none" disabled required>
                             <option value="" disabled selected>Select Year</option>
                         </select>
                     </div>
                 </div>
             </div>
             
-            <!-- User Mileage Input -->
-            <div class="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl p-6 mb-8">
-                <h3 class="text-xl font-semibold text-base-content mb-4 flex items-center">
-                    <i class="fas fa-tachometer-alt text-green-600 mr-2"></i>
-                    Vehicle Mileage
-                </h3>
-                <div class="form-control max-w-xs">
-                    <label class="label">
-                        <span class="label-text font-medium">Your Vehicle Mileage (km)</span>
-                    </label>
-                    <div class="relative">
-                        <input type="number" name="user_mileage" id="userMileageInput" 
-                               class="input input-bordered w-full pr-12 focus:input-primary" 
-                               placeholder="Example: 50000" min="0" step="1000">
-                        <span class="absolute right-3 top-1/2 transform -translate-y-1/2 text-base-content/50 text-sm">km</span>
+            <!-- Mileage Input Section -->
+            <div class="mb-10">
+                <div class="flex items-center mb-6">
+                    <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center mr-3">
+                        <span class="text-sm font-semibold text-green-600">2</span>
                     </div>
-                    <label class="label">
-                        <span class="label-text-alt text-base-content/60">Enter your vehicle mileage</span>
-                    </label>
+                    <h3 class="text-xl font-semibold text-gray-900">Vehicle Mileage</h3>
+                </div>
+                
+                <div class="max-w-md">
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text font-medium text-gray-700">Current Mileage (km)</span>
+                        </label>
+                        <div class="relative">
+                            <input type="number" name="user_mileage" id="userMileageInput" 
+                                   class="input input-bordered w-full pr-12 focus:border-blue-500 focus:outline-none" 
+                                   placeholder="e.g. 50000" min="0" step="1000">
+                            <span class="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm">km</span>
+                        </div>
+                        <label class="label">
+                            <span class="label-text-alt text-gray-500">Enter your vehicle's odometer reading</span>
+                        </label>
+                    </div>
                 </div>
             </div>
-        
-            <!-- Dynamic Condition Assessment Section -->
-            <div class="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl p-6 mb-8">
-                <h3 class="text-xl font-semibold text-base-content mb-4 flex items-center">
-                    <i class="fas fa-clipboard-check text-purple-600 mr-2"></i>
-                    Vehicle Condition Assessment
-                    <span class="badge badge-primary badge-sm ml-2">v4</span>
-                </h3>
-                <p class="text-base-content/70 mb-6">Select the most appropriate condition for each aspect of your vehicle</p>
+            
+            <!-- Condition Assessment Section -->
+            <div class="mb-10">
+                <div class="flex items-center mb-6">
+                    <div class="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center mr-3">
+                        <span class="text-sm font-semibold text-purple-600">3</span>
+                    </div>
+                    <h3 class="text-xl font-semibold text-gray-900">Vehicle Condition</h3>
+                </div>
+                
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                    <p class="text-sm text-blue-800 flex items-start">
+                        <i class="fas fa-info-circle mr-2 mt-0.5 flex-shrink-0"></i>
+                        <span>Please rate each aspect of your vehicle honestly for the most accurate price estimation.</span>
+                    </p>
+                </div>
                 
                 <div class="space-y-4">
                     {% for category in condition_categories %}
-                    <!-- {{ category.display_name }} Row -->
-                    <div class="card bg-base-100 shadow-sm border border-base-200 hover:shadow-md transition-all duration-300">
-                        <div class="card-body p-4">
-                            <div class="flex flex-col sm:flex-row sm:items-center gap-4">
-                                <div class="flex items-center min-w-0 sm:w-48">
-                                    <h4 class="font-semibold text-base-content text-sm sm:text-base">{{ category.display_name }}</h4>
-                                </div>
-                                <div class="flex flex-wrap gap-2 sm:gap-4 flex-1">
-                                    {% for option in category.options.all %}
-                                    <label class="cursor-pointer flex items-center">
-                                        <input type="radio" name="{{ category.category_key }}" value="{{ option.reduction_percentage }}" 
-                                               class="radio radio-primary radio-sm mr-2" {% if forloop.first %}required{% endif %}>
-                                        <span class="label-text text-sm">{{ option.label }} {% if option.reduction_percentage > 0 %}(-{{ option.reduction_percentage }}%){% else %}({{ option.reduction_percentage }}%){% endif %}</span>
-                                    </label>
-                                    {% endfor %}
-                                </div>
+                    <!-- {{ category.display_name }} Assessment -->
+                    <div class="bg-white border border-gray-200 rounded-lg p-6">
+                        <div class="flex flex-col sm:flex-row sm:items-center gap-4">
+                            <div class="sm:w-1/3">
+                                <h4 class="font-medium text-gray-900 mb-1">{{ category.display_name }}</h4>
+                                <p class="text-sm text-gray-500">Select condition</p>
+                            </div>
+                            
+                            <div class="flex flex-wrap gap-2 sm:flex-1">
+                                {% for option in category.options.all %}
+                                <label class="cursor-pointer">
+                                    <input type="radio" name="{{ category.category_key }}" value="{{ option.reduction_percentage }}" 
+                                           class="sr-only peer" {% if forloop.first %}required{% endif %}>
+                                    <div class="px-4 py-2 rounded-lg border border-gray-300 text-sm hover:border-blue-300 peer-checked:bg-blue-50 peer-checked:border-blue-500 peer-checked:text-blue-700 transition-colors">
+                                        {{ option.label }}
+                                        {% if option.reduction_percentage > 0 %}
+                                            <span class="text-xs text-red-500 ml-1">(-{{ option.reduction_percentage }}%)</span>
+                                        {% elif option.reduction_percentage < 0 %}
+                                            <span class="text-xs text-green-500 ml-1">(+{{ option.reduction_percentage|floatformat:0|slice:"1:" }}%)</span>
+                                        {% else %}
+                                            <span class="text-xs text-gray-400 ml-1">(0%)</span>
+                                        {% endif %}
+                                    </div>
+                                </label>
+                                {% endfor %}
                             </div>
                         </div>
                     </div>
@@ -143,19 +182,24 @@
                     <div class="alert alert-warning">
                         <i class="fas fa-exclamation-triangle"></i>
                         <div>
-                            <strong>Configuration Not Available</strong>
-                            <p>Dynamic pricing configuration is not available. Please contact the administrator.</p>
+                            <h4 class="font-bold">Configuration Not Available</h4>
+                            <p class="text-sm">Dynamic pricing configuration is not available. Please contact the administrator.</p>
                         </div>
                     </div>
                     {% endfor %}
                 </div>
             </div>
             
-            <div class="text-center mt-8">
+            <!-- Submit Section -->
+            <div class="text-center pt-6">
                 <button type="submit" id="submitBtn" disabled class="btn btn-primary btn-lg px-8 disabled:opacity-50">
                     <i class="fas fa-calculator mr-2"></i>
                     Get Price Estimation
                 </button>
+                <p class="text-sm text-gray-500 mt-3 flex items-center justify-center">
+                    <i class="fas fa-check-circle text-green-500 mr-2"></i>
+                    Free & Secure Analysis
+                </p>
             </div>
         </form>
     </div>
@@ -174,21 +218,31 @@
 </div>
 {% endif %}
 
-<!-- Footer Info -->
-<div class="card bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 shadow-lg">
-    <div class="card-body text-center p-8">
-        <div class="flex justify-center mb-4">
-            <div class="bg-blue-600 p-3 rounded-full">
-                <i class="fas fa-code text-white text-xl"></i>
-            </div>
+<!-- Platform Info -->
+<div class="bg-gray-100 rounded-xl p-8 text-center">
+    <div class="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center mx-auto mb-4">
+        <i class="fas fa-rocket text-white"></i>
+    </div>
+    
+    <h4 class="text-xl font-semibold text-gray-900 mb-3">
+        AI-Powered Price Analysis
+    </h4>
+    <p class="text-gray-600 mb-6 max-w-2xl mx-auto">
+        Our system analyzes thousands of real market transactions to provide accurate vehicle pricing estimates.
+    </p>
+    
+    <div class="flex flex-wrap justify-center gap-4 text-sm">
+        <div class="flex items-center gap-2 bg-white px-3 py-2 rounded-lg shadow-sm">
+            <i class="fas fa-chart-line text-green-500"></i>
+            <span>Market Analysis</span>
         </div>
-        <h4 class="text-xl font-bold text-blue-800 mb-2">Platform Under Development</h4>
-        <p class="text-blue-700">Currently available vehicle mileage analysis feature based on market data.</p>
-        <div class="mt-4">
-            <div class="badge badge-primary badge-lg">
-                <i class="fas fa-rocket mr-1"></i>
-                Version 1.0
-            </div>
+        <div class="flex items-center gap-2 bg-white px-3 py-2 rounded-lg shadow-sm">
+            <i class="fas fa-lock text-blue-500"></i>
+            <span>Secure Process</span>
+        </div>
+        <div class="flex items-center gap-2 bg-white px-3 py-2 rounded-lg shadow-sm">
+            <i class="fas fa-mobile-alt text-purple-500"></i>
+            <span>SMS Verification</span>
         </div>
     </div>
 </div>
