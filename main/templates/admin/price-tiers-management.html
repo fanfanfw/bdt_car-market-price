@@ -1,0 +1,464 @@
+{% extends 'admin/base-admin.html' %}
+
+{% block title %}Price Tiers - Admin Panel{% endblock %}
+{% block page_title %}Price Tiers Management{% endblock %}
+
+{% block extra_css %}
+<style>
+    .tier-card {
+        transition: all 0.2s ease;
+        border: 1px solid #e5e7eb;
+    }
+    
+    .tier-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    
+    .tier-actions {
+        opacity: 0;
+        transition: opacity 0.2s ease;
+    }
+    
+    .tier-card:hover .tier-actions {
+        opacity: 1;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 3rem;
+        color: #6b7280;
+    }
+    
+    .price-range {
+        background: linear-gradient(90deg, #f0f9ff 0%, #dbeafe 100%);
+        border: 1px solid #bfdbfe;
+        padding: 0.5rem 1rem;
+        border-radius: 0.5rem;
+        font-family: monospace;
+        font-weight: 600;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+{% csrf_token %}
+<div class="space-y-6">
+    <!-- Page Header -->
+    <div class="flex justify-between items-center">
+        <div>
+            <h1 class="text-3xl font-bold">Price Tiers Management</h1>
+            <p class="text-base-content/60 mt-1">Configure automatic price-based categorization for vehicles</p>
+        </div>
+        <div class="flex gap-2">
+            <button class="btn btn-primary" id="addTierBtn">
+                <i class="fas fa-plus"></i>
+                Add Price Tier
+            </button>
+            <button class="btn btn-secondary" onclick="location.reload()">
+                <i class="fas fa-sync-alt"></i>
+                Refresh
+            </button>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="stat bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg">
+            <div class="stat-figure text-white">
+                <i class="fas fa-layer-group text-3xl"></i>
+            </div>
+            <div class="stat-title text-white">Total Tiers</div>
+            <div class="stat-value text-white">{{ total_tiers }}</div>
+            <div class="stat-desc text-white">Price tiers</div>
+        </div>
+
+        <div class="stat bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg">
+            <div class="stat-figure text-white">
+                <i class="fas fa-check text-3xl"></i>
+            </div>
+            <div class="stat-title text-white">Active Tiers</div>
+            <div class="stat-value text-white">{{ active_tiers }}</div>
+            <div class="stat-desc text-white">Currently active</div>
+        </div>
+
+        <div class="stat bg-gradient-to-r from-red-500 to-red-600 text-white rounded-lg">
+            <div class="stat-figure text-white">
+                <i class="fas fa-pause text-3xl"></i>
+            </div>
+            <div class="stat-title text-white">Inactive</div>
+            <div class="stat-value text-white">{{ inactive_tiers }}</div>
+            <div class="stat-desc text-white">Disabled tiers</div>
+        </div>
+
+        <div class="stat bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg">
+            <div class="stat-figure text-white">
+                <i class="fas fa-cogs text-3xl"></i>
+            </div>
+            <div class="stat-title text-white">Status</div>
+            <div class="stat-value text-white">
+                {% if has_issues %}
+                    <i class="fas fa-exclamation-triangle"></i>
+                {% else %}
+                    <i class="fas fa-check"></i>
+                {% endif %}
+            </div>
+            <div class="stat-desc text-white">
+                {% if has_issues %}Issues detected{% else %}All good{% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Issues Alert -->
+    {% if has_issues %}
+    <div class="alert alert-warning">
+        <i class="fas fa-exclamation-triangle"></i>
+        <div>
+            <h3 class="font-bold">Configuration Issues Detected</h3>
+            <div class="text-sm">
+                <ul class="list-disc list-inside mt-2">
+                    {% for issue in issues %}
+                    <li>{{ issue }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- How it works -->
+    <div class="alert alert-info">
+        <i class="fas fa-info-circle"></i>
+        <div>
+            <h3 class="font-bold">How Price Tiers Work</h3>
+            <div class="text-sm">
+                <p>Price tiers are automatically determined based on the average price of selected vehicle (brand + model + variant + year).</p>
+                <p class="mt-1"><strong>Example:</strong> If a car's average price is RM 45,000, it will automatically be assigned to the "Mid-range (RM 20,000 - RM 60,000)" tier.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Price Tiers Grid -->
+    <div class="card bg-base-100 shadow">
+        <div class="card-body">
+            <h2 class="card-title">
+                <i class="fas fa-th-large"></i>
+                Price Tiers Configuration
+            </h2>
+            
+            {% if price_tiers %}
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {% for tier in price_tiers %}
+                <div class="tier-card card bg-base-200 relative">
+                    <div class="card-body">
+                        <div class="flex justify-between items-start">
+                            <h3 class="card-title text-lg">{{ tier.name }}</h3>
+                            <div class="tier-actions flex gap-1">
+                                <button class="btn btn-xs btn-primary edit-btn" 
+                                        data-id="{{ tier.id }}"
+                                        data-name="{{ tier.name }}"
+                                        data-min-price="{{ tier.min_price }}"
+                                        data-max-price="{% if tier.max_price %}{{ tier.max_price }}{% endif %}"
+                                        data-reduction="{{ tier.reduction_percentage }}"
+                                        title="Edit">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="btn btn-xs btn-error delete-btn" 
+                                        data-id="{{ tier.id }}"
+                                        data-name="{{ tier.name }}"
+                                        title="Delete">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="price-range mb-3">
+                            {{ tier.price_range_display }}
+                        </div>
+                        
+                        <div class="flex items-center gap-2 text-sm">
+                            <i class="fas fa-percentage"></i>
+                            <span class="font-semibold text-success">{{ tier.reduction_percentage }}% reduction</span>
+                        </div>
+                        
+                        <div class="flex items-center gap-2 text-sm text-base-content/60 mt-2">
+                            <i class="fas fa-toggle-{% if tier.is_active %}on text-green-500{% else %}off text-gray-400{% endif %}"></i>
+                            <span>{% if tier.is_active %}Active{% else %}Inactive{% endif %}</span>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <i class="fas fa-layer-group text-6xl mb-4"></i>
+                <h3 class="text-xl font-semibold mb-2">No Price Tiers Yet</h3>
+                <p class="text-base-content/60 mb-4">Create your first price tier to enable automatic price-based categorization</p>
+                <button class="btn btn-primary" id="firstTierBtn">
+                    <i class="fas fa-plus"></i>
+                    Create First Price Tier
+                </button>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Create/Edit Price Tier Modal -->
+<div class="modal" id="tierModal">
+    <div class="modal-box">
+        <h3 class="font-bold text-lg mb-4" id="modalTitle">
+            <i class="fas fa-plus"></i>
+            Create New Price Tier
+        </h3>
+        <form id="tierForm">
+            <div class="form-control">
+                <label class="label">
+                    <span class="label-text">Tier Name</span>
+                </label>
+                <input 
+                    type="text" 
+                    id="tierName"
+                    class="input input-bordered" 
+                    placeholder="e.g., Budget, Mid-range, Premium"
+                    required
+                >
+                <label class="label">
+                    <span class="label-text-alt">Choose a descriptive name for the price tier</span>
+                </label>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text">Minimum Price (RM)</span>
+                    </label>
+                    <input 
+                        type="number" 
+                        id="tierMinPrice"
+                        class="input input-bordered" 
+                        placeholder="20000"
+                        min="0"
+                        step="1000"
+                        required
+                    >
+                    <label class="label">
+                        <span class="label-text-alt">Starting price for this tier</span>
+                    </label>
+                </div>
+                
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text">Maximum Price (RM)</span>
+                    </label>
+                    <input 
+                        type="number" 
+                        id="tierMaxPrice"
+                        class="input input-bordered" 
+                        placeholder="60000 (leave empty for unlimited)"
+                        min="0"
+                        step="1000"
+                    >
+                    <label class="label">
+                        <span class="label-text-alt">Upper limit (leave empty for unlimited)</span>
+                    </label>
+                </div>
+            </div>
+            
+            <div class="form-control mt-4">
+                <label class="label">
+                    <span class="label-text">Reduction Percentage</span>
+                </label>
+                <div class="input-group">
+                    <input 
+                        type="number" 
+                        id="tierReduction"
+                        class="input input-bordered flex-1" 
+                        placeholder="5.0"
+                        min="0"
+                        max="100"
+                        step="0.01"
+                        required
+                    >
+                    <span class="input-group-text">%</span>
+                </div>
+                <label class="label">
+                    <span class="label-text-alt">Percentage reduction applied to cars in this price tier (0-100%)</span>
+                </label>
+            </div>
+        </form>
+        <div class="modal-action">
+            <button class="btn" id="cancelBtn">Cancel</button>
+            <button class="btn btn-primary" id="saveBtn">
+                <i class="fas fa-save"></i>
+                Create Tier
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    let editingTierId = null;
+    
+    // Add Tier Button
+    $('#addTierBtn, #firstTierBtn').on('click', function() {
+        editingTierId = null;
+        $('#modalTitle').html('<i class="fas fa-plus"></i> Create New Price Tier');
+        $('#saveBtn').html('<i class="fas fa-save"></i> Create Tier');
+        $('#tierName').val('');
+        $('#tierMinPrice').val('');
+        $('#tierMaxPrice').val('');
+        $('#tierReduction').val('');
+        $('#tierModal').addClass('modal-open');
+    });
+    
+    // Edit Tier Button  
+    $(document).on('click', '.edit-btn', function() {
+        editingTierId = $(this).data('id');
+        const name = $(this).data('name');
+        const minPrice = $(this).data('min-price');
+        const maxPrice = $(this).data('max-price');
+        const reduction = $(this).data('reduction');
+        
+        $('#modalTitle').html('<i class="fas fa-edit"></i> Edit Price Tier');
+        $('#saveBtn').html('<i class="fas fa-save"></i> Update Tier');
+        $('#tierName').val(name);
+        $('#tierMinPrice').val(minPrice);
+        $('#tierMaxPrice').val(maxPrice || '');
+        $('#tierReduction').val(reduction);
+        $('#tierModal').addClass('modal-open');
+    });
+    
+    // Cancel Button
+    $('#cancelBtn').on('click', function() {
+        $('#tierModal').removeClass('modal-open');
+        editingTierId = null;
+    });
+    
+    // Save Button
+    $('#saveBtn').on('click', function() {
+        const name = $('#tierName').val().trim();
+        const minPrice = parseFloat($('#tierMinPrice').val());
+        const maxPrice = $('#tierMaxPrice').val() ? parseFloat($('#tierMaxPrice').val()) : null;
+        const reduction = parseFloat($('#tierReduction').val());
+        
+        if (!name) {
+            Swal.fire('Error', 'Please enter a tier name', 'error');
+            return;
+        }
+        
+        if (isNaN(minPrice) || minPrice < 0) {
+            Swal.fire('Error', 'Please enter a valid minimum price', 'error');
+            return;
+        }
+        
+        if (maxPrice !== null && (isNaN(maxPrice) || maxPrice <= minPrice)) {
+            Swal.fire('Error', 'Maximum price must be greater than minimum price', 'error');
+            return;
+        }
+        
+        if (isNaN(reduction) || reduction < 0 || reduction > 100) {
+            Swal.fire('Error', 'Please enter a valid reduction percentage (0-100%)', 'error');
+            return;
+        }
+        
+        const url = editingTierId ? 
+            '{% url "main:price_tier_edit" 0 %}'.replace('0', editingTierId) :
+            '{% url "main:price_tier_create" %}';
+            
+        const saveBtn = $('#saveBtn');
+        const originalContent = saveBtn.html();
+        saveBtn.html('<span class="loading loading-spinner loading-xs"></span> Saving...').prop('disabled', true);
+        
+        $.ajax({
+            url: url,
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': $('[name=csrfmiddlewaretoken]').val()
+            },
+            data: JSON.stringify({
+                name: name,
+                min_price: minPrice,
+                max_price: maxPrice,
+                reduction_percentage: reduction
+            }),
+            success: function(data) {
+                if (data.success) {
+                    Swal.fire('Success!', data.message, 'success').then(() => {
+                        $('#tierModal').removeClass('modal-open');
+                        location.reload();
+                    });
+                } else {
+                    Swal.fire('Error', data.error || 'Failed to save price tier', 'error');
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('AJAX Error:', error);
+                Swal.fire('Error', 'Failed to save price tier. Please try again.', 'error');
+            },
+            complete: function() {
+                saveBtn.html(originalContent).prop('disabled', false);
+            }
+        });
+    });
+    
+    // Delete Tier Button
+    $(document).on('click', '.delete-btn', function() {
+        const tierId = $(this).data('id');
+        const tierName = $(this).data('name');
+        
+        Swal.fire({
+            title: 'Delete Price Tier',
+            text: `Are you sure you want to delete "${tierName}"? This action cannot be undone.`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Yes, Delete',
+            cancelButtonText: 'Cancel',
+            confirmButtonColor: '#dc2626'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.ajax({
+                    url: '{% url "main:price_tier_delete" 0 %}'.replace('0', tierId),
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': $('[name=csrfmiddlewaretoken]').val()
+                    },
+                    success: function(data) {
+                        if (data.success) {
+                            Swal.fire('Deleted!', data.message, 'success').then(() => {
+                                location.reload();
+                            });
+                        } else {
+                            Swal.fire('Error', data.error || 'Failed to delete price tier', 'error');
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('AJAX Error:', error);
+                        Swal.fire('Error', 'Failed to delete price tier. Please try again.', 'error');
+                    }
+                });
+            }
+        });
+    });
+    
+    // Form submit prevention
+    $('#tierForm').on('submit', function(e) {
+        e.preventDefault();
+        $('#saveBtn').click();
+    });
+    
+    // Close modal on click outside
+    $(document).on('click', '.modal', function(e) {
+        if (e.target === this) {
+            $(this).removeClass('modal-open');
+            editingTierId = null;
+        }
+    });
+});
+</script>
+{% endblock %}

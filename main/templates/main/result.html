@@ -798,6 +798,73 @@ function generateResultsHTML(result) {
                 </div>
             </div>
         ` : ''}
+        
+        ${(result.brand_category_info || result.price_tier_info) ? `
+            <div class="bg-blue-50 rounded-xl p-6 mt-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                    <i class="fas fa-robot text-blue-600 mr-2"></i>
+                    Auto-Detection Summary
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    ${result.brand_category_info ? `
+                        <div class="bg-white rounded-lg p-4 border-l-4 border-purple-500">
+                            <h4 class="font-semibold text-gray-900 mb-2 flex items-center">
+                                <i class="fas fa-tags text-purple-500 mr-2"></i>
+                                Brand Category
+                            </h4>
+                            <div class="text-sm text-gray-600 mb-2">
+                                Brand: <span class="font-medium">${result.brand_category_info.brand}</span>
+                            </div>
+                            <div class="text-sm text-gray-600 mb-2">
+                                Category: <span class="font-medium">${result.brand_category_info.category}</span>
+                            </div>
+                            <div class="text-sm">
+                                Reduction: <span class="font-semibold text-red-500">-${result.brand_category_info.reduction}%</span>
+                            </div>
+                            ${result.brand_category_info.warning ? `
+                                <div class="mt-2 text-xs text-amber-600 bg-amber-50 p-2 rounded">
+                                    <i class="fas fa-exclamation-triangle mr-1"></i>
+                                    ${result.brand_category_info.warning}
+                                </div>
+                            ` : ''}
+                        </div>
+                    ` : ''}
+                    
+                    ${result.price_tier_info ? `
+                        <div class="bg-white rounded-lg p-4 border-l-4 border-green-500">
+                            <h4 class="font-semibold text-gray-900 mb-2 flex items-center">
+                                <i class="fas fa-layer-group text-green-500 mr-2"></i>
+                                Price Tier
+                            </h4>
+                            <div class="text-sm text-gray-600 mb-2">
+                                Average Price: <span class="font-medium">RM ${Math.round(result.price_tier_info.average_price).toLocaleString()}</span>
+                            </div>
+                            <div class="text-sm text-gray-600 mb-2">
+                                Tier: <span class="font-medium">${result.price_tier_info.tier_name}</span>
+                            </div>
+                            <div class="text-sm text-gray-600 mb-2">
+                                Range: <span class="font-medium">${result.price_tier_info.price_range}</span>
+                            </div>
+                            <div class="text-sm">
+                                Reduction: <span class="font-semibold text-red-500">-${result.price_tier_info.reduction}%</span>
+                            </div>
+                            ${result.price_tier_info.warning ? `
+                                <div class="mt-2 text-xs text-amber-600 bg-amber-50 p-2 rounded">
+                                    <i class="fas fa-exclamation-triangle mr-1"></i>
+                                    ${result.price_tier_info.warning}
+                                </div>
+                            ` : ''}
+                            ${result.price_tier_info.error ? `
+                                <div class="mt-2 text-xs text-red-600 bg-red-50 p-2 rounded">
+                                    <i class="fas fa-times-circle mr-1"></i>
+                                    ${result.price_tier_info.error}
+                                </div>
+                            ` : ''}
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+        ` : ''}
     `;
 }
 

@@ -59,4 +59,10 @@ urlpatterns = [
     path('api/brand/reassign/', views.reassign_brand_to_category, name='reassign_brand_to_category'),
     path('api/brand/remove/', views.remove_brand_classification, name='remove_brand_classification'),
     path('api/unclassified-brands/', views.get_unclassified_brands_api, name='get_unclassified_brands_api'),
+    
+    # Price Tiers management
+    path('panel/price-tiers/', views.price_tiers_management_view, name='price_tiers_management_view'),
+    path('api/price-tier/create/', views.price_tier_create, name='price_tier_create'),
+    path('api/price-tier/<int:tier_id>/edit/', views.price_tier_edit, name='price_tier_edit'),
+    path('api/price-tier/<int:tier_id>/delete/', views.price_tier_delete, name='price_tier_delete'),
 ]

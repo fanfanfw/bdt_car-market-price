@@ -343,3 +343,49 @@ class ConditionOption(models.Model):
 
     def __str__(self):
         return f"{self.category.display_name}: {self.label} (-{self.reduction_percentage}%)"
+
+
+class PriceTier(models.Model):
+    """Price tier configuration for automatic price-based categorization"""
+    name = models.CharField(max_length=100, unique=True, help_text="Tier name (e.g., 'Budget', 'Mid-range', 'Premium')")
+    min_price = models.DecimalField(max_digits=12, decimal_places=2, help_text="Minimum price for this tier (RM)")
+    max_price = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, help_text="Maximum price for this tier (RM), leave blank for unlimited")
+    reduction_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=0.00, help_text="Reduction percentage for this price tier (0-100%)")
+    order = models.PositiveIntegerField(default=0, help_text="Display order")
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'price_tiers'
+        ordering = ['order', 'min_price']
+
+    def __str__(self):
+        if self.max_price:
+            return f"{self.name} (RM {self.min_price:,.0f} - RM {self.max_price:,.0f})"
+        else:
+            return f"{self.name} (RM {self.min_price:,.0f}+)"
+
+    def price_range_display(self):
+        """Display formatted price range"""
+        if self.max_price:
+            return f"RM {self.min_price:,.0f} - RM {self.max_price:,.0f}"
+        else:
+            return f"RM {self.min_price:,.0f}+"
+
+    @classmethod
+    def get_tier_for_price(cls, price):
+        """Get the appropriate price tier for a given price"""
+        try:
+            price = float(price)
+            tiers = cls.objects.filter(is_active=True).order_by('min_price')
+            
+            for tier in tiers:
+                if price >= float(tier.min_price):
+                    if tier.max_price is None or price <= float(tier.max_price):
+                        return tier
+                        
+            # If no tier matches, return None
+            return None
+        except (ValueError, TypeError):
+            return None

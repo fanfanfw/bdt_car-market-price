@@ -16,16 +16,16 @@ import random
 import re
 from .models import (
     CarStandard, CarUnified, Category, BrandCategory, VerifiedPhone, OTPSession,
-    MileageConfiguration, VehicleConditionCategory, ConditionOption
+    MileageConfiguration, VehicleConditionCategory, ConditionOption, PriceTier
 )
 
 def index(request):
     """Main index page with car price estimation form"""
     # Get all active vehicle condition categories with their options
-    # Exclude brand_category as it will be handled automatically
+    # Exclude brand_category and price_tier as they will be handled automatically
     categories = VehicleConditionCategory.objects.filter(
         is_active=True
-    ).exclude(category_key='brand_category').prefetch_related('options').order_by('order')
+    ).exclude(category_key__in=['brand_category', 'price_tier']).prefetch_related('options').order_by('order')
     
     context = {
         'condition_categories': categories,
@@ -44,7 +44,7 @@ def result(request):
         year = request.POST.get('year')
         user_mileage = request.POST.get('user_mileage')
         
-        # Get condition assessment values
+        # Get condition assessment values (excluding auto-detected categories)
         condition_assessments = {
             'exterior_condition': float(request.POST.get('exterior_condition', 0)),
             'interior_condition': float(request.POST.get('interior_condition', 0)),
@@ -55,8 +55,7 @@ def result(request):
             'tires_brakes': float(request.POST.get('tires_brakes', 0)),
             'modifications': float(request.POST.get('modifications', 0)),
             'market_demand': float(request.POST.get('market_demand', 0)),
-            'brand_category': float(request.POST.get('brand_category', 0)),
-            'price_tier': float(request.POST.get('price_tier', 0))
+            # brand_category and price_tier are now auto-detected, not from form
         }
         
         if brand and model and variant and year:
@@ -297,18 +296,62 @@ def get_car_statistics(brand, model, variant, year, user_mileage=None, condition
                         'warning': 'Brand not classified - admin should classify this brand'
                     }
                 
+                # Auto-detect price tier reduction
+                price_tier_reduction = 0
+                price_tier_info = None
+                
+                try:
+                    price_tier = PriceTier.get_tier_for_price(avg_price)
+                    if price_tier:
+                        price_tier_reduction = float(price_tier.reduction_percentage)
+                        price_tier_info = {
+                            'average_price': avg_price,
+                            'tier_name': price_tier.name,
+                            'price_range': price_tier.price_range_display(),
+                            'reduction': price_tier_reduction
+                        }
+                    else:
+                        # No matching price tier found
+                        price_tier_info = {
+                            'average_price': avg_price,
+                            'tier_name': 'No Tier Match',
+                            'price_range': 'N/A',
+                            'reduction': 0,
+                            'warning': 'No price tier configured for this price range'
+                        }
+                except Exception as e:
+                    # Error getting price tier
+                    price_tier_info = {
+                        'average_price': avg_price,
+                        'tier_name': 'Error',
+                        'price_range': 'N/A',
+                        'reduction': 0,
+                        'error': f'Error determining price tier: {str(e)}'
+                    }
+                
                 if condition_assessments is not None:
-                    # Calculate total from all assessments (excluding brand_category as it's auto-detected)
-                    manual_assessments_total = sum(condition_assessments.values())
-                    # Add brand category reduction
-                    layer2_reduction = manual_assessments_total + brand_category_reduction
+                    # Calculate total from manual assessments (excluding auto-detected categories)
+                    manual_assessments = {k: v for k, v in condition_assessments.items() 
+                                        if k not in ['brand_category', 'price_tier']}
+                    manual_assessments_total = sum(manual_assessments.values())
+                    
+                    # Add auto-detected reductions
+                    layer2_reduction = manual_assessments_total + brand_category_reduction + price_tier_reduction
+                    
                     # Apply Layer 2 cap
                     layer2_reduction = min(layer2_reduction, float(mileage_config.layer2_max_cap))
-                    condition_breakdown = condition_assessments.copy()
+                    
+                    # Build condition breakdown
+                    condition_breakdown = manual_assessments.copy()
                     condition_breakdown['brand_category'] = brand_category_reduction
+                    condition_breakdown['price_tier'] = price_tier_reduction
                 else:
-                    layer2_reduction = brand_category_reduction
-                    condition_breakdown['brand_category'] = brand_category_reduction
+                    # Only auto-detected reductions
+                    layer2_reduction = brand_category_reduction + price_tier_reduction
+                    condition_breakdown = {
+                        'brand_category': brand_category_reduction,
+                        'price_tier': price_tier_reduction
+                    }
                 
                 # Total reduction
                 total_reduction = layer1_reduction + layer2_reduction
@@ -332,7 +375,8 @@ def get_car_statistics(brand, model, variant, year, user_mileage=None, condition
                     'price_savings': round(price_savings),
                     'condition_breakdown': condition_breakdown,
                     'brand_category_info': brand_category_info,
-                    'config_version': 'simplified_with_auto_brand_detection'
+                    'price_tier_info': price_tier_info,
+                    'config_version': 'simplified_with_auto_brand_and_price_tier_detection'
                 })
                 
                 return result
@@ -1816,6 +1860,172 @@ def get_unclassified_brands_api(request):
             'success': True,
             'unclassified_brands': unclassified_brands,
             'total_unclassified': len(unclassified_brands)
+        })
+        
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+# Price Tiers Management Views
+@login_required
+def price_tiers_management_view(request):
+    """Price Tiers Management View"""
+    try:
+        # Get all price tiers
+        price_tiers = PriceTier.objects.all().order_by('order', 'min_price')
+        
+        # Calculate statistics
+        total_tiers = price_tiers.count()
+        active_tiers = price_tiers.filter(is_active=True).count()
+        
+        # Check for price gaps or overlaps
+        has_issues = False
+        issues = []
+        
+        active_price_tiers = price_tiers.filter(is_active=True).order_by('min_price')
+        for i, tier in enumerate(active_price_tiers):
+            if i > 0:
+                prev_tier = active_price_tiers[i-1]
+                if prev_tier.max_price and float(prev_tier.max_price) < float(tier.min_price) - 1:
+                    # Gap detected
+                    has_issues = True
+                    issues.append(f"Price gap between {prev_tier.name} and {tier.name}")
+                elif prev_tier.max_price and float(prev_tier.max_price) >= float(tier.min_price):
+                    # Overlap detected
+                    has_issues = True
+                    issues.append(f"Price overlap between {prev_tier.name} and {tier.name}")
+        
+        context = {
+            'price_tiers': price_tiers,
+            'total_tiers': total_tiers,
+            'active_tiers': active_tiers,
+            'inactive_tiers': total_tiers - active_tiers,
+            'has_issues': has_issues,
+            'issues': issues,
+        }
+        
+        return render(request, 'admin/price-tiers-management.html', context)
+        
+    except Exception as e:
+        messages.error(request, f'Error loading price tiers: {str(e)}')
+        return redirect('main:categories_management_view')
+
+
+@login_required
+def price_tier_create(request):
+    """Create new price tier"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        
+        name = data.get('name', '').strip()
+        min_price = data.get('min_price')
+        max_price = data.get('max_price')
+        reduction_percentage = data.get('reduction_percentage')
+        
+        # Validation
+        if not name:
+            return JsonResponse({'error': 'Tier name is required'}, status=400)
+            
+        if min_price is None or min_price < 0:
+            return JsonResponse({'error': 'Valid minimum price is required'}, status=400)
+            
+        if max_price is not None and max_price <= min_price:
+            return JsonResponse({'error': 'Maximum price must be greater than minimum price'}, status=400)
+            
+        if reduction_percentage is None or reduction_percentage < 0 or reduction_percentage > 100:
+            return JsonResponse({'error': 'Reduction percentage must be between 0-100%'}, status=400)
+        
+        # Check for existing tier with same name
+        if PriceTier.objects.filter(name=name).exists():
+            return JsonResponse({'error': 'Price tier with this name already exists'}, status=400)
+        
+        # Create new tier
+        tier = PriceTier.objects.create(
+            name=name,
+            min_price=min_price,
+            max_price=max_price,
+            reduction_percentage=reduction_percentage,
+            order=PriceTier.objects.count() + 1
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Price tier "{name}" created successfully'
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON data'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@login_required
+def price_tier_edit(request, tier_id):
+    """Edit existing price tier"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    try:
+        tier = get_object_or_404(PriceTier, id=tier_id)
+        data = json.loads(request.body)
+        
+        name = data.get('name', '').strip()
+        min_price = data.get('min_price')
+        max_price = data.get('max_price')
+        reduction_percentage = data.get('reduction_percentage')
+        
+        # Validation
+        if not name:
+            return JsonResponse({'error': 'Tier name is required'}, status=400)
+            
+        if min_price is None or min_price < 0:
+            return JsonResponse({'error': 'Valid minimum price is required'}, status=400)
+            
+        if max_price is not None and max_price <= min_price:
+            return JsonResponse({'error': 'Maximum price must be greater than minimum price'}, status=400)
+            
+        if reduction_percentage is None or reduction_percentage < 0 or reduction_percentage > 100:
+            return JsonResponse({'error': 'Reduction percentage must be between 0-100%'}, status=400)
+        
+        # Check for existing tier with same name (excluding current tier)
+        if PriceTier.objects.filter(name=name).exclude(id=tier_id).exists():
+            return JsonResponse({'error': 'Price tier with this name already exists'}, status=400)
+        
+        # Update tier
+        tier.name = name
+        tier.min_price = min_price
+        tier.max_price = max_price
+        tier.reduction_percentage = reduction_percentage
+        tier.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Price tier "{name}" updated successfully'
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON data'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@login_required
+def price_tier_delete(request, tier_id):
+    """Delete price tier"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    try:
+        tier = get_object_or_404(PriceTier, id=tier_id)
+        tier_name = tier.name
+        tier.delete()
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Price tier "{tier_name}" deleted successfully'
         })
         
     except Exception as e:
