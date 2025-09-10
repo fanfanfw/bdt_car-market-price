@@ -5,16 +5,107 @@
 
 {% block extra_css %}
 <style>
-    .table-container {
-        overflow-x: auto;
-        background: white;
-        border-radius: 0.5rem;
-        box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+    /* Modern DataTables Styling with Glass Morphism */
+    .dataTables_wrapper {
+        @apply w-full;
     }
     
-    .stat-card {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
+    .dataTables_length,
+    .dataTables_filter,
+    .dataTables_info,
+    .dataTables_paginate {
+        @apply text-sm text-base-content;
+    }
+    
+    .dataTables_length select {
+        @apply select select-bordered select-sm mx-2 bg-base-100/80 backdrop-blur-sm border-base-300/50;
+        transition: all 0.3s ease;
+    }
+    
+    .dataTables_length select:focus {
+        @apply border-primary/50 ring-2 ring-primary/20;
+    }
+    
+    .dataTables_filter input {
+        @apply input input-bordered input-sm bg-base-100/80 backdrop-blur-sm border-base-300/50;
+        transition: all 0.3s ease;
+    }
+    
+    .dataTables_filter input:focus {
+        @apply border-primary/50 ring-2 ring-primary/20;
+    }
+    
+    .dataTables_length,
+    .dataTables_filter {
+        @apply mb-4;
+    }
+    
+    .dataTables_info {
+        @apply text-base-content/60;
+    }
+    
+    /* Modern Table styling */
+    table.dataTable {
+        @apply w-full table border-collapse rounded-xl overflow-hidden;
+        background: rgba(255, 255, 255, 0.05);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    }
+    
+    table.dataTable thead th {
+        @apply bg-gradient-to-r from-primary/10 to-secondary/10 text-base-content font-semibold p-4 text-left border-b border-base-300/30;
+        cursor: pointer;
+        position: relative;
+        transition: all 0.3s ease;
+    }
+    
+    table.dataTable thead th:hover {
+        @apply bg-gradient-to-r from-primary/20 to-secondary/20;
+        transform: translateY(-1px);
+    }
+    
+    table.dataTable tbody td {
+        @apply p-3 border-b border-base-200/30;
+        transition: all 0.3s ease;
+    }
+    
+    table.dataTable tbody tr {
+        transition: all 0.3s ease;
+    }
+    
+    table.dataTable tbody tr:hover {
+        @apply bg-gradient-to-r from-primary/5 to-secondary/5;
+        transform: translateX(4px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    
+    /* Modern Pagination styling */
+    .dataTables_paginate .paginate_button {
+        @apply btn btn-sm btn-ghost mx-1 rounded-full;
+        transition: all 0.3s ease;
+    }
+    
+    .dataTables_paginate .paginate_button:hover {
+        @apply btn-primary transform scale-105;
+    }
+    
+    .dataTables_paginate .paginate_button.current {
+        @apply btn-primary shadow-lg;
+        background: linear-gradient(135deg, var(--primary), var(--secondary));
+    }
+    
+    .dataTables_paginate .paginate_button.disabled {
+        @apply btn-disabled opacity-30;
+    }
+    
+    /* Modern Loading overlay */
+    .dataTables_processing {
+        @apply fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 p-6 rounded-2xl z-50;
+        background: rgba(255, 255, 255, 0.9);
+        backdrop-filter: blur(15px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
     }
     
     .badge-source-carlistmy {
@@ -25,28 +116,51 @@
         @apply badge-secondary;
     }
     
-    .sort-header {
-        cursor: pointer;
-        user-select: none;
+    /* Modern stats cards animation */
+    .stat-card {
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
     }
     
-    .sort-header:hover {
-        background-color: rgb(0 0 0 / 0.05);
+    .stat-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+        transition: left 0.5s ease;
     }
     
-    .sort-icon {
-        opacity: 0.3;
-        transition: opacity 0.2s;
+    .stat-card:hover::before {
+        left: 100%;
     }
     
-    .sort-header.active .sort-icon {
-        opacity: 1;
+    .stat-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+    }
+    
+    /* Modern filter section */
+    .filter-card {
+        @apply bg-gradient-to-br from-base-100 to-base-200/50;
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        transition: all 0.3s ease;
+    }
+    
+    .filter-card:hover {
+        @apply shadow-2xl;
+        transform: translateY(-2px);
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="space-y-6" x-data="carDataManager()">
+{% csrf_token %}
+<div class="space-y-6">
     <!-- Page Header -->
     <div class="flex justify-between items-center">
         <div>
@@ -54,7 +168,7 @@
             <p class="text-base-content/60 mt-1">Manage and view car data from multiple sources</p>
         </div>
         <div class="flex gap-2">
-            <button class="btn btn-primary" onclick="refreshData()">
+            <button class="btn btn-primary" onclick="refreshTable()">
                 <i class="fas fa-sync-alt"></i>
                 Refresh
             </button>
@@ -67,7 +181,7 @@
 
     <!-- Statistics Cards -->
     <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div class="stat bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg">
+        <div class="stat bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg stat-card">
             <div class="stat-figure text-white/80">
                 <i class="fas fa-car text-3xl"></i>
             </div>
@@ -76,7 +190,7 @@
             <div class="stat-desc text-white/80">Database records</div>
         </div>
 
-        <div class="stat bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg">
+        <div class="stat bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg stat-card">
             <div class="stat-figure text-white/80">
                 <i class="fas fa-tags text-3xl"></i>
             </div>
@@ -85,7 +199,7 @@
             <div class="stat-desc text-white/80">Unique brands</div>
         </div>
 
-        <div class="stat bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg">
+        <div class="stat bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg stat-card">
             <div class="stat-figure text-white/80">
                 <i class="fas fa-list text-3xl"></i>
             </div>
@@ -94,7 +208,7 @@
             <div class="stat-desc text-white/80">Unique models</div>
         </div>
 
-        <div class="stat bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg">
+        <div class="stat bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg stat-card">
             <div class="stat-figure text-white/80">
                 <i class="fas fa-database text-3xl"></i>
             </div>
@@ -105,7 +219,7 @@
     </div>
 
     <!-- Data Sources Filter -->
-    <div class="card bg-base-100 shadow">
+    <div class="card bg-base-100 shadow filter-card">
         <div class="card-body">
             <h2 class="card-title">
                 <i class="fas fa-filter"></i>
@@ -116,7 +230,7 @@
                     <label class="label">
                         <span class="label-text">Data Source</span>
                     </label>
-                    <select x-model="filters.source" @change="applyFilters()" class="select select-bordered">
+                    <select id="sourceFilter" class="select select-bordered">
                         <option value="">All Sources</option>
                         {% for source_key, source_name in sources %}
                         <option value="{{ source_key }}">{{ source_name }}</option>
@@ -127,7 +241,7 @@
                     <label class="label">
                         <span class="label-text">Year Range</span>
                     </label>
-                    <select x-model="filters.year" @change="applyFilters()" class="select select-bordered">
+                    <select id="yearFilter" class="select select-bordered">
                         <option value="">All Years</option>
                         <option value="2024-">2024 and newer</option>
                         <option value="2020-2023">2020-2023</option>
@@ -140,7 +254,7 @@
                     <label class="label">
                         <span class="label-text">Price Range</span>
                     </label>
-                    <select x-model="filters.price" @change="applyFilters()" class="select select-bordered">
+                    <select id="priceFilter" class="select select-bordered">
                         <option value="">All Prices</option>
                         <option value="0-50000">Under RM 50k</option>
                         <option value="50000-100000">RM 50k - 100k</option>
@@ -148,6 +262,16 @@
                         <option value="200000-">Above RM 200k</option>
                     </select>
                 </div>
+            </div>
+            <div class="flex gap-2 mt-4">
+                <button class="btn btn-sm btn-outline" onclick="clearFilters()">
+                    <i class="fas fa-times"></i>
+                    Clear Filters
+                </button>
+                <button class="btn btn-sm btn-success" onclick="refreshTable()">
+                    <i class="fas fa-sync-alt"></i>
+                    Refresh
+                </button>
             </div>
         </div>
     </div>
@@ -160,158 +284,35 @@
                     <i class="fas fa-table"></i>
                     Car Listings
                 </h2>
-                <div class="flex items-center gap-4">
-                    <!-- Search -->
-                    <div class="form-control">
-                        <div class="input-group">
-                            <input type="text" x-model="search" @input="performSearch()" 
-                                   placeholder="Search cars..." class="input input-bordered input-sm">
-                            <button class="btn btn-sm btn-square">
-                                <i class="fas fa-search"></i>
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <!-- Page Size -->
-                    <div class="form-control">
-                        <select x-model="pageSize" @change="changePageSize()" class="select select-bordered select-sm">
-                            <option value="10">10</option>
-                            <option value="25">25</option>
-                            <option value="50">50</option>
-                            <option value="100">100</option>
-                        </select>
-                    </div>
-                    
-                    <!-- Refresh -->
-                    <button class="btn btn-sm btn-primary" @click="refreshData()">
-                        <i class="fas fa-sync-alt"></i>
-                        Refresh
-                    </button>
-                </div>
-            </div>
-            
-            <!-- Loading State -->
-            <div x-show="loading" class="flex justify-center items-center py-12">
-                <span class="loading loading-spinner loading-md"></span>
-                <span class="ml-2">Loading cars...</span>
-            </div>
-            
-            <!-- Error State -->
-            <div x-show="error" class="alert alert-error mb-4">
-                <i class="fas fa-exclamation-triangle"></i>
-                <span x-text="error"></span>
             </div>
             
             <!-- Table -->
-            <div x-show="!loading && !error" class="table-container">
-                <table class="table table-striped table-xs">
+            <div class="overflow-x-auto">
+                <table id="carTable" class="table table-striped table-xs">
                     <thead>
                         <tr>
-                            <th @click="sort('id')" class="sort-header" :class="{ 'active': sortField === 'id' }">
-                                ID
-                                <i class="fas fa-sort sort-icon" :class="{
-                                    'fa-sort-up': sortField === 'id' && sortDirection === 'asc',
-                                    'fa-sort-down': sortField === 'id' && sortDirection === 'desc'
-                                }"></i>
-                            </th>
+                            <th>ID</th>
                             <th>Source</th>
-                            <th @click="sort('brand')" class="sort-header" :class="{ 'active': sortField === 'brand' }">
-                                Brand
-                                <i class="fas fa-sort sort-icon" :class="{
-                                    'fa-sort-up': sortField === 'brand' && sortDirection === 'asc',
-                                    'fa-sort-down': sortField === 'brand' && sortDirection === 'desc'
-                                }"></i>
-                            </th>
+                            <th>Brand</th>
                             <th>Model</th>
                             <th>Variant</th>
-                            <th @click="sort('year')" class="sort-header" :class="{ 'active': sortField === 'year' }">
-                                Year
-                                <i class="fas fa-sort sort-icon" :class="{
-                                    'fa-sort-up': sortField === 'year' && sortDirection === 'asc',
-                                    'fa-sort-down': sortField === 'year' && sortDirection === 'desc'
-                                }"></i>
-                            </th>
+                            <th>Year</th>
                             <th>Mileage</th>
-                            <th @click="sort('price')" class="sort-header" :class="{ 'active': sortField === 'price' }">
-                                Price
-                                <i class="fas fa-sort sort-icon" :class="{
-                                    'fa-sort-up': sortField === 'price' && sortDirection === 'asc',
-                                    'fa-sort-down': sortField === 'price' && sortDirection === 'desc'
-                                }"></i>
-                            </th>
+                            <th>Price</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <template x-for="car in paginatedData" :key="car.id">
-                            <tr>
-                                <td><span class="font-mono text-xs" x-text="car.id"></span></td>
-                                <td>
-                                    <span class="badge badge-xs" 
-                                          :class="'badge-source-' + car.source" 
-                                          x-text="car.source_display || car.source"></span>
-                                </td>
-                                <td><span class="font-semibold" x-text="car.brand"></span></td>
-                                <td><span x-text="car.model"></span></td>
-                                <td><span class="text-xs text-base-content/60" x-text="car.variant || '-'"></span></td>
-                                <td><span class="badge badge-neutral badge-sm" x-text="car.year"></span></td>
-                                <td>
-                                    <span x-text="car.mileage ? car.mileage.toLocaleString() + ' km' : '-'" class="text-xs"></span>
-                                </td>
-                                <td>
-                                    <span class="font-bold text-success" 
-                                          x-text="car.price ? 'RM ' + car.price.toLocaleString() : '-'"></span>
-                                </td>
-                                <td>
-                                    <button @click="viewCarDetail(car)" class="btn btn-xs btn-primary">
-                                        <i class="fas fa-eye"></i>
-                                        View
-                                    </button>
-                                </td>
-                            </tr>
-                        </template>
-                        
-                        <!-- Empty state -->
-                        <tr x-show="paginatedData.length === 0 && !loading">
-                            <td colspan="9" class="text-center py-8 text-base-content/60">
-                                <i class="fas fa-car text-4xl mb-4"></i>
-                                <div>No cars found</div>
-                            </td>
-                        </tr>
+                        <!-- DataTables will populate this -->
                     </tbody>
                 </table>
-            </div>
-            
-            <!-- Pagination -->
-            <div x-show="!loading && !error && totalPages > 1" class="flex justify-between items-center mt-4">
-                <div class="text-sm text-base-content/60">
-                    Showing <span x-text="pageInfo"></span> results
-                </div>
-                
-                <div class="join">
-                    <button @click="prevPage()" :disabled="currentPage === 1" class="join-item btn btn-sm">
-                        <i class="fas fa-chevron-left"></i>
-                    </button>
-                    
-                    <template x-for="page in pageNumbers" :key="page">
-                        <button @click="goToPage(page)" 
-                                :class="{ 'btn-active': page === currentPage }"
-                                class="join-item btn btn-sm" 
-                                x-text="page">
-                        </button>
-                    </template>
-                    
-                    <button @click="nextPage()" :disabled="currentPage === totalPages" class="join-item btn btn-sm">
-                        <i class="fas fa-chevron-right"></i>
-                    </button>
-                </div>
             </div>
         </div>
     </div>
 </div>
 
 <!-- Car Detail Modal -->
-<div class="modal" :class="{ 'modal-open': carDetailModal.show }" x-show="carDetailModal.show">
+<div class="modal" id="carDetailModal">
     <div class="modal-box w-11/12 max-w-4xl">
         <h3 class="font-bold text-lg mb-4">
             <i class="fas fa-car"></i>
@@ -319,24 +320,24 @@
         </h3>
         
         <!-- Loading State -->
-        <div x-show="carDetailModal.loading" class="flex items-center justify-center p-8">
+        <div id="carModalLoading" class="flex items-center justify-center p-8" style="display:none;">
             <span class="loading loading-spinner loading-md"></span>
             <span class="ml-2">Loading car details...</span>
         </div>
         
         <!-- Car Details Content -->
-        <div x-show="!carDetailModal.loading && carDetailModal.car" class="space-y-4">
+        <div id="carModalContent" class="space-y-4" style="display:none;">
             <div class="grid grid-cols-2 gap-4">
                 <div class="space-y-2">
                     <h4 class="font-semibold">Basic Information</h4>
                     <div class="bg-base-200 p-3 rounded">
                         <div class="grid grid-cols-2 gap-2 text-sm">
-                            <div><strong>ID:</strong> <span x-text="carDetailModal.car?.id"></span></div>
-                            <div><strong>Source:</strong> <span x-text="carDetailModal.car?.source"></span></div>
-                            <div><strong>Brand:</strong> <span x-text="carDetailModal.car?.brand"></span></div>
-                            <div><strong>Model:</strong> <span x-text="carDetailModal.car?.model"></span></div>
-                            <div><strong>Variant:</strong> <span x-text="carDetailModal.car?.variant || '-'"></span></div>
-                            <div><strong>Year:</strong> <span x-text="carDetailModal.car?.year"></span></div>
+                            <div><strong>ID:</strong> <span id="carId">-</span></div>
+                            <div><strong>Source:</strong> <span id="carSource">-</span></div>
+                            <div><strong>Brand:</strong> <span id="carBrand">-</span></div>
+                            <div><strong>Model:</strong> <span id="carModel">-</span></div>
+                            <div><strong>Variant:</strong> <span id="carVariant">-</span></div>
+                            <div><strong>Year:</strong> <span id="carYear">-</span></div>
                         </div>
                     </div>
                 </div>
@@ -344,10 +345,10 @@
                     <h4 class="font-semibold">Price & Details</h4>
                     <div class="bg-base-200 p-3 rounded">
                         <div class="grid grid-cols-1 gap-2 text-sm">
-                            <div><strong>Price:</strong> <span x-text="carDetailModal.car?.price ? 'RM ' + carDetailModal.car.price.toLocaleString() : '-'"></span></div>
-                            <div><strong>Mileage:</strong> <span x-text="carDetailModal.car?.mileage ? carDetailModal.car.mileage.toLocaleString() + ' km' : '-'"></span></div>
-                            <div><strong>Location:</strong> <span x-text="carDetailModal.car?.location || '-'"></span></div>
-                            <div><strong>Created:</strong> <span x-text="carDetailModal.car?.created_at"></span></div>
+                            <div><strong>Price:</strong> <span id="carPrice">-</span></div>
+                            <div><strong>Mileage:</strong> <span id="carMileage">-</span></div>
+                            <div><strong>Location:</strong> <span id="carLocation">-</span></div>
+                            <div><strong>Created:</strong> <span id="carCreated">-</span></div>
                         </div>
                     </div>
                 </div>
@@ -355,7 +356,7 @@
         </div>
         
         <div class="modal-action">
-            <button class="btn" @click="closeCarDetailModal()">Close</button>
+            <button class="btn" onclick="closeCarDetailModal()">Close</button>
         </div>
     </div>
 </div>
@@ -363,216 +364,195 @@
 
 {% block extra_js %}
 <script>
-function carDataManager() {
-    return {
-        // Data
-        data: [],
-        loading: false,
-        error: null,
-        
-        // Pagination
-        currentPage: 1,
-        pageSize: 25,
-        totalPages: 1,
-        totalRecords: 0,
-        
-        // Sorting
-        sortField: 'id',
-        sortDirection: 'desc',
-        
-        // Search & Filters
-        search: '',
-        filters: {
-            source: '',
-            year: '',
-            price: ''
+let carTable;
+
+$(document).ready(function() {
+    // Initialize DataTable
+    carTable = $('#carTable').DataTable({
+        processing: true,
+        serverSide: true,
+        ajax: {
+            url: '{% url "main:car_data_api" %}',
+            type: 'GET',
+            data: function(d) {
+                d.source_filter = $('#sourceFilter').val();
+                d.year_filter = $('#yearFilter').val();
+                d.price_filter = $('#priceFilter').val();
+            }
         },
-        
-        // Modal state
-        carDetailModal: {
-            show: false,
-            car: null,
-            loading: false
-        },
-        
-        // Initialize
-        async init() {
-            await this.loadData();
-        },
-        
-        // Load car data
-        async loadData() {
-            this.loading = true;
-            this.error = null;
-            
-            try {
-                const params = new URLSearchParams({
-                    page: this.currentPage,
-                    size: this.pageSize,
-                    search: this.search,
-                    sort: this.sortField,
-                    direction: this.sortDirection,
-                    source_filter: this.filters.source,
-                    year_filter: this.filters.year,
-                    price_filter: this.filters.price
-                });
-                
-                const response = await fetch(`{% url "main:car_data_api" %}?${params}`);
-                const result = await response.json();
-                
-                if (result.data) {
-                    this.data = result.data;
-                    this.totalRecords = result.recordsFiltered || result.recordsTotal || this.data.length;
-                    this.calculatePagination();
-                } else {
-                    throw new Error('Invalid response format');
+        columns: [
+            { 
+                data: 0,
+                render: function(data, type, row) {
+                    return `<span class="font-mono text-xs">${data}</span>`;
                 }
-            } catch (error) {
-                console.error('Error loading car data:', error);
-                this.error = 'Failed to load car data';
-            } finally {
-                this.loading = false;
-            }
-        },
-        
-        // Pagination
-        calculatePagination() {
-            this.totalPages = Math.ceil(this.totalRecords / this.pageSize);
-        },
-        
-        get paginatedData() {
-            return this.data;
-        },
-        
-        get pageInfo() {
-            if (this.totalRecords === 0) return '0-0 of 0';
-            const start = (this.currentPage - 1) * this.pageSize + 1;
-            const end = Math.min(this.currentPage * this.pageSize, this.totalRecords);
-            return `${start}-${end} of ${this.totalRecords}`;
-        },
-        
-        get pageNumbers() {
-            const pages = [];
-            const maxPages = 5;
-            let startPage = Math.max(1, this.currentPage - Math.floor(maxPages / 2));
-            let endPage = Math.min(this.totalPages, startPage + maxPages - 1);
-            
-            if (endPage - startPage + 1 < maxPages) {
-                startPage = Math.max(1, endPage - maxPages + 1);
-            }
-            
-            for (let i = startPage; i <= endPage; i++) {
-                pages.push(i);
-            }
-            return pages;
-        },
-        
-        // Navigation
-        goToPage(page) {
-            if (page >= 1 && page <= this.totalPages) {
-                this.currentPage = page;
-                this.loadData();
-            }
-        },
-        
-        nextPage() {
-            this.goToPage(this.currentPage + 1);
-        },
-        
-        prevPage() {
-            this.goToPage(this.currentPage - 1);
-        },
-        
-        // Sorting
-        sort(field) {
-            if (this.sortField === field) {
-                this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
-            } else {
-                this.sortField = field;
-                this.sortDirection = 'asc';
-            }
-            this.currentPage = 1;
-            this.loadData();
-        },
-        
-        // Search and filters
-        async performSearch() {
-            this.currentPage = 1;
-            await this.loadData();
-        },
-        
-        async applyFilters() {
-            this.currentPage = 1;
-            await this.loadData();
-        },
-        
-        async changePageSize() {
-            this.currentPage = 1;
-            await this.loadData();
-        },
-        
-        async refreshData() {
-            await this.loadData();
-        },
-        
-        // Car detail modal
-        async viewCarDetail(car) {
-            this.carDetailModal = {
-                show: true,
-                car: null,
-                loading: true
-            };
-            
-            try {
-                const response = await fetch(`{% url "main:car_detail_api" 0 %}`.replace('0', car.id));
-                const result = await response.json();
-                
-                if (result.success) {
-                    this.carDetailModal.car = result.data;
-                } else {
-                    throw new Error(result.error || 'Failed to load car details');
+            },
+            { 
+                data: 1,
+                render: function(data, type, row) {
+                    let badgeClass = 'badge-primary';
+                    if (data === 'mudahmy') badgeClass = 'badge-secondary';
+                    return `<span class="badge badge-xs ${badgeClass}">${data}</span>`;
                 }
-            } catch (error) {
-                console.error('Error loading car details:', error);
-                Swal.fire('Error', error.message, 'error');
-                this.closeCarDetailModal();
-            } finally {
-                this.carDetailModal.loading = false;
-            }
-        },
-        
-        closeCarDetailModal() {
-            this.carDetailModal = {
-                show: false,
-                car: null,
-                loading: false
-            };
-        },
-        
-        // Utility functions
-        getCsrfToken() {
-            return document.querySelector('[name=csrfmiddlewaretoken]')?.value || 
-                   this.getCookie('csrftoken');
-        },
-        
-        getCookie(name) {
-            let cookieValue = null;
-            if (document.cookie && document.cookie !== '') {
-                const cookies = document.cookie.split(';');
-                for (let i = 0; i < cookies.length; i++) {
-                    const cookie = cookies[i].trim();
-                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                        break;
-                    }
+            },
+            { 
+                data: 2,
+                render: function(data, type, row) {
+                    return `<span class="font-semibold">${data}</span>`;
+                }
+            },
+            { data: 3 },
+            { 
+                data: 4,
+                render: function(data, type, row) {
+                    return `<span class="text-xs text-base-content/60">${data || '-'}</span>`;
+                }
+            },
+            { 
+                data: 5,
+                render: function(data, type, row) {
+                    return `<span class="badge badge-neutral badge-sm">${data}</span>`;
+                }
+            },
+            { 
+                data: 6,
+                render: function(data, type, row) {
+                    return data ? `<span class="text-xs">${parseInt(data).toLocaleString()} km</span>` : '-';
+                }
+            },
+            { 
+                data: 7,
+                render: function(data, type, row) {
+                    return data ? `<span class="font-bold text-success">RM ${parseInt(data).toLocaleString()}</span>` : '-';
+                }
+            },
+            { 
+                data: 8,
+                orderable: false,
+                searchable: false,
+                render: function(data, type, row) {
+                    return `<button onclick="viewCarDetail(${row[0]})" class="btn btn-xs btn-primary">
+                        <i class="fas fa-eye"></i>
+                        View
+                    </button>`;
                 }
             }
-            return cookieValue;
+        ],
+        pageLength: 25,
+        lengthMenu: [10, 25, 50, 100],
+        order: [[0, 'desc']],
+        dom: '<"flex justify-between items-center mb-4"lf>rtip',
+        language: {
+            processing: '<div class="flex items-center gap-2"><span class="loading loading-spinner loading-md"></span>Loading cars...</div>',
+            search: '',
+            searchPlaceholder: 'Search cars...',
+            lengthMenu: 'Show _MENU_ entries',
+            info: 'Showing _START_ to _END_ of _TOTAL_ entries',
+            infoEmpty: 'Showing 0 to 0 of 0 entries',
+            infoFiltered: '(filtered from _MAX_ total entries)',
+            paginate: {
+                first: '<<',
+                last: '>>',
+                next: '>',
+                previous: '<'
+            }
+        },
+        drawCallback: function(settings) {
+            // Reapply Tailwind classes after redraw
+            $('.dataTables_length select').addClass('select select-bordered select-sm mx-2');
+            $('.dataTables_filter input').addClass('input input-bordered input-sm');
         }
+    });
+    
+    // Filter event listeners
+    $('#sourceFilter, #yearFilter, #priceFilter').on('change', function() {
+        carTable.ajax.reload();
+    });
+});
+
+// Filter functions
+function clearFilters() {
+    $('#sourceFilter').val('');
+    $('#yearFilter').val('');
+    $('#priceFilter').val('');
+    carTable.ajax.reload();
+}
+
+function refreshTable() {
+    carTable.ajax.reload(null, false); // Keep current page
+}
+
+function exportData() {
+    // TODO: Implement export functionality
+    Swal.fire({
+        title: 'Export Data',
+        text: 'Export functionality will be implemented soon.',
+        icon: 'info'
+    });
+}
+
+// Car detail functions
+async function viewCarDetail(carId) {
+    document.getElementById('carDetailModal').classList.add('modal-open');
+    document.getElementById('carModalLoading').style.display = 'flex';
+    document.getElementById('carModalContent').style.display = 'none';
+    
+    try {
+        const response = await fetch(`{% url "main:car_detail_api" 0 %}`.replace('0', carId));
+        const result = await response.json();
+        
+        if (result.success) {
+            const car = result.data;
+            
+            // Fill car details
+            document.getElementById('carId').textContent = car.id || '-';
+            document.getElementById('carSource').textContent = car.source || '-';
+            document.getElementById('carBrand').textContent = car.brand || '-';
+            document.getElementById('carModel').textContent = car.model || '-';
+            document.getElementById('carVariant').textContent = car.variant || '-';
+            document.getElementById('carYear').textContent = car.year || '-';
+            document.getElementById('carPrice').textContent = car.price ? `RM ${parseInt(car.price).toLocaleString()}` : '-';
+            document.getElementById('carMileage').textContent = car.mileage ? `${parseInt(car.mileage).toLocaleString()} km` : '-';
+            document.getElementById('carLocation').textContent = car.location || '-';
+            document.getElementById('carCreated').textContent = car.created_at || '-';
+            
+            document.getElementById('carModalLoading').style.display = 'none';
+            document.getElementById('carModalContent').style.display = 'block';
+        } else {
+            throw new Error(result.error || 'Failed to load car details');
+        }
+    } catch (error) {
+        console.error('Error loading car details:', error);
+        Swal.fire('Error', error.message, 'error');
+        closeCarDetailModal();
     }
 }
 
-// Note: Car Data management fully migrated from jQuery + DataTables to Alpine.js
-// All functionality preserved with modern Alpine.js reactive components
+function closeCarDetailModal() {
+    document.getElementById('carDetailModal').classList.remove('modal-open');
+    document.getElementById('carModalLoading').style.display = 'none';
+    document.getElementById('carModalContent').style.display = 'none';
+}
+
+// Utility functions
+function getCsrfToken() {
+    return document.querySelector('[name=csrfmiddlewaretoken]')?.value || 
+           getCookie('csrftoken');
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
 </script>
 {% endblock %}

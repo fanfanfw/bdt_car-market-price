@@ -1545,9 +1545,15 @@ def brand_classification_view(request):
     """Brand classification interface"""
     from django.db.models import Count
     
+    # Get all brands that exist in CarUnified
+    existing_brands = set(CarUnified.objects.values_list('brand', flat=True).distinct())
+    
+    # Get only valid classified brands (that exist in CarUnified)
+    valid_classified_brands = BrandCategory.objects.filter(brand__in=existing_brands)
+    
     # Get statistics
-    total_brands = CarUnified.objects.values('brand').distinct().count()
-    classified_brands = BrandCategory.objects.count()
+    total_brands = len(existing_brands)
+    classified_brands = valid_classified_brands.count()
     unclassified_brands = total_brands - classified_brands
     total_categories = Category.objects.count()
     
@@ -1585,9 +1591,12 @@ def brands_data_api(request):
             car_count=Count('id')
         )
         
-        # Get classified brands mapping
+        # Get all brands that exist in CarUnified
+        existing_brands = set(CarUnified.objects.values_list('brand', flat=True).distinct())
+        
+        # Get classified brands mapping (only for brands that exist in CarUnified)
         brand_categories_map = {}
-        for bc in BrandCategory.objects.select_related('category'):
+        for bc in BrandCategory.objects.select_related('category').filter(brand__in=existing_brands):
             brand_categories_map[bc.brand] = {
                 'category_id': bc.category.id,
                 'category_name': bc.category.name,
@@ -1721,14 +1730,17 @@ def reassign_brand_to_category(request):
         new_category_id = data.get('category_id')
         mapping_id = data.get('mapping_id')
         
-        if not brand_name or not new_category_id or not mapping_id:
-            return JsonResponse({'error': 'Brand name, category, and mapping ID are required'}, status=400)
+        if not brand_name or not new_category_id:
+            return JsonResponse({'error': 'Brand name and category are required'}, status=400)
         
         # Validate new category exists
         new_category = get_object_or_404(Category, id=new_category_id)
         
-        # Get existing mapping
-        brand_category = get_object_or_404(BrandCategory, id=mapping_id, brand=brand_name)
+        # Get existing mapping - find by brand name if mapping_id not provided
+        if mapping_id:
+            brand_category = get_object_or_404(BrandCategory, id=mapping_id, brand=brand_name)
+        else:
+            brand_category = get_object_or_404(BrandCategory, brand=brand_name)
         old_category_name = brand_category.category.name
         
         # Update the mapping
@@ -1753,14 +1765,17 @@ def remove_brand_classification(request):
     
     try:
         data = json.loads(request.body)
-        brand_name = data.get('brand_name', '').strip()
+        brand_name = data.get('brand', '').strip()  # Changed from brand_name to brand
         mapping_id = data.get('mapping_id')
         
-        if not brand_name or not mapping_id:
-            return JsonResponse({'error': 'Brand name and mapping ID are required'}, status=400)
+        if not brand_name:
+            return JsonResponse({'error': 'Brand name is required'}, status=400)
         
-        # Get and delete the mapping
-        brand_category = get_object_or_404(BrandCategory, id=mapping_id, brand=brand_name)
+        # Get and delete the mapping - find by brand name only if mapping_id not provided
+        if mapping_id:
+            brand_category = get_object_or_404(BrandCategory, id=mapping_id, brand=brand_name)
+        else:
+            brand_category = get_object_or_404(BrandCategory, brand=brand_name)
         category_name = brand_category.category.name
         brand_category.delete()
         

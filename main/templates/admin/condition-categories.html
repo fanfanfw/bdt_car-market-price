@@ -29,7 +29,8 @@
 {% endblock %}
 
 {% block content %}
-<div class="space-y-6" x-data="conditionCategoriesManager()">
+{% csrf_token %}
+<div class="space-y-6">
     <!-- Page Header -->
     <div class="flex justify-between items-center">
         <div>
@@ -82,22 +83,25 @@
             <div class="card-body">
                 <div class="space-y-2">
                     {% for option in category.options.all %}
-                    <div class="option-item flex justify-between items-center" x-data="{ option: {{ option|safe }} }">
+                    <div class="option-item flex justify-between items-center">
                         <div class="flex-1">
                             <span class="font-medium">{{ option.label }}</span>
                             <div class="badge badge-error ml-2">-{{ option.reduction_percentage }}%</div>
                         </div>
                         <div class="flex gap-1">
                             <button 
-                                @click="showEditModal({{ option.id }}, '{{ option.label }}', {{ option.reduction_percentage }})"
-                                class="btn btn-xs btn-primary"
+                                class="btn btn-xs btn-primary edit-option-btn"
+                                data-option-id="{{ option.id }}"
+                                data-label="{{ option.label }}"
+                                data-percentage="{{ option.reduction_percentage }}"
                                 title="Edit Option"
                             >
                                 <i class="fas fa-edit"></i>
                             </button>
                             <button 
-                                @click="deleteOption({{ option.id }}, '{{ option.label }}')"
-                                class="btn btn-xs btn-error"
+                                class="btn btn-xs btn-error delete-option-btn"
+                                data-option-id="{{ option.id }}"
+                                data-label="{{ option.label }}"
                                 title="Delete Option"
                             >
                                 <i class="fas fa-trash"></i>
@@ -109,8 +113,9 @@
                 
                 <div class="divider"></div>
                 <button 
-                    @click="showAddModal({{ category.id }}, '{{ category.display_name }}')"
-                    class="btn btn-sm btn-success"
+                    class="btn btn-sm btn-success add-option-btn"
+                    data-category-id="{{ category.id }}"
+                    data-category-name="{{ category.display_name }}"
                 >
                     <i class="fas fa-plus"></i>
                     Add Option
@@ -122,20 +127,20 @@
 </div>
 
 <!-- Edit Option Modal -->
-<div class="modal" :class="{ 'modal-open': editModal.show }" x-show="editModal.show">
+<div class="modal" id="editOptionModal">
     <div class="modal-box">
         <h3 class="font-bold text-lg mb-4">
             <i class="fas fa-edit"></i>
             Edit Option
         </h3>
-        <form @submit.prevent="saveEditedOption()">
+        <form id="editOptionForm">
             <div class="form-control mb-4">
                 <label class="label">
                     <span class="label-text">Option Label</span>
                 </label>
                 <input 
                     type="text" 
-                    x-model="editForm.label"
+                    id="editOptionLabel"
                     class="input input-bordered" 
                     placeholder="Enter option label"
                     required
@@ -148,7 +153,7 @@
                 <div class="input-group">
                     <input 
                         type="number" 
-                        x-model="editForm.percentage"
+                        id="editOptionPercentage"
                         class="input input-bordered flex-1" 
                         step="0.01" 
                         min="0" 
@@ -160,13 +165,10 @@
                 </div>
             </div>
             <div class="modal-action">
-                <button type="button" class="btn" @click="closeEditModal()">Cancel</button>
-                <button type="submit" class="btn btn-primary" :disabled="saving">
-                    <span x-show="saving">
-                        <span class="loading loading-spinner loading-sm"></span>
-                        Saving...
-                    </span>
-                    <span x-show="!saving">Save Changes</span>
+                <button type="button" class="btn" id="cancelEditBtn">Cancel</button>
+                <button type="submit" class="btn btn-primary" id="saveEditBtn">
+                    <i class="fas fa-save"></i>
+                    Save Changes
                 </button>
             </div>
         </form>
@@ -174,20 +176,20 @@
 </div>
 
 <!-- Add Option Modal -->
-<div class="modal" :class="{ 'modal-open': addModal.show }" x-show="addModal.show">
+<div class="modal" id="addOptionModal">
     <div class="modal-box">
         <h3 class="font-bold text-lg mb-4">
             <i class="fas fa-plus"></i>
             Add New Option
         </h3>
-        <form @submit.prevent="saveNewOption()">
+        <form id="addOptionForm">
             <div class="form-control mb-4">
                 <label class="label">
                     <span class="label-text">Category</span>
                 </label>
                 <input 
                     type="text" 
-                    x-model="addForm.categoryName"
+                    id="addOptionCategoryName"
                     class="input input-bordered" 
                     readonly
                 >
@@ -198,7 +200,7 @@
                 </label>
                 <input 
                     type="text" 
-                    x-model="addForm.label"
+                    id="addOptionLabel"
                     class="input input-bordered" 
                     placeholder="Enter option label"
                     required
@@ -211,7 +213,7 @@
                 <div class="input-group">
                     <input 
                         type="number" 
-                        x-model="addForm.percentage"
+                        id="addOptionPercentage"
                         class="input input-bordered flex-1" 
                         step="0.01" 
                         min="0" 
@@ -223,13 +225,10 @@
                 </div>
             </div>
             <div class="modal-action">
-                <button type="button" class="btn" @click="closeAddModal()">Cancel</button>
-                <button type="submit" class="btn btn-success" :disabled="saving">
-                    <span x-show="saving">
-                        <span class="loading loading-spinner loading-sm"></span>
-                        Adding...
-                    </span>
-                    <span x-show="!saving">Add Option</span>
+                <button type="button" class="btn" id="cancelAddBtn">Cancel</button>
+                <button type="submit" class="btn btn-success" id="saveAddBtn">
+                    <i class="fas fa-plus"></i>
+                    Add Option
                 </button>
             </div>
         </form>
@@ -239,208 +238,193 @@
 
 {% block extra_js %}
 <script>
-function conditionCategoriesManager() {
-    return {
-        // State
-        saving: false,
+$(document).ready(function() {
+    let currentOptionId = null;
+    let currentCategoryId = null;
+    
+    // Edit Option Modal
+    $(document).on('click', '.edit-option-btn', function() {
+        currentOptionId = $(this).data('option-id');
+        const label = $(this).data('label');
+        const percentage = $(this).data('percentage');
         
-        // Edit modal
-        editModal: {
-            show: false,
-            optionId: null
-        },
-        editForm: {
-            label: '',
-            percentage: 0
-        },
+        $('#editOptionLabel').val(label);
+        $('#editOptionPercentage').val(percentage);
+        $('#editOptionModal').addClass('modal-open');
+    });
+    
+    // Cancel Edit Modal
+    $('#cancelEditBtn').on('click', function() {
+        $('#editOptionModal').removeClass('modal-open');
+        currentOptionId = null;
+    });
+    
+    // Save Edit Option
+    $('#editOptionForm').on('submit', function(e) {
+        e.preventDefault();
         
-        // Add modal
-        addModal: {
-            show: false,
-            categoryId: null
-        },
-        addForm: {
-            categoryName: '',
-            label: '',
-            percentage: 0
-        },
+        const label = $('#editOptionLabel').val().trim();
+        const percentage = parseFloat($('#editOptionPercentage').val());
         
-        // Show edit modal
-        showEditModal(optionId, label, percentage) {
-            this.editModal = {
-                show: true,
-                optionId: optionId
-            };
-            this.editForm = {
-                label: label,
-                percentage: percentage
-            };
-        },
-        
-        // Close edit modal
-        closeEditModal() {
-            this.editModal = {
-                show: false,
-                optionId: null
-            };
-            this.editForm = {
-                label: '',
-                percentage: 0
-            };
-        },
-        
-        // Save edited option
-        async saveEditedOption() {
-            this.saving = true;
-            
-            try {
-                const response = await fetch(`/api/condition-option/${this.editModal.optionId}/edit/`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': this.getCsrfToken()
-                    },
-                    body: JSON.stringify({
-                        label: this.editForm.label,
-                        reduction_percentage: parseFloat(this.editForm.percentage)
-                    })
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    await Swal.fire('Success!', 'Option updated successfully', 'success');
-                    location.reload();
-                } else {
-                    throw new Error(data.error || 'Failed to update option');
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                Swal.fire('Error', error.message, 'error');
-            } finally {
-                this.saving = false;
-            }
-        },
-        
-        // Show add modal
-        showAddModal(categoryId, categoryName) {
-            this.addModal = {
-                show: true,
-                categoryId: categoryId
-            };
-            this.addForm = {
-                categoryName: categoryName,
-                label: '',
-                percentage: 0
-            };
-        },
-        
-        // Close add modal
-        closeAddModal() {
-            this.addModal = {
-                show: false,
-                categoryId: null
-            };
-            this.addForm = {
-                categoryName: '',
-                label: '',
-                percentage: 0
-            };
-        },
-        
-        // Save new option
-        async saveNewOption() {
-            this.saving = true;
-            
-            try {
-                const response = await fetch(`/api/condition-category/${this.addModal.categoryId}/option/add/`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': this.getCsrfToken()
-                    },
-                    body: JSON.stringify({
-                        label: this.addForm.label,
-                        reduction_percentage: parseFloat(this.addForm.percentage)
-                    })
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    await Swal.fire('Success!', 'Option added successfully', 'success');
-                    location.reload();
-                } else {
-                    throw new Error(data.error || 'Failed to add option');
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                Swal.fire('Error', error.message, 'error');
-            } finally {
-                this.saving = false;
-            }
-        },
-        
-        // Delete option
-        async deleteOption(optionId, label) {
-            const result = await Swal.fire({
-                title: 'Delete Option',
-                text: `Are you sure you want to delete "${label}"?`,
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonText: 'Yes, Delete',
-                cancelButtonText: 'Cancel',
-                confirmButtonColor: '#dc2626'
-            });
-            
-            if (result.isConfirmed) {
-                try {
-                    const response = await fetch(`/api/condition-option/${optionId}/delete/`, {
-                        method: 'POST',
-                        headers: {
-                            'X-CSRFToken': this.getCsrfToken()
-                        }
-                    });
-                    
-                    const data = await response.json();
-                    
-                    if (data.success) {
-                        await Swal.fire('Deleted!', 'Option deleted successfully', 'success');
-                        location.reload();
-                    } else {
-                        throw new Error(data.error || 'Failed to delete option');
-                    }
-                } catch (error) {
-                    console.error('Error:', error);
-                    Swal.fire('Error', error.message, 'error');
-                }
-            }
-        },
-        
-        // Utility functions
-        getCsrfToken() {
-            return document.querySelector('[name=csrfmiddlewaretoken]')?.value || 
-                   this.getCookie('csrftoken');
-        },
-        
-        getCookie(name) {
-            let cookieValue = null;
-            if (document.cookie && document.cookie !== '') {
-                const cookies = document.cookie.split(';');
-                for (let i = 0; i < cookies.length; i++) {
-                    const cookie = cookies[i].trim();
-                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                        break;
-                    }
-                }
-            }
-            return cookieValue;
+        if (!label) {
+            Swal.fire('Error', 'Please enter an option label', 'error');
+            return;
         }
-    }
-}
-
-// Note: Condition Categories management migrated from vanilla JavaScript to Alpine.js
-// All functionality preserved with modern Alpine.js reactive components
+        
+        if (isNaN(percentage) || percentage < 0 || percentage > 100) {
+            Swal.fire('Error', 'Please enter a valid reduction percentage (0-100%)', 'error');
+            return;
+        }
+        
+        const saveBtn = $('#saveEditBtn');
+        const originalContent = saveBtn.html();
+        saveBtn.html('<span class="loading loading-spinner loading-xs"></span> Saving...').prop('disabled', true);
+        
+        $.ajax({
+            url: `/api/condition-option/${currentOptionId}/edit/`,
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': $('[name=csrfmiddlewaretoken]').val()
+            },
+            data: JSON.stringify({
+                label: label,
+                reduction_percentage: percentage
+            }),
+            success: function(data) {
+                if (data.success) {
+                    Swal.fire('Success!', 'Option updated successfully', 'success').then(() => {
+                        location.reload();
+                    });
+                } else {
+                    Swal.fire('Error', data.error || 'Failed to update option', 'error');
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('AJAX Error:', error);
+                Swal.fire('Error', 'Failed to update option. Please try again.', 'error');
+            },
+            complete: function() {
+                saveBtn.html(originalContent).prop('disabled', false);
+            }
+        });
+    });
+    
+    // Add Option Modal
+    $(document).on('click', '.add-option-btn', function() {
+        currentCategoryId = $(this).data('category-id');
+        const categoryName = $(this).data('category-name');
+        
+        $('#addOptionCategoryName').val(categoryName);
+        $('#addOptionLabel').val('');
+        $('#addOptionPercentage').val('');
+        $('#addOptionModal').addClass('modal-open');
+    });
+    
+    // Cancel Add Modal
+    $('#cancelAddBtn').on('click', function() {
+        $('#addOptionModal').removeClass('modal-open');
+        currentCategoryId = null;
+    });
+    
+    // Save Add Option
+    $('#addOptionForm').on('submit', function(e) {
+        e.preventDefault();
+        
+        const label = $('#addOptionLabel').val().trim();
+        const percentage = parseFloat($('#addOptionPercentage').val());
+        
+        if (!label) {
+            Swal.fire('Error', 'Please enter an option label', 'error');
+            return;
+        }
+        
+        if (isNaN(percentage) || percentage < 0 || percentage > 100) {
+            Swal.fire('Error', 'Please enter a valid reduction percentage (0-100%)', 'error');
+            return;
+        }
+        
+        const saveBtn = $('#saveAddBtn');
+        const originalContent = saveBtn.html();
+        saveBtn.html('<span class="loading loading-spinner loading-xs"></span> Adding...').prop('disabled', true);
+        
+        $.ajax({
+            url: `/api/condition-category/${currentCategoryId}/option/add/`,
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': $('[name=csrfmiddlewaretoken]').val()
+            },
+            data: JSON.stringify({
+                label: label,
+                reduction_percentage: percentage
+            }),
+            success: function(data) {
+                if (data.success) {
+                    Swal.fire('Success!', 'Option added successfully', 'success').then(() => {
+                        location.reload();
+                    });
+                } else {
+                    Swal.fire('Error', data.error || 'Failed to add option', 'error');
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('AJAX Error:', error);
+                Swal.fire('Error', 'Failed to add option. Please try again.', 'error');
+            },
+            complete: function() {
+                saveBtn.html(originalContent).prop('disabled', false);
+            }
+        });
+    });
+    
+    // Delete Option
+    $(document).on('click', '.delete-option-btn', function() {
+        const optionId = $(this).data('option-id');
+        const label = $(this).data('label');
+        
+        Swal.fire({
+            title: 'Delete Option',
+            text: `Are you sure you want to delete "${label}"?`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Yes, Delete',
+            cancelButtonText: 'Cancel',
+            confirmButtonColor: '#dc2626'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.ajax({
+                    url: `/api/condition-option/${optionId}/delete/`,
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': $('[name=csrfmiddlewaretoken]').val()
+                    },
+                    success: function(data) {
+                        if (data.success) {
+                            Swal.fire('Deleted!', 'Option deleted successfully', 'success').then(() => {
+                                location.reload();
+                            });
+                        } else {
+                            Swal.fire('Error', data.error || 'Failed to delete option', 'error');
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('AJAX Error:', error);
+                        Swal.fire('Error', 'Failed to delete option. Please try again.', 'error');
+                    }
+                });
+            }
+        });
+    });
+    
+    // Close modal on click outside
+    $(document).on('click', '.modal', function(e) {
+        if (e.target === this) {
+            $(this).removeClass('modal-open');
+            currentOptionId = null;
+            currentCategoryId = null;
+        }
+    });
+});
 </script>
 {% endblock %}
