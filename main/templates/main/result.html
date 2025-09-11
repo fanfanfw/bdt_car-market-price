@@ -307,12 +307,13 @@ async function sendOTPCode() {
         const data = await response.json();
         
         if (data.success) {
-            // Show OTP for testing in console
-            if (data.otp) {
-                console.log('OTP untuk testing:', data.otp);
+            // Show verification_id for testing in console (but don't use it for auto-validation)
+            if (data.verification_id) {
+                console.log('Verification ID:', data.verification_id);
+                console.log('WhatsApp OTP sent successfully');
             }
             
-            await showOTPInput(data.otp, true); // Pass OTP for testing, isNewOTP = true
+            await showOTPInput(null, true); // No auto OTP, user must enter manually from WhatsApp
         } else {
             throw new Error(data.error || 'Gagal mengirim OTP');
         }
@@ -351,8 +352,7 @@ async function showOTPInput(testOTP = null, isNewOTP = true) {
                         <i class="fas fa-check-circle"></i>
                         <span>OTP has been sent to ${phoneNumber}</span>
                     </div>
-                    ${testOTP ? `<div class="alert alert-info text-sm"><strong>Testing OTP: ${testOTP}</strong></div>` : ''}
-                    <input type="text" id="otp-input" class="swal2-input text-center text-2xl" placeholder="123456" maxlength="6" autocomplete="off" style="font-size: 1.5rem; text-align: center; letter-spacing: 0.5rem;">
+                    <input type="text" id="otp-input" class="swal2-input text-center text-2xl" placeholder="1234" maxlength="4" autocomplete="off" style="font-size: 1.5rem; text-align: center; letter-spacing: 0.5rem;">
                     <div class="text-sm text-gray-500" id="otp-timer">Valid for <strong>${window.otpTimeLeft}</strong> seconds</div>
                 </div>
             `,
@@ -390,17 +390,17 @@ async function showOTPInput(testOTP = null, isNewOTP = true) {
                 // Focus on input
                 input.focus();
                 
-                // Only allow numbers and auto-submit on 6 digits
+                // Only allow numbers and auto-submit on 4 digits
                 input.addEventListener('input', async function(e) {
                     this.value = this.value.replace(/[^0-9]/g, '');
-                    if (this.value.length === 6) {
-                        // Auto verify when 6 digits are entered
+                    if (this.value.length === 4) {
+                        // Auto verify when 4 digits are entered
                         const otpCode = this.value;
                         
                         // Disable input while verifying
                         this.disabled = true;
                         
-                        const verificationResult = await verifyOTPCodeSilent(otpCode, testOTP);
+                        const verificationResult = await verifyOTPCodeSilent(otpCode);
                         
                         if (verificationResult === true) {
                             // Success - close modal and stop timer
@@ -504,7 +504,7 @@ async function showOTPInput(testOTP = null, isNewOTP = true) {
 }
 
 // Silent verification without UI changes for auto-submit
-async function verifyOTPCodeSilent(otpCode, testOTP = null) {
+async function verifyOTPCodeSilent(otpCode) {
     try {
         const countryCode = phoneNumber.startsWith('+60') ? '+60' : '+62';
         const phoneOnly = phoneNumber.replace(countryCode, '');

@@ -14,6 +14,10 @@ from django.contrib.auth.models import User
 import json
 import random
 import re
+import requests
+import os
+from django.conf import settings
+from decouple import config
 from .models import (
     CarStandard, CarUnified, Category, BrandCategory, VerifiedPhone, OTPSession,
     MileageConfiguration, VehicleConditionCategory, ConditionOption, PriceTier
@@ -395,8 +399,42 @@ def get_client_ip(request):
         ip = request.META.get('REMOTE_ADDR')
     return ip
 
+def format_phone_number_for_message_central(phone, country_code):
+    """Format phone number for Message_Central API (Indonesia +62 and Malaysia +60)"""
+    # Remove all non-digits from phone
+    cleaned_phone = re.sub(r'[^\d]', '', phone)
+    # Extract country code number (remove + sign)
+    country_num = re.sub(r'[^\d]', '', country_code)
+    
+    # Handle country code formatting according to Message_Central API
+    if country_num == '62':
+        # Indonesia: countryCode=62, mobileNumber=89525521887
+        country_code_formatted = '62'
+        mobile_number = cleaned_phone
+        
+        # Remove leading 0 if present (08xxx -> 8xxx)
+        if mobile_number.startswith('0'):
+            mobile_number = mobile_number[1:]
+            
+        return country_code_formatted, mobile_number
+        
+    elif country_num == '60':
+        # Malaysia: countryCode=60, mobileNumber=173023419
+        country_code_formatted = '60'
+        mobile_number = cleaned_phone
+        
+        # Remove leading 0 if present (01xxx -> 1xxx)
+        if mobile_number.startswith('0'):
+            mobile_number = mobile_number[1:]
+            
+        return country_code_formatted, mobile_number
+        
+    else:
+        # Unsupported country
+        return None, None
+
 def normalize_phone_number(phone, country_code):
-    """Normalize phone number format"""
+    """Normalize phone number format (legacy function for backward compatibility)"""
     # Remove all non-digits
     phone_digits = re.sub(r'\D', '', phone)
     
@@ -464,7 +502,7 @@ def check_phone_status(request):
 @csrf_exempt
 @require_http_methods(["POST"])
 def send_otp(request):
-    """Send OTP to phone number"""
+    """Send OTP to phone number using Message_Central API"""
     try:
         data = json.loads(request.body)
         phone = data.get('phone')
@@ -473,7 +511,13 @@ def send_otp(request):
         if not phone:
             return JsonResponse({'error': 'Phone number required'}, status=400)
         
-        # Normalize phone number
+        # Format phone number for Message_Central API
+        country_code_formatted, mobile_number = format_phone_number_for_message_central(phone, country_code)
+        
+        if not country_code_formatted or not mobile_number:
+            return JsonResponse({'error': 'Invalid phone number format. Use +62 for Indonesia or +60 for Malaysia'}, status=400)
+        
+        # Create normalized full phone number for our database
         full_phone = normalize_phone_number(phone, country_code)
         
         # Validate phone number format
@@ -486,26 +530,58 @@ def send_otp(request):
             if not re.match(r'^\+62\d{8,12}$', full_phone):
                 return JsonResponse({'error': 'Invalid Indonesian phone number format'}, status=400)
         
-        # Generate OTP
-        otp_code = generate_otp()
+        # Get Message_Central API configuration from environment
+        auth_token = config('MESSAGE_CENTRAL_AUTH_TOKEN', default=None)
+        customer_id = config('MESSAGE_CENTRAL_CUSTOMER_ID', default=None)
         
-        # Clean up old OTP sessions for this phone (optional - keep only latest)
-        OTPSession.objects.filter(phone_number=full_phone, is_used=False).update(is_used=True)
+        if not auth_token or not customer_id:
+            return JsonResponse({'error': 'Message_Central API configuration not found'}, status=500)
         
-        # Create new OTP session
-        otp_session = OTPSession.objects.create(
-            phone_number=full_phone,
-            otp_code=otp_code,
-            ip_address=get_client_ip(request)
-        )
-        
-        # For testing - return OTP in response (remove in production)
-        return JsonResponse({
-            'success': True,
-            'message': f'OTP sent to {full_phone}',
-            'otp': otp_code,  # For testing only!
-            'expires_in': 60  # seconds
-        })
+        # Call Message_Central API to send OTP
+        try:
+            url = f"https://cpaas.messagecentral.com/verification/v3/send?countryCode={country_code_formatted}&customerId={customer_id}&flowType=WHATSAPP&mobileNumber={mobile_number}"
+            
+            headers = {
+                'authToken': auth_token
+            }
+            
+            response = requests.post(url, headers=headers, data={}, timeout=30)
+            response_data = response.json()
+            
+            if response.status_code == 200 and response_data.get('responseCode') == 200:
+                # Success - get verificationId from response
+                verification_id = response_data.get('data', {}).get('verificationId')
+                
+                if not verification_id:
+                    return JsonResponse({'error': 'No verification ID received from Message_Central'}, status=500)
+                
+                # Clean up old OTP sessions for this phone
+                OTPSession.objects.filter(phone_number=full_phone, is_used=False).update(is_used=True)
+                
+                # Create new OTP session with verificationId
+                otp_session = OTPSession.objects.create(
+                    phone_number=full_phone,
+                    verification_id=verification_id,
+                    ip_address=get_client_ip(request)
+                )
+                
+                return JsonResponse({
+                    'success': True,
+                    'message': f'OTP sent to {full_phone} via WhatsApp',
+                    'verification_id': verification_id,
+                    'expires_in': 60  # seconds
+                })
+            else:
+                # Error from Message_Central
+                error_message = response_data.get('message', 'Failed to send OTP')
+                return JsonResponse({'error': f'Message_Central Error: {error_message}'}, status=400)
+                
+        except requests.exceptions.Timeout:
+            return JsonResponse({'error': 'Request timeout. Please try again.'}, status=500)
+        except requests.exceptions.RequestException as e:
+            return JsonResponse({'error': f'Network error: {str(e)}'}, status=500)
+        except Exception as e:
+            return JsonResponse({'error': f'API error: {str(e)}'}, status=500)
         
     except json.JSONDecodeError:
         return JsonResponse({'error': 'Invalid JSON'}, status=400)
@@ -515,7 +591,7 @@ def send_otp(request):
 @csrf_exempt
 @require_http_methods(["POST"])
 def verify_otp(request):
-    """Verify OTP and mark phone as verified"""
+    """Verify OTP using Message_Central API and mark phone as verified"""
     try:
         data = json.loads(request.body)
         phone = data.get('phone')
@@ -525,64 +601,114 @@ def verify_otp(request):
         if not phone or not otp_code:
             return JsonResponse({'error': 'Phone number and OTP required'}, status=400)
         
-        # Normalize phone number
+        # Validate OTP code format (should be 4 digits)
+        if not otp_code or not otp_code.isdigit() or len(otp_code) != 4:
+            return JsonResponse({'error': 'OTP code must be 4 digits'}, status=400)
+        
+        # Format phone number for Message_Central API
+        country_code_formatted, mobile_number = format_phone_number_for_message_central(phone, country_code)
+        
+        if not country_code_formatted or not mobile_number:
+            return JsonResponse({'error': 'Invalid phone number format. Use +62 for Indonesia or +60 for Malaysia'}, status=400)
+        
+        # Create normalized full phone number for our database
         full_phone = normalize_phone_number(phone, country_code)
         
-        # Find valid OTP session
+        # Find the OTP session with verificationId
         try:
             otp_session = OTPSession.objects.filter(
                 phone_number=full_phone,
-                otp_code=otp_code,
                 is_used=False
             ).order_by('-created_at').first()
             
             if not otp_session:
-                return JsonResponse({'error': 'Invalid OTP code'}, status=400)
+                return JsonResponse({'error': 'No active OTP session found. Please request a new OTP.'}, status=400)
             
             if otp_session.is_expired():
                 return JsonResponse({'error': 'OTP has expired. Please request a new one.'}, status=400)
             
-            # Mark OTP as used
-            otp_session.is_used = True
-            otp_session.save()
+            # Get verificationId from our session 
+            verification_id = otp_session.verification_id
             
-            # Create or update verified phone
-            verified_phone, created = VerifiedPhone.objects.get_or_create(
-                phone_number=full_phone,
-                defaults={
-                    'user_agent': request.META.get('HTTP_USER_AGENT', ''),
-                    'ip_address': get_client_ip(request),
-                    'access_count': 1,
-                    'is_active': True
+            # Get Message_Central API configuration from environment
+            auth_token = config('MESSAGE_CENTRAL_AUTH_TOKEN', default=None)
+            customer_id = config('MESSAGE_CENTRAL_CUSTOMER_ID', default=None)
+            
+            if not auth_token or not customer_id:
+                return JsonResponse({'error': 'Message_Central API configuration not found'}, status=500)
+            
+            # Call Message_Central API to validate OTP
+            try:
+                url = f"https://cpaas.messagecentral.com/verification/v3/validateOtp?countryCode={country_code_formatted}&mobileNumber={mobile_number}&verificationId={verification_id}&customerId={customer_id}&code={otp_code}"
+                
+                headers = {
+                    'authToken': auth_token
                 }
-            )
-            
-            if not created:
-                # Phone already exists, extend expiry
-                verified_phone.extend_expiry()
-                verified_phone.user_agent = request.META.get('HTTP_USER_AGENT', '')
-                verified_phone.ip_address = get_client_ip(request)
-                verified_phone.access_count += 1
-                verified_phone.save()
-            
-            # Set session cookie for user convenience
-            response = JsonResponse({
-                'success': True,
-                'phone': full_phone,
-                'message': 'Phone number verified successfully!'
-            })
-            
-            from django.conf import settings
-            cookie_age = getattr(settings, 'OTP_SESSION_COOKIE_AGE', 86400)
-            response.set_cookie(
-                'verified_phone', 
-                full_phone, 
-                max_age=cookie_age,
-                httponly=True,
-                samesite='Strict'
-            )
-            
-            return response
+                
+                response = requests.get(url, headers=headers, timeout=30)
+                response_data = response.json()
+                
+                if response.status_code == 200 and response_data.get('responseCode') == 200:
+                    # Check verification status
+                    verification_status = response_data.get('data', {}).get('verificationStatus')
+                    
+                    if verification_status == 'VERIFICATION_COMPLETED':
+                        # OTP verification successful
+                        
+                        # Mark OTP as used
+                        otp_session.is_used = True
+                        otp_session.save()
+                        
+                        # Create or update verified phone
+                        verified_phone, created = VerifiedPhone.objects.get_or_create(
+                            phone_number=full_phone,
+                            defaults={
+                                'user_agent': request.META.get('HTTP_USER_AGENT', ''),
+                                'ip_address': get_client_ip(request),
+                                'access_count': 1,
+                                'is_active': True
+                            }
+                        )
+                        
+                        if not created:
+                            # Phone already exists, extend expiry
+                            verified_phone.extend_expiry()
+                            verified_phone.user_agent = request.META.get('HTTP_USER_AGENT', '')
+                            verified_phone.ip_address = get_client_ip(request)
+                            verified_phone.access_count += 1
+                            verified_phone.save()
+                        
+                        # Set session cookie for user convenience
+                        response = JsonResponse({
+                            'success': True,
+                            'phone': full_phone,
+                            'message': 'Phone number verified successfully!'
+                        })
+                        
+                        cookie_age = getattr(settings, 'OTP_SESSION_COOKIE_AGE', 86400)
+                        response.set_cookie(
+                            'verified_phone', 
+                            full_phone, 
+                            max_age=cookie_age,
+                            httponly=True,
+                            samesite='Strict'
+                        )
+                        
+                        return response
+                    else:
+                        # OTP verification failed
+                        return JsonResponse({'error': 'Invalid OTP code. Please try again.'}, status=400)
+                else:
+                    # Error from Message_Central
+                    error_message = response_data.get('message', 'OTP verification failed')
+                    return JsonResponse({'error': f'Verification Error: {error_message}'}, status=400)
+                    
+            except requests.exceptions.Timeout:
+                return JsonResponse({'error': 'Request timeout. Please try again.'}, status=500)
+            except requests.exceptions.RequestException as e:
+                return JsonResponse({'error': f'Network error: {str(e)}'}, status=500)
+            except Exception as e:
+                return JsonResponse({'error': f'API error: {str(e)}'}, status=500)
             
         except Exception as e:
             return JsonResponse({'error': 'Verification failed'}, status=500)
@@ -1290,7 +1416,7 @@ def otp_sessions_api(request):
         order_direction = request.GET.get('order[0][dir]', 'asc')
         
         # Column mapping for ordering
-        columns = ['id', 'phone_number', 'otp_code', 'created_at', 'is_used', 'ip_address']
+        columns = ['id', 'phone_number', 'verification_id', 'created_at', 'is_used', 'ip_address']
         order_column = columns[order_column_index] if order_column_index < len(columns) else 'id'
         
         if order_direction == 'desc':
@@ -1347,8 +1473,8 @@ def otp_sessions_api(request):
             # Format phone number (mask middle digits for privacy)
             masked_phone = otp.phone_number[:4] + '*' * (len(otp.phone_number) - 8) + otp.phone_number[-4:]
             
-            # Format OTP code (partially masked if not used)
-            masked_otp = otp.otp_code[:2] + '****' if not otp.is_used else otp.otp_code
+            # Format verification ID (partially masked for security)
+            masked_verification_id = (otp.verification_id[:3] + '***' + otp.verification_id[-3:]) if otp.verification_id and len(otp.verification_id) > 6 else (otp.verification_id or '-')
             
             # Actions column
             actions = f'''<div class="btn-group btn-group-sm" role="group">
@@ -1360,7 +1486,7 @@ def otp_sessions_api(request):
             data.append([
                 otp.id,
                 masked_phone,
-                masked_otp,
+                masked_verification_id,
                 otp.created_at.strftime('%Y-%m-%d %H:%M:%S'),
                 status_badge,
                 otp.ip_address or '-',
@@ -1388,7 +1514,7 @@ def otp_session_detail_api(request, session_id):
         data = {
             'id': otp.id,
             'phone_number': otp.phone_number,
-            'otp_code': otp.otp_code,
+            'verification_id': otp.verification_id,
             'created_at': otp.created_at.strftime('%Y-%m-%d %H:%M:%S'),
             'is_used': otp.is_used,
             'is_expired': otp.is_expired(),

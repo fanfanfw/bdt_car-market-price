@@ -218,7 +218,7 @@ class VerifiedPhone(models.Model):
 class OTPSession(models.Model):
     """Temporary OTP sessions (1 minute validity)"""
     phone_number = models.CharField(max_length=15)
-    otp_code = models.CharField(max_length=6)
+    verification_id = models.CharField(max_length=50, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     is_used = models.BooleanField(default=False)
     ip_address = models.GenericIPAddressField(blank=True, null=True)
@@ -228,12 +228,12 @@ class OTPSession(models.Model):
         ordering = ['-created_at']
         indexes = [
             models.Index(fields=['phone_number', 'created_at']),
-            models.Index(fields=['otp_code']),
+            models.Index(fields=['verification_id']),
             models.Index(fields=['is_used']),
         ]
 
     def __str__(self):
-        return f"{self.phone_number} - {self.otp_code} - {self.created_at}"
+        return f"{self.phone_number} - {self.verification_id} - {self.created_at}"
 
     def is_expired(self):
         """Check if OTP has expired (1 minute)"""

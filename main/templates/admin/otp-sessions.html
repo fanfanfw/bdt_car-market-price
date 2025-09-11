@@ -148,7 +148,7 @@
                     <tr class="border-b border-gray-200">
                         <th class="text-left py-3 px-4 font-medium text-gray-700">ID</th>
                         <th class="text-left py-3 px-4 font-medium text-gray-700">Phone Number</th>
-                        <th class="text-left py-3 px-4 font-medium text-gray-700">OTP Code</th>
+                        <th class="text-left py-3 px-4 font-medium text-gray-700">VerificationId</th>
                         <th class="text-left py-3 px-4 font-medium text-gray-700">Created At</th>
                         <th class="text-left py-3 px-4 font-medium text-gray-700">Status</th>
                         <th class="text-left py-3 px-4 font-medium text-gray-700">IP Address</th>
@@ -198,7 +198,7 @@
                                 <div class="space-y-3 text-sm">
                                     <div><span class="font-medium text-gray-700">Session ID:</span> <span id="otpId" class="text-gray-900">-</span></div>
                                     <div><span class="font-medium text-gray-700">Phone Number:</span> <span id="otpPhoneNumber" class="text-gray-900 font-mono">-</span></div>
-                                    <div><span class="font-medium text-gray-700">OTP Code:</span> <code id="otpCode" class="text-lg font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded">-</code></div>
+                                    <div><span class="font-medium text-gray-700">Verification ID:</span> <code id="otpVerificationId" class="text-lg font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded">-</code></div>
                                     <div><span class="font-medium text-gray-700">Status:</span> <span id="otpStatusBadge" class="text-gray-900">-</span></div>
                                 </div>
                             </div>
@@ -280,7 +280,7 @@ $(document).ready(function() {
             { 
                 data: 2,
                 render: function(data, type, row) {
-                    return `<code class="text-sm">${data}</code>`;
+                    return `<code class="text-sm">${data || '-'}</code>`;
                 }
             },
             { data: 3 },
@@ -397,7 +397,7 @@ async function viewOTPDetail(otpId) {
             // Fill OTP details
             document.getElementById('otpId').textContent = otp.id || '-';
             document.getElementById('otpPhoneNumber').textContent = otp.phone_number || '-';
-            document.getElementById('otpCode').textContent = otp.otp_code || '-';
+            document.getElementById('otpVerificationId').textContent = otp.verification_id || '-';
             document.getElementById('otpCreatedAt').textContent = otp.created_at || '-';
             document.getElementById('otpExpiresAt').textContent = otp.expires_at || '-';
             document.getElementById('otpIpAddress').textContent = otp.ip_address || '-';
