@@ -165,11 +165,17 @@ const skipOTP = {{ skip_otp|yesno:"true,false" }};
 
 // Auto-start verification process
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('Debug - skipOTP:', skipOTP);
+    console.log('Debug - phoneNumber:', phoneNumber);
+    console.log('Debug - phoneNotVerified:', phoneNotVerified);
+    
     if (skipOTP && phoneNumber) {
         // Phone already verified, load results directly
+        console.log('Loading results directly - phone already verified');
         loadResults();
     } else if (phoneNotVerified) {
         // Phone needs verification, show OTP popup
+        console.log('Showing OTP verification popup');
         showOTPVerification();
     }
 });
@@ -198,8 +204,27 @@ async function checkPhoneStatus(phoneNumber, countryCode) {
     }
 }
 
+// Update phone placeholder based on selected country
+function updatePhonePlaceholder() {
+    const countrySelect = document.getElementById('country-select');
+    const phoneInput = document.getElementById('phone-input');
+    
+    if (countrySelect && phoneInput) {
+        if (countrySelect.value === '+60') {
+            phoneInput.placeholder = 'Example: 178901234';
+        } else {
+            phoneInput.placeholder = 'Example: 81234567890';
+        }
+    }
+}
+
 // OTP Verification using SweetAlert
 async function showOTPVerification() {
+    // Pre-fill phone number if available
+    const savedPhoneNumber = phoneNumber || '';
+    const savedCountryCode = savedPhoneNumber.startsWith('+60') ? '+60' : '+62';
+    const savedPhoneOnly = savedPhoneNumber.replace(/^\+6[02]/, '');
+    
     // Step 1: Ask for phone number
     const { value: phoneInput } = await Swal.fire({
         title: 'Enter Phone Number',
@@ -212,14 +237,14 @@ async function showOTPVerification() {
                 <div class="space-y-3">
                     <div>
                         <label class="block text-sm font-medium mb-2">Country</label>
-                        <select id="country-select" class="w-full p-2 border rounded">
-                            <option value="+60">🇲🇾 Malaysia (+60)</option>
-                            <option value="+62">🇮🇩 Indonesia (+62)</option>
+                        <select id="country-select" class="w-full p-2 border rounded" onchange="updatePhonePlaceholder()">
+                            <option value="+60" ${savedCountryCode === '+60' ? 'selected' : ''}>🇲🇾 Malaysia (+60)</option>
+                            <option value="+62" ${savedCountryCode === '+62' ? 'selected' : ''}>🇮🇩 Indonesia (+62)</option>
                         </select>
                     </div>
                     <div>
                         <label class="block text-sm font-medium mb-2">Phone Number</label>
-                        <input type="tel" id="phone-input" class="w-full p-2 border rounded" placeholder="Example: 123456789">
+                        <input type="tel" id="phone-input" class="w-full p-2 border rounded" placeholder="Example: 81234567890" value="${savedPhoneOnly}">
                         <small class="text-gray-500">Enter number without country code</small>
                     </div>
                 </div>
@@ -232,6 +257,10 @@ async function showOTPVerification() {
         cancelButtonColor: '#d33',
         allowOutsideClick: false,
         allowEscapeKey: false,
+        didOpen: () => {
+            // Set initial placeholder based on selected country
+            updatePhonePlaceholder();
+        },
         preConfirm: () => {
             const countryCode = document.getElementById('country-select').value;
             const phone = document.getElementById('phone-input').value;

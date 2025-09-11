@@ -482,11 +482,23 @@ def check_phone_status(request):
             verified_phone.access_count += 1
             verified_phone.save()
             
-            return JsonResponse({
+            # Set cookie for user convenience (same as OTP verification)
+            response = JsonResponse({
                 'verified': True,
                 'phone': full_phone,
                 'message': 'Phone number is already verified.'
             })
+            
+            cookie_age = getattr(settings, 'OTP_SESSION_COOKIE_AGE', 86400)
+            response.set_cookie(
+                'verified_phone',
+                full_phone,
+                max_age=cookie_age,
+                httponly=False,  # Allow JavaScript access
+                samesite='Strict'
+            )
+            
+            return response
             
         except VerifiedPhone.DoesNotExist:
             return JsonResponse({
@@ -690,7 +702,7 @@ def verify_otp(request):
                             'verified_phone', 
                             full_phone, 
                             max_age=cookie_age,
-                            httponly=True,
+                            httponly=False,  # Allow JavaScript access for form pre-fill
                             samesite='Strict'
                         )
                         
