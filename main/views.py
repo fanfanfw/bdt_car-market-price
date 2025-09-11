@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.db import connection, models
 from django.contrib import messages
 from django.views.decorators.csrf import csrf_exempt
@@ -1229,6 +1229,11 @@ def verified_phones_view(request):
 def verified_phones_api(request):
     """API endpoint for DataTables verified phones data"""
     try:
+        # Check if export is requested
+        export_format = request.GET.get('export')
+        if export_format in ['csv', 'excel']:
+            return export_verified_phones(request, export_format)
+        
         # DataTables parameters
         draw = int(request.GET.get('draw', 1))
         start = int(request.GET.get('start', 0))
@@ -1331,6 +1336,136 @@ def verified_phones_api(request):
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
 
+def export_verified_phones(request, export_format):
+    """Export verified phones data in CSV or Excel format"""
+    try:
+        import csv
+        from django.utils import timezone
+        from datetime import datetime
+        
+        # Build queryset with filters
+        queryset = VerifiedPhone.objects.all()
+        
+        # Apply filters
+        status_filter = request.GET.get('status_filter')
+        if status_filter == 'active':
+            queryset = queryset.filter(is_active=True)
+        elif status_filter == 'inactive':
+            queryset = queryset.filter(is_active=False)
+        elif status_filter == 'expired':
+            queryset = queryset.filter(
+                is_active=True,
+                verified_at__lt=timezone.now() - timezone.timedelta(days=30)
+            )
+        
+        search_value = request.GET.get('search[value]', '').strip()
+        if search_value:
+            from django.db.models import Q
+            queryset = queryset.filter(
+                Q(phone_number__icontains=search_value) |
+                Q(ip_address__icontains=search_value) |
+                Q(user_agent__icontains=search_value)
+            )
+        
+        queryset = queryset.order_by('-id')
+        
+        if export_format == 'csv':
+            response = HttpResponse(content_type='text/csv')
+            response['Content-Disposition'] = f'attachment; filename="verified_phones_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv"'
+            
+            writer = csv.writer(response)
+            writer.writerow(['ID', 'Phone Number', 'Verified At', 'Last Accessed', 'Access Count', 'Status', 'IP Address', 'User Agent'])
+            
+            for phone in queryset:
+                is_expired = phone.is_expired()
+                if not phone.is_active:
+                    status = 'Inactive'
+                elif is_expired:
+                    status = 'Expired'
+                else:
+                    status = 'Active'
+                
+                writer.writerow([
+                    phone.id,
+                    phone.phone_number,
+                    phone.verified_at.strftime('%Y-%m-%d %H:%M:%S'),
+                    phone.last_accessed.strftime('%Y-%m-%d %H:%M:%S'),
+                    phone.access_count,
+                    status,
+                    phone.ip_address or '',
+                    phone.user_agent or ''
+                ])
+            
+            return response
+            
+        elif export_format == 'excel':
+            try:
+                import openpyxl
+                from openpyxl.styles import Font, PatternFill
+                from io import BytesIO
+                
+                wb = openpyxl.Workbook()
+                ws = wb.active
+                ws.title = "Verified Phones"
+                
+                # Headers
+                headers = ['ID', 'Phone Number', 'Verified At', 'Last Accessed', 'Access Count', 'Status', 'IP Address', 'User Agent']
+                for col, header in enumerate(headers, 1):
+                    cell = ws.cell(row=1, column=col, value=header)
+                    cell.font = Font(bold=True)
+                    cell.fill = PatternFill(start_color="CCCCCC", end_color="CCCCCC", fill_type="solid")
+                
+                # Data
+                for row, phone in enumerate(queryset, 2):
+                    is_expired = phone.is_expired()
+                    if not phone.is_active:
+                        status = 'Inactive'
+                    elif is_expired:
+                        status = 'Expired'
+                    else:
+                        status = 'Active'
+                    
+                    ws.cell(row=row, column=1, value=phone.id)
+                    ws.cell(row=row, column=2, value=phone.phone_number)
+                    ws.cell(row=row, column=3, value=phone.verified_at.strftime('%Y-%m-%d %H:%M:%S'))
+                    ws.cell(row=row, column=4, value=phone.last_accessed.strftime('%Y-%m-%d %H:%M:%S'))
+                    ws.cell(row=row, column=5, value=phone.access_count)
+                    ws.cell(row=row, column=6, value=status)
+                    ws.cell(row=row, column=7, value=phone.ip_address or '')
+                    ws.cell(row=row, column=8, value=phone.user_agent or '')
+                
+                # Auto-size columns
+                for column in ws.columns:
+                    max_length = 0
+                    column_letter = column[0].column_letter
+                    for cell in column:
+                        try:
+                            if len(str(cell.value)) > max_length:
+                                max_length = len(str(cell.value))
+                        except:
+                            pass
+                    ws.column_dimensions[column_letter].width = min(max_length + 2, 50)
+                
+                # Save to BytesIO
+                buffer = BytesIO()
+                wb.save(buffer)
+                buffer.seek(0)
+                
+                response = HttpResponse(
+                    buffer.getvalue(),
+                    content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                )
+                response['Content-Disposition'] = f'attachment; filename="verified_phones_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx"'
+                
+                return response
+                
+            except ImportError:
+                # Fallback to CSV if openpyxl is not available
+                return export_verified_phones(request, 'csv')
+        
+    except Exception as e:
+        return JsonResponse({'error': f'Export failed: {str(e)}'}, status=500)
+
 @csrf_exempt
 @login_required
 @user_passes_test(is_staff_user, login_url='/login/')
@@ -1405,6 +1540,11 @@ def otp_sessions_view(request):
 def otp_sessions_api(request):
     """API endpoint for DataTables OTP sessions data"""
     try:
+        # Check if export is requested
+        export_format = request.GET.get('export')
+        if export_format in ['csv', 'excel']:
+            return export_otp_sessions(request, export_format)
+        
         # DataTables parameters
         draw = int(request.GET.get('draw', 1))
         start = int(request.GET.get('start', 0))
@@ -1502,6 +1642,150 @@ def otp_sessions_api(request):
         
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+
+def export_otp_sessions(request, export_format):
+    """Export OTP sessions data in CSV or Excel format"""
+    try:
+        import csv
+        from django.utils import timezone
+        from datetime import datetime
+        
+        # Build queryset with filters
+        queryset = OTPSession.objects.all()
+        
+        # Apply filters
+        status_filter = request.GET.get('status_filter')
+        if status_filter == 'used':
+            queryset = queryset.filter(is_used=True)
+        elif status_filter == 'unused':
+            queryset = queryset.filter(is_used=False)
+        elif status_filter == 'expired':
+            queryset = queryset.filter(
+                is_used=False,
+                created_at__lt=timezone.now() - timezone.timedelta(minutes=1)
+            )
+        
+        search_value = request.GET.get('search[value]', '').strip()
+        if search_value:
+            from django.db.models import Q
+            queryset = queryset.filter(
+                Q(phone_number__icontains=search_value) |
+                Q(otp_code__icontains=search_value) |
+                Q(ip_address__icontains=search_value)
+            )
+        
+        queryset = queryset.order_by('-id')
+        
+        if export_format == 'csv':
+            response = HttpResponse(content_type='text/csv')
+            response['Content-Disposition'] = f'attachment; filename="otp_sessions_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv"'
+            
+            writer = csv.writer(response)
+            writer.writerow(['ID', 'Phone Number', 'OTP Code', 'Verification ID', 'Created At', 'Expires At', 'Status', 'IP Address'])
+            
+            for otp in queryset:
+                is_expired = otp.is_expired()
+                
+                if otp.is_used:
+                    status = 'Used'
+                elif is_expired:
+                    status = 'Expired'
+                else:
+                    status = 'Active'
+                
+                # Mask OTP code for security
+                masked_otp = otp.otp_code[:2] + '*' * (len(otp.otp_code) - 4) + otp.otp_code[-2:] if otp.otp_code else ''
+                
+                # Mask phone number
+                masked_phone = otp.phone_number[:4] + '*' * (len(otp.phone_number) - 8) + otp.phone_number[-4:] if otp.phone_number else ''
+                
+                writer.writerow([
+                    otp.id,
+                    masked_phone,
+                    masked_otp,
+                    otp.verification_id or '',
+                    otp.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                    otp.expires_at.strftime('%Y-%m-%d %H:%M:%S') if otp.expires_at else '',
+                    status,
+                    otp.ip_address or ''
+                ])
+            
+            return response
+            
+        elif export_format == 'excel':
+            try:
+                import openpyxl
+                from openpyxl.styles import Font, PatternFill
+                from io import BytesIO
+                
+                wb = openpyxl.Workbook()
+                ws = wb.active
+                ws.title = "OTP Sessions"
+                
+                # Headers
+                headers = ['ID', 'Phone Number', 'OTP Code', 'Verification ID', 'Created At', 'Expires At', 'Status', 'IP Address']
+                for col, header in enumerate(headers, 1):
+                    cell = ws.cell(row=1, column=col, value=header)
+                    cell.font = Font(bold=True)
+                    cell.fill = PatternFill(start_color="CCCCCC", end_color="CCCCCC", fill_type="solid")
+                
+                # Data
+                for row, otp in enumerate(queryset, 2):
+                    is_expired = otp.is_expired()
+                    
+                    if otp.is_used:
+                        status = 'Used'
+                    elif is_expired:
+                        status = 'Expired'
+                    else:
+                        status = 'Active'
+                    
+                    # Mask OTP code for security
+                    masked_otp = otp.otp_code[:2] + '*' * (len(otp.otp_code) - 4) + otp.otp_code[-2:] if otp.otp_code else ''
+                    
+                    # Mask phone number
+                    masked_phone = otp.phone_number[:4] + '*' * (len(otp.phone_number) - 8) + otp.phone_number[-4:] if otp.phone_number else ''
+                    
+                    ws.cell(row=row, column=1, value=otp.id)
+                    ws.cell(row=row, column=2, value=masked_phone)
+                    ws.cell(row=row, column=3, value=masked_otp)
+                    ws.cell(row=row, column=4, value=otp.verification_id or '')
+                    ws.cell(row=row, column=5, value=otp.created_at.strftime('%Y-%m-%d %H:%M:%S'))
+                    ws.cell(row=row, column=6, value=otp.expires_at.strftime('%Y-%m-%d %H:%M:%S') if otp.expires_at else '')
+                    ws.cell(row=row, column=7, value=status)
+                    ws.cell(row=row, column=8, value=otp.ip_address or '')
+                
+                # Auto-size columns
+                for column in ws.columns:
+                    max_length = 0
+                    column_letter = column[0].column_letter
+                    for cell in column:
+                        try:
+                            if len(str(cell.value)) > max_length:
+                                max_length = len(str(cell.value))
+                        except:
+                            pass
+                    ws.column_dimensions[column_letter].width = min(max_length + 2, 50)
+                
+                # Save to BytesIO
+                buffer = BytesIO()
+                wb.save(buffer)
+                buffer.seek(0)
+                
+                response = HttpResponse(
+                    buffer.getvalue(),
+                    content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                )
+                response['Content-Disposition'] = f'attachment; filename="otp_sessions_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx"'
+                
+                return response
+                
+            except ImportError:
+                # Fallback to CSV if openpyxl is not available
+                return export_otp_sessions(request, 'csv')
+        
+    except Exception as e:
+        return JsonResponse({'error': f'Export failed: {str(e)}'}, status=500)
 
 @csrf_exempt
 @login_required

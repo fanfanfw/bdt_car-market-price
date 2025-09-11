@@ -12,16 +12,6 @@
             <h1 class="text-2xl font-bold text-gray-900">Car Database</h1>
             <p class="text-gray-600 mt-1">Manage and view car data from multiple sources</p>
         </div>
-        <div class="flex gap-2">
-            <button class="btn bg-blue-600 hover:bg-blue-700 text-white border-0" onclick="refreshTable()">
-                <i class="fas fa-sync-alt"></i>
-                Refresh
-            </button>
-            <button class="btn bg-green-600 hover:bg-green-700 text-white border-0" onclick="exportData()">
-                <i class="fas fa-download"></i>
-                Export
-            </button>
-        </div>
     </div>
 
     <!-- Statistics Cards -->
@@ -365,16 +355,7 @@ function clearFilters() {
 }
 
 function refreshTable() {
-    carTable.ajax.reload(null, false); // Keep current page
-}
-
-function exportData() {
-    // TODO: Implement export functionality
-    Swal.fire({
-        title: 'Export Data',
-        text: 'Export functionality will be implemented soon.',
-        icon: 'info'
-    });
+    carTable.ajax.reload(null, true); // Keep current page
 }
 
 // Car detail functions

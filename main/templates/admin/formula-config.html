@@ -34,191 +34,207 @@
         {% endfor %}
     {% endif %}
 
-    <form method="post" class="space-y-6">
-        {% csrf_token %}
-        
+    <!-- Formula Information Section -->
+    <div class="space-y-6">
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <!-- Layer 1 Card -->
             <div class="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
-                <div class="flex items-center gap-3 mb-6">
+                <div class="flex items-center gap-3 mb-4">
                     <div class="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                        <i class="fas fa-tachometer-alt text-blue-600"></i>
+                        <i class="fas fa-code text-blue-600"></i>
                     </div>
-                    <h2 class="text-lg font-semibold text-gray-900">Layer 1: Mileage-based Price Reduction</h2>
+                    <h3 class="text-lg font-semibold text-gray-900">Formula Preview</h3>
                 </div>
-                
-                <div class="space-y-4">
-                    <div class="space-y-2">
-                        <label for="threshold_percent" class="block text-sm font-medium text-gray-700">
-                            Threshold Percentage
-                        </label>
-                        <p class="text-xs text-gray-500">Every X% mileage excess</p>
-                        <div class="relative">
-                            <input type="number" 
-                                   id="threshold_percent" 
-                                   name="threshold_percent" 
-                                   value="{{ config.threshold_percent }}" 
-                                   step="0.01" 
-                                   min="1" 
-                                   max="100" 
-                                   required
-                                   class="block w-full px-3 py-2 pr-8 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                            <span class="absolute right-3 top-2 text-sm text-gray-500">%</span>
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <div class="space-y-3">
+                        <div>
+                            <p class="font-medium text-gray-900 mb-2">Layer 1 Formula:</p>
+                            <code class="text-sm text-blue-600 bg-blue-50 px-2 py-1 rounded block">
+                                (user_mileage - avg_mileage) / avg_mileage * 100 / {{ config.threshold_percent }} * {{ config.reduction_percent }}
+                            </code>
                         </div>
-                    </div>
-                    
-                    <div class="space-y-2">
-                        <label for="reduction_percent" class="block text-sm font-medium text-gray-700">
-                            Reduction Percentage
-                        </label>
-                        <p class="text-xs text-gray-500">Price reduction per threshold</p>
-                        <div class="relative">
-                            <input type="number" 
-                                   id="reduction_percent" 
-                                   name="reduction_percent" 
-                                   value="{{ config.reduction_percent }}" 
-                                   step="0.01" 
-                                   min="0.1" 
-                                   max="50" 
-                                   required
-                                   class="block w-full px-3 py-2 pr-8 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                            <span class="absolute right-3 top-2 text-sm text-gray-500">%</span>
-                        </div>
-                    </div>
-                    
-                    <div class="space-y-2">
-                        <label for="max_reduction_cap" class="block text-sm font-medium text-gray-700">
-                            Maximum Cap
-                        </label>
-                        <p class="text-xs text-gray-500">Maximum mileage reduction allowed</p>
-                        <div class="relative">
-                            <input type="number" 
-                                   id="max_reduction_cap" 
-                                   name="max_reduction_cap" 
-                                   value="{{ config.max_reduction_cap }}" 
-                                   step="0.01" 
-                                   min="1" 
-                                   max="100" 
-                                   required
-                                   class="block w-full px-3 py-2 pr-8 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                            <span class="absolute right-3 top-2 text-sm text-gray-500">%</span>
+                        <div>
+                            <p class="font-medium text-gray-900 mb-2">Example:</p>
+                            <p class="text-sm text-gray-600">
+                                If user mileage is 50% higher than average:<br>
+                                50 / {{ config.threshold_percent }} * {{ config.reduction_percent }} = 
+                                <span class="font-medium text-green-600">10% reduction</span><br>
+                                <em class="text-gray-500">(Capped at {{ config.max_reduction_cap }}%)</em>
+                            </p>
                         </div>
                     </div>
                 </div>
             </div>
             
-            <!-- Layer 2 Card -->
             <div class="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
-                <div class="flex items-center gap-3 mb-6">
-                    <div class="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
-                        <i class="fas fa-clipboard-check text-purple-600"></i>
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-info-circle text-gray-600"></i>
                     </div>
-                    <h2 class="text-lg font-semibold text-gray-900">Layer 2: Condition-based Price Reduction</h2>
+                    <h3 class="text-lg font-semibold text-gray-900">Configuration Details</h3>
                 </div>
-                
-                <div class="space-y-4">
-                    <div class="space-y-2">
-                        <label for="layer2_max_cap" class="block text-sm font-medium text-gray-700">
-                            Maximum Cap
-                        </label>
-                        <p class="text-xs text-gray-500">Maximum condition reduction allowed</p>
-                        <div class="relative">
-                            <input type="number" 
-                                   id="layer2_max_cap" 
-                                   name="layer2_max_cap" 
-                                   value="{{ config.layer2_max_cap }}" 
-                                   step="0.01" 
-                                   min="1" 
-                                   max="100" 
-                                   required
-                                   class="block w-full px-3 py-2 pr-8 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                            <span class="absolute right-3 top-2 text-sm text-gray-500">%</span>
+                <div class="space-y-3 text-sm text-gray-600">
+                    <div>
+                        <p class="font-medium text-gray-900">Last Updated:</p>
+                        <p>{{ config.updated_at|date:"M j, Y H:i" }}</p>
+                    </div>
+                    
+                    <div>
+                        <p class="font-medium text-gray-900">Layer 1 Logic:</p>
+                        <p>Every {{ config.threshold_percent }}% mileage excess = {{ config.reduction_percent }}% price reduction</p>
+                    </div>
+                    
+                    <div>
+                        <p class="font-medium text-gray-900">Caps:</p>
+                        <p>Layer 1: Max {{ config.max_reduction_cap }}% reduction<br>
+                        Layer 2: Max {{ config.layer2_max_cap }}% reduction</p>
+                    </div>
+                    
+                    <div>
+                        <p class="font-medium text-gray-900">Total Formula:</p>
+                        <p>Final Reduction = Layer 1 + Layer 2</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Formula Configuration Form -->
+    <div class="bg-white rounded-2xl shadow-lg border border-gray-200 p-8">
+        <div class="mb-8">
+            <h2 class="text-xl font-semibold text-gray-900 mb-2">Configure Formula Parameters</h2>
+            <p class="text-gray-600">Set up the calculation parameters for both mileage-based and condition-based price reductions.</p>
+        </div>
+
+        <form method="post" class="space-y-8">
+            {% csrf_token %}
+            
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- Layer 1 Section -->
+                <div class="space-y-6">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
+                            <i class="fas fa-tachometer-alt text-blue-600"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-900">Layer 1</h3>
+                            <p class="text-sm text-gray-600">Mileage-based Price Reduction</p>
                         </div>
                     </div>
                     
-                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                        <div class="flex items-start gap-3">
-                            <i class="fas fa-info-circle text-blue-600 mt-0.5"></i>
-                            <div>
-                                <p class="text-sm text-blue-800">
-                                    <strong>Note:</strong> Condition categories and options are managed in the 
-                                    <a href="{% url 'main:condition_categories_manage' %}" class="font-medium underline hover:no-underline">Condition Categories</a> page.
-                                </p>
+                    <div class="space-y-5">
+                        <div class="space-y-2">
+                            <label for="threshold_percent" class="block text-sm font-medium text-gray-700">
+                                Threshold Percentage
+                            </label>
+                            <p class="text-xs text-gray-500">Every X% mileage excess</p>
+                            <div class="relative">
+                                <input type="number" 
+                                       id="threshold_percent" 
+                                       name="threshold_percent" 
+                                       value="{{ config.threshold_percent }}" 
+                                       step="0.01" 
+                                       min="1" 
+                                       max="100" 
+                                       required
+                                       class="block w-full px-3 py-2 pr-8 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                <span class="absolute right-3 top-2 text-sm text-gray-500">%</span>
+                            </div>
+                        </div>
+                        
+                        <div class="space-y-2">
+                            <label for="reduction_percent" class="block text-sm font-medium text-gray-700">
+                                Reduction Percentage
+                            </label>
+                            <p class="text-xs text-gray-500">Price reduction per threshold</p>
+                            <div class="relative">
+                                <input type="number" 
+                                       id="reduction_percent" 
+                                       name="reduction_percent" 
+                                       value="{{ config.reduction_percent }}" 
+                                       step="0.01" 
+                                       min="0.1" 
+                                       max="50" 
+                                       required
+                                       class="block w-full px-3 py-2 pr-8 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                <span class="absolute right-3 top-2 text-sm text-gray-500">%</span>
+                            </div>
+                        </div>
+                        
+                        <div class="space-y-2">
+                            <label for="max_reduction_cap" class="block text-sm font-medium text-gray-700">
+                                Maximum Cap
+                            </label>
+                            <p class="text-xs text-gray-500">Maximum mileage reduction allowed</p>
+                            <div class="relative">
+                                <input type="number" 
+                                       id="max_reduction_cap" 
+                                       name="max_reduction_cap" 
+                                       value="{{ config.max_reduction_cap }}" 
+                                       step="0.01" 
+                                       min="1" 
+                                       max="100" 
+                                       required
+                                       class="block w-full px-3 py-2 pr-8 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                <span class="absolute right-3 top-2 text-sm text-gray-500">%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Layer 2 Section -->
+                <div class="space-y-6">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center">
+                            <i class="fas fa-clipboard-check text-purple-600"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-900">Layer 2</h3>
+                            <p class="text-sm text-gray-600">Condition-based Price Reduction</p>
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-5">
+                        <div class="space-y-2">
+                            <label for="layer2_max_cap" class="block text-sm font-medium text-gray-700">
+                                Maximum Cap
+                            </label>
+                            <p class="text-xs text-gray-500">Maximum condition reduction allowed</p>
+                            <div class="relative">
+                                <input type="number" 
+                                       id="layer2_max_cap" 
+                                       name="layer2_max_cap" 
+                                       value="{{ config.layer2_max_cap }}" 
+                                       step="0.01" 
+                                       min="1" 
+                                       max="100" 
+                                       required
+                                       class="block w-full px-3 py-2 pr-8 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                <span class="absolute right-3 top-2 text-sm text-gray-500">%</span>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                            <div class="flex items-start gap-3">
+                                <i class="fas fa-info-circle text-blue-600 mt-0.5"></i>
+                                <div>
+                                    <p class="text-sm text-blue-800">
+                                        <strong>Note:</strong> Condition categories and options are managed in the 
+                                        <a href="{% url 'main:condition_categories_manage' %}" class="font-medium underline hover:no-underline">Condition Categories</a> page.
+                                    </p>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
-        
-        <!-- Save Button -->
-        <div class="flex justify-center">
-            <button type="submit" class="px-6 py-3 text-base font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors">
-                <i class="fas fa-save mr-2"></i>Save Formula Configuration
-            </button>
-        </div>
-    </form>
-    
-    <!-- Info Cards -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div class="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
-            <div class="flex items-center gap-3 mb-4">
-                <div class="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
-                    <i class="fas fa-code text-gray-600"></i>
-                </div>
-                <h3 class="text-lg font-semibold text-gray-900">Formula Preview</h3>
+            
+            <!-- Save Button -->
+            <div class="flex justify-center pt-6 border-t border-gray-200">
+                <button type="submit" class="px-8 py-3 text-base font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 focus:ring-4 focus:ring-green-200 transition-colors">
+                    <i class="fas fa-save mr-2"></i>Save Formula Configuration
+                </button>
             </div>
-            <div class="bg-gray-50 p-4 rounded-lg">
-                <div class="space-y-3">
-                    <div>
-                        <p class="font-medium text-gray-900 mb-2">Layer 1 Formula:</p>
-                        <code class="text-sm text-blue-600 bg-blue-50 px-2 py-1 rounded block">
-                            (user_mileage - avg_mileage) / avg_mileage * 100 / {{ config.threshold_percent }} * {{ config.reduction_percent }}
-                        </code>
-                    </div>
-                    <div>
-                        <p class="font-medium text-gray-900 mb-2">Example:</p>
-                        <p class="text-sm text-gray-600">
-                            If user mileage is 50% higher than average:<br>
-                            50 / {{ config.threshold_percent }} * {{ config.reduction_percent }} = 
-                            <span class="font-medium text-green-600">10% reduction</span><br>
-                            <em class="text-gray-500">(Capped at {{ config.max_reduction_cap }}%)</em>
-                        </p>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
-            <div class="flex items-center gap-3 mb-4">
-                <div class="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
-                    <i class="fas fa-info-circle text-gray-600"></i>
-                </div>
-                <h3 class="text-lg font-semibold text-gray-900">Configuration Info</h3>
-            </div>
-            <div class="space-y-3 text-sm text-gray-600">
-                <div>
-                    <p class="font-medium text-gray-900">Last Updated:</p>
-                    <p>{{ config.updated_at|date:"M j, Y H:i" }}</p>
-                </div>
-                
-                <div>
-                    <p class="font-medium text-gray-900">Layer 1 Logic:</p>
-                    <p>Every {{ config.threshold_percent }}% mileage excess = {{ config.reduction_percent }}% price reduction</p>
-                </div>
-                
-                <div>
-                    <p class="font-medium text-gray-900">Caps:</p>
-                    <p>Layer 1: Max {{ config.max_reduction_cap }}% reduction<br>
-                    Layer 2: Max {{ config.layer2_max_cap }}% reduction</p>
-                </div>
-                
-                <div>
-                    <p class="font-medium text-gray-900">Total Formula:</p>
-                    <p>Final Reduction = Layer 1 + Layer 2</p>
-                </div>
-            </div>
-        </div>
+        </form>
     </div>
 </div>
 {% endblock %}
