@@ -243,14 +243,13 @@ class CarDataSyncService:
                 sample = valid_data[0]
                 logger.info(f"🔍 Sample record: {sample['source']} - {sample['brand']} {sample.get('model', 'NO MODEL')} - {sample['listing_url']}")
             
-            # STEP 1: Bulk UPSERT using PostgreSQL ON CONFLICT
+            # STEP 1: Bulk UPSERT using PostgreSQL ON CONFLICT (without created_at, updated_at)
             upsert_query = """
                 INSERT INTO cars_unified (
                     source, listing_url, condition, brand, model_group, model, variant,
                     year, mileage, transmission, seat_capacity, engine_cc, fuel_type, price,
                     location, information_ads, images, status, ads_tag, is_deleted,
-                    last_scraped_at, version, sold_at, last_status_check, information_ads_date,
-                    created_at, updated_at
+                    last_scraped_at, version, sold_at, last_status_check, information_ads_date
                 ) VALUES %s
                 ON CONFLICT (source, listing_url)
                 DO UPDATE SET
@@ -277,14 +276,9 @@ class CarDataSyncService:
                     version = EXCLUDED.version,
                     sold_at = EXCLUDED.sold_at,
                     last_status_check = EXCLUDED.last_status_check,
-                    information_ads_date = EXCLUDED.information_ads_date,
-                    updated_at = NOW()
+                    information_ads_date = EXCLUDED.information_ads_date
                 RETURNING (xmax = 0) AS inserted
             """
-            
-            # Prepare data for bulk insert - use Python datetime for timestamps
-            from datetime import datetime
-            current_time = datetime.now()
             
             values = []
             for data in valid_data:
@@ -295,8 +289,7 @@ class CarDataSyncService:
                     data['engine_cc'], data['fuel_type'], data['price'], data['location'],
                     data['information_ads'], data['images'], data['status'], data['ads_tag'],
                     data['is_deleted'], data['last_scraped_at'], data['version'],
-                    data['sold_at'], data['last_status_check'], data['information_ads_date'],
-                    current_time, current_time
+                    data['sold_at'], data['last_status_check'], data['information_ads_date']
                 ))
             
             # Execute bulk upsert using psycopg2.extras.execute_values
@@ -367,10 +360,10 @@ class CarDataSyncService:
             
             logger.info(f"📈 Direct UPSERT for {len(valid_data)} {source} price history records...")
             
-            # Bulk UPSERT using PostgreSQL ON CONFLICT
+            # Bulk UPSERT using PostgreSQL ON CONFLICT (without created_at)
             upsert_query = """
                 INSERT INTO price_history_unified (
-                    source, listing_url, old_price, new_price, changed_at, created_at
+                    source, listing_url, old_price, new_price, changed_at
                 ) VALUES %s
                 ON CONFLICT (listing_url, changed_at)
                 DO UPDATE SET
@@ -380,15 +373,11 @@ class CarDataSyncService:
                 RETURNING (xmax = 0) AS inserted
             """
             
-            # Prepare data for bulk insert
-            from datetime import datetime
-            current_time = datetime.now()
-            
             values = []
             for data in valid_data:
                 values.append((
                     source, data['listing_url'], data['old_price'], data['new_price'],
-                    data['changed_at'], current_time
+                    data['changed_at']
                 ))
             
             # Execute bulk upsert
@@ -485,12 +474,11 @@ class CarDataSyncService:
             else:
                 logger.info("⏭️ No car data changes, skipping price history sync")
             
-            # STEP 6: Fill cars_standard_id and category_id using dedicated scripts (AFTER price history)
+            # STEP 6: Fill cars_standard_id only (skip category_id since it will be removed)
             cars_standard_updated = 0
-            category_updated = 0
             
             if car_inserted > 0 or car_updated > 0:
-                logger.info("🔄 Running fill scripts for cars_standard_id and category_id...")
+                logger.info("🔄 Running fill script for cars_standard_id only...")
                 
                 # Fill cars_standard_id using existing script (run in thread to avoid async issues)
                 if fill_all_cars_standard_id:
@@ -507,24 +495,9 @@ class CarDataSyncService:
                 else:
                     logger.error("❌ fill_all_cars_standard_id function not available")
                 
-                # Fill category_id using existing script (run in thread to avoid async issues)
-                if fill_all_category_id:
-                    logger.info("📋 Running fill_cars_category_id script...")
-                    try:
-                        category_result = await asyncio.to_thread(fill_all_category_id)
-                        if category_result and category_result.get('status') == 'success':
-                            category_updated = category_result.get('total_updated', 0)
-                            logger.info(f"✅ Category ID filled: {category_updated} records")
-                        else:
-                            logger.warning(f"⚠️ Category ID fill had issues: {category_result}")
-                    except Exception as e:
-                        logger.error(f"❌ Error running fill_all_category_id: {e}")
-                else:
-                    logger.error("❌ fill_all_category_id function not available")
-                
-                logger.info(f"✅ Fill scripts completed: {cars_standard_updated} cars_standard_id, {category_updated} category_id")
+                logger.info(f"✅ Fill script completed: {cars_standard_updated} cars_standard_id updated")
             else:
-                logger.info("⏭️ No car data changes, skipping fill scripts")
+                logger.info("⏭️ No car data changes, skipping fill script")
             
             # STEP 7: All done, prepare summary
             
@@ -540,7 +513,6 @@ class CarDataSyncService:
                 },
                 'fill_results': {
                     'cars_standard_updated': cars_standard_updated,
-                    'category_updated': category_updated,
                 },
                 'price_history': {
                     'carlistmy': {
@@ -583,10 +555,9 @@ def display_summary(summary: Dict[str, Any]):
     
     # Fill results
     fill = summary.get('fill_results', {})
-    if fill.get('cars_standard_updated', 0) > 0 or fill.get('category_updated', 0) > 0:
+    if fill.get('cars_standard_updated', 0) > 0:
         print(f"\n🔄 FILL RESULTS:")
         print(f"   Cars Standard ID: {fill.get('cars_standard_updated', 0)} updated")
-        print(f"   Category ID: {fill.get('category_updated', 0)} updated")
     
     # Price history
     ph = summary['price_history']

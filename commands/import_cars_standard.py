@@ -134,21 +134,26 @@ class CarsStandardImporter:
                         insert_query = """
                             INSERT INTO cars_standard (
                                 id, brand_norm, model_group_norm, model_norm, variant_norm,
-                                model_group_raw, model_raw, variant_raw, variant_raw2,
-                                created_at, updated_at
-                            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW())
+                                model_group_raw, model_raw, variant_raw, variant_raw2
+                            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                         """
+                        
+                        # Helper function to convert CSV NULL string to actual None
+                        def parse_csv_value(value):
+                            if not value or value.strip().upper() == 'NULL':
+                                return None
+                            return value.strip()
                         
                         cur.execute(insert_query, (
                             int(row['id']),
-                            row['brand_norm'],
-                            row['model_group_norm'], 
-                            row['model_norm'],
-                            row['variant_norm'],
-                            row.get('model_group_raw') or None,
-                            row.get('model_raw') or None,
-                            row.get('variant_raw') or None,
-                            row.get('variant_raw2') or None
+                            parse_csv_value(row['brand_norm']),
+                            parse_csv_value(row['model_group_norm']), 
+                            parse_csv_value(row['model_norm']),
+                            parse_csv_value(row['variant_norm']),
+                            parse_csv_value(row.get('model_group_raw')),
+                            parse_csv_value(row.get('model_raw')),
+                            parse_csv_value(row.get('variant_raw')),
+                            parse_csv_value(row.get('variant_raw2'))
                         ))
                         imported_count += 1
                         
@@ -203,13 +208,18 @@ class CarsStandardImporter:
                             skipped_count += 1
                             continue
                         
-                        # UPSERT query using PostgreSQL ON CONFLICT
+                        # Helper function to convert CSV NULL string to actual None
+                        def parse_csv_value(value):
+                            if not value or value.strip().upper() == 'NULL':
+                                return None
+                            return value.strip()
+                        
+                        # UPSERT query using PostgreSQL ON CONFLICT (without created_at, updated_at)
                         upsert_query = """
                             INSERT INTO cars_standard (
                                 id, brand_norm, model_group_norm, model_norm, variant_norm,
-                                model_group_raw, model_raw, variant_raw, variant_raw2,
-                                created_at, updated_at
-                            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW())
+                                model_group_raw, model_raw, variant_raw, variant_raw2
+                            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                             ON CONFLICT (id) 
                             DO UPDATE SET
                                 brand_norm = EXCLUDED.brand_norm,
@@ -219,21 +229,20 @@ class CarsStandardImporter:
                                 model_group_raw = EXCLUDED.model_group_raw,
                                 model_raw = EXCLUDED.model_raw,
                                 variant_raw = EXCLUDED.variant_raw,
-                                variant_raw2 = EXCLUDED.variant_raw2,
-                                updated_at = NOW()
+                                variant_raw2 = EXCLUDED.variant_raw2
                             RETURNING (xmax = 0) AS inserted
                         """
                         
                         cur.execute(upsert_query, (
                             int(row['id']),
-                            row['brand_norm'],
-                            row['model_group_norm'], 
-                            row['model_norm'],
-                            row['variant_norm'],
-                            row.get('model_group_raw') or None,
-                            row.get('model_raw') or None,
-                            row.get('variant_raw') or None,
-                            row.get('variant_raw2') or None
+                            parse_csv_value(row['brand_norm']),
+                            parse_csv_value(row['model_group_norm']), 
+                            parse_csv_value(row['model_norm']),
+                            parse_csv_value(row['variant_norm']),
+                            parse_csv_value(row.get('model_group_raw')),
+                            parse_csv_value(row.get('model_raw')),
+                            parse_csv_value(row.get('variant_raw')),
+                            parse_csv_value(row.get('variant_raw2'))
                         ))
                         
                         result = cur.fetchone()
