@@ -823,11 +823,12 @@ class CustomAdminLoginView(LoginView):
 def admin_dashboard_view(request):
     """Admin dashboard"""
     # Get statistics
+    today = timezone.now().date()
     stats = {
-        'total_users': User.objects.count(),
         'verified_phones': VerifiedPhone.objects.filter(is_active=True).count(),
         'car_records': CarUnified.objects.count(),
         'today_calculations': 0,  # This would need to be tracked separately
+        'today_ads_data': CarUnified.objects.filter(information_ads_date=today).count(),
     }
     
     # Get recent activity (mock data for now)

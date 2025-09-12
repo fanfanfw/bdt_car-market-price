@@ -25,20 +25,6 @@
 
     <!-- Stats Cards -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <!-- Total Users -->
-        <div class="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
-            <div class="flex items-center gap-4">
-                <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-                    <i class="fas fa-users text-xl text-blue-600"></i>
-                </div>
-                <div>
-                    <p class="text-sm text-gray-600">Total Users</p>
-                    <p class="text-2xl font-bold text-gray-900">{{ stats.total_users }}</p>
-                    <p class="text-xs text-gray-500">System users</p>
-                </div>
-            </div>
-        </div>
-
         <!-- Verified Phones -->
         <div class="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
             <div class="flex items-center gap-4">
@@ -77,6 +63,20 @@
                     <p class="text-sm text-gray-600">Today's Calculations</p>
                     <p class="text-2xl font-bold text-gray-900">{{ stats.today_calculations }}</p>
                     <p class="text-xs text-gray-500">Price estimates</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Today's Ads Data -->
+        <div class="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center">
+                    <i class="fas fa-calendar-day text-xl text-emerald-600"></i>
+                </div>
+                <div>
+                    <p class="text-sm text-gray-600">Today's Ads Data</p>
+                    <p class="text-2xl font-bold text-gray-900">{{ stats.today_ads_data }}</p>
+                    <p class="text-xs text-gray-500">Records for today</p>
                 </div>
             </div>
         </div>
