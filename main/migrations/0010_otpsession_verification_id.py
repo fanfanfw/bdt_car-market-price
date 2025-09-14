@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('main', '0010_add_price_tier_model'),
+        ('main', '0009_add_price_tier_model'),
     ]
 
     operations = [

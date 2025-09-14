@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('main', '0009_add_reduction_percentage_to_category'),
+        ('main', '0008_cleanup_old_models_conditionally'),
     ]
 
     operations = [

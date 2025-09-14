@@ -6,7 +6,7 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('main', '0012_remove_otpsession_otp_session_otp_cod_88ac07_idx_and_more'),
+        ('main', '0011_remove_otpsession_otp_session_otp_cod_88ac07_idx_and_more'),
     ]
 
     operations = [

@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('main', '0011_otpsession_verification_id'),
+        ('main', '0010_otpsession_verification_id'),
     ]
 
     operations = [

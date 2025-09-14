@@ -23,7 +23,7 @@ def reverse_current_data(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('main', '0014_rename_otp_code_to_verification_id'),
+        ('main', '0013_rename_otp_code_to_verification_id'),
     ]
 
     operations = [
