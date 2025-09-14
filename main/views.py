@@ -19,8 +19,14 @@ import os
 from django.conf import settings
 from decouple import config
 from .models import (
-    CarStandard, CarUnified, Category, BrandCategory, VerifiedPhone, OTPSession,
+    Category, BrandCategory, VerifiedPhone, OTPSession,
     MileageConfiguration, VehicleConditionCategory, ConditionOption, PriceTier
+)
+# FastAPI Client (hanya untuk cars_unified & price_history_unified)
+from .api_client import (
+    get_brands, get_models, get_variants, get_years, get_car_records, 
+    get_car_detail, get_statistics, get_today_count, get_price_estimation,
+    get_brand_car_count, get_brand_car_counts, APIError, APIConnectionError, APITimeoutError, APINotFoundError
 )
 
 def index(request):
@@ -122,31 +128,32 @@ def get_categories(request):
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
 
-def get_brands(request):
+def get_brands_api(request):
     """API endpoint to get all brands"""
     try:
-        # Get all brands directly from CarStandard
-        brands = CarStandard.objects.values_list('brand_norm', flat=True).distinct().order_by('brand_norm')
+        # Get brands from FastAPI
+        brands = get_brands()
         return JsonResponse(list(brands), safe=False)
-    except Exception as e:
+    except APIError as e:
         return JsonResponse({'error': str(e)}, status=500)
+    except Exception as e:
+        return JsonResponse({'error': 'FastAPI connection failed'}, status=500)
 
-def get_models(request):
+def get_models_api(request):
     """API endpoint to get models for selected brand"""
     try:
         brand = request.GET.get('brand')
         if not brand:
             return JsonResponse({'error': 'Brand parameter required'}, status=400)
         
-        models = CarStandard.objects.filter(
-            brand_norm=brand
-        ).values_list('model_norm', flat=True).distinct().order_by('model_norm')
-        
+        models = get_models(brand)
         return JsonResponse(list(models), safe=False)
-    except Exception as e:
+    except APIError as e:
         return JsonResponse({'error': str(e)}, status=500)
+    except Exception as e:
+        return JsonResponse({'error': 'FastAPI connection failed'}, status=500)
 
-def get_variants(request):
+def get_variants_api(request):
     """API endpoint to get variants for selected brand and model"""
     try:
         brand = request.GET.get('brand')
@@ -155,16 +162,14 @@ def get_variants(request):
         if not brand or not model:
             return JsonResponse({'error': 'Brand and model parameters required'}, status=400)
         
-        variants = CarStandard.objects.filter(
-            brand_norm=brand,
-            model_norm=model
-        ).values_list('variant_norm', flat=True).distinct().order_by('variant_norm')
-        
+        variants = get_variants(brand, model)
         return JsonResponse(list(variants), safe=False)
-    except Exception as e:
+    except APIError as e:
         return JsonResponse({'error': str(e)}, status=500)
+    except Exception as e:
+        return JsonResponse({'error': 'FastAPI connection failed'}, status=500)
 
-def get_years(request):
+def get_years_api(request):
     """API endpoint to get years for selected brand, model, and variant"""
     try:
         brand = request.GET.get('brand')
@@ -174,25 +179,12 @@ def get_years(request):
         if not brand or not model or not variant:
             return JsonResponse({'error': 'Brand, model, and variant parameters required'}, status=400)
         
-        # Get cars_standard_id first
-        cars_standard = CarStandard.objects.filter(
-            brand_norm=brand,
-            model_norm=model,
-            variant_norm=variant
-        ).first()
-        
-        if not cars_standard:
-            return JsonResponse([], safe=False)
-        
-        # Get years from cars_unified table
-        years = CarUnified.objects.filter(
-            cars_standard=cars_standard,
-            year__isnull=False
-        ).values_list('year', flat=True).distinct().order_by('-year')
-        
+        years = get_years(brand, model, variant)
         return JsonResponse(list(years), safe=False)
-    except Exception as e:
+    except APIError as e:
         return JsonResponse({'error': str(e)}, status=500)
+    except Exception as e:
+        return JsonResponse({'error': 'FastAPI connection failed'}, status=500)
 
 def get_mileage_config():
     """Get the mileage configuration"""
@@ -207,183 +199,190 @@ def get_mileage_config():
         })
 
 def get_car_statistics(brand, model, variant, year, user_mileage=None, condition_assessments=None):
-    """Get car statistics including average mileage and price with condition assessments"""
+    """Get car statistics including average mileage and price with condition assessments using FastAPI"""
     try:
         # Get mileage configuration
         mileage_config = get_mileage_config()
 
-        with connection.cursor() as cursor:
-            cursor.execute("""
-                SELECT
-                  s.brand_norm,
-                  s.model_norm,
-                  s.variant_norm,
-                  c.year,
-                  ROUND(AVG(c.mileage)) AS rata_rata_mileage_bulat,
-                  ROUND(AVG(c.price)) AS rata_rata_price_bulat,
-                  COUNT(*) AS total_data
-                FROM
-                  public.cars_unified c
-                JOIN
-                  public.cars_standard s
-                ON
-                  c.cars_standard_id = s.id
-                WHERE
-                  s.brand_norm = %s
-                  AND s.model_norm = %s
-                  AND s.variant_norm = %s
-                  AND c.year = %s
-                  AND c.mileage IS NOT NULL
-                  AND c.price IS NOT NULL
-                GROUP BY
-                  s.brand_norm,
-                  s.model_norm,
-                  s.variant_norm,
-                  c.year
-            """, [brand, model, variant, year])
+        # Get car statistics from FastAPI
+        try:
+            estimation_data = get_price_estimation(
+                brand=brand,
+                model=model, 
+                variant=variant,
+                year=year,
+                mileage=user_mileage
+            )
             
-            row = cursor.fetchone()
-            if row:
-                result = {
-                    'brand_norm': row[0],
-                    'model_norm': row[1],
-                    'variant_norm': row[2],
-                    'year': row[3],
-                    'rata_rata_mileage_bulat': row[4],
-                    'rata_rata_price_bulat': row[5],
-                    'total_data': row[6],
-                }
-                
-                # Calculate price adjustments with dynamic 2-layer system
-                avg_mileage = float(row[4])
-                avg_price = float(row[5])
-                
-                # Layer 1: Mileage-based reduction
-                layer1_reduction = 0
-                mileage_diff_percent = 0
-                
-                if user_mileage is not None:
-                    user_mileage = float(user_mileage)
-                    if user_mileage > avg_mileage:
-                        mileage_diff_percent = ((user_mileage - avg_mileage) / avg_mileage) * 100
-                        threshold = float(mileage_config.threshold_percent)
-                        reduction_per_threshold = float(mileage_config.reduction_percent)
-                        layer1_reduction = (mileage_diff_percent / threshold) * reduction_per_threshold
-                        # Apply cap
-                        layer1_reduction = min(layer1_reduction, float(mileage_config.max_reduction_cap))
-                    else:
-                        mileage_diff_percent = ((user_mileage - avg_mileage) / avg_mileage) * 100
-                
-                # Layer 2: Condition assessment reduction + Brand Category Auto-Detection
-                layer2_reduction = 0
-                condition_breakdown = {}
-                brand_category_reduction = 0
-                brand_category_info = None
-                
-                # Auto-detect brand category reduction
-                try:
-                    brand_category_mapping = BrandCategory.objects.select_related('category').get(brand=brand)
-                    # Get the reduction percentage directly from the category model
-                    brand_category_reduction = float(brand_category_mapping.category.reduction_percentage)
-                    brand_category_info = {
-                        'brand': brand,
-                        'category': brand_category_mapping.category.name,
-                        'reduction': brand_category_reduction
+            print(f"DEBUG: FastAPI response for {brand} {model} {variant} {year}: {estimation_data}")
+            
+            # Extract statistics from FastAPI response
+            stats = estimation_data.get('statistics', {})
+            if not stats:
+                # If no statistics key, try to extract from the response directly
+                if 'estimated_price' in estimation_data:
+                    stats = {
+                        'average_price': estimation_data.get('price_range', {}).get('avg', estimation_data.get('estimated_price', 0)),
+                        'average_mileage': 100000,  # Default value since FastAPI doesn't provide this
+                        'data_count': estimation_data.get('sample_size', 1)
                     }
-                except BrandCategory.DoesNotExist:
-                    # Brand not classified - use 0% reduction
-                    brand_category_reduction = 0
-                    brand_category_info = {
-                        'brand': brand,
-                        'category': 'Unclassified',
-                        'reduction': 0,
-                        'warning': 'Brand not classified - admin should classify this brand'
-                    }
-                
-                # Auto-detect price tier reduction
-                price_tier_reduction = 0
-                price_tier_info = None
-                
-                try:
-                    price_tier = PriceTier.get_tier_for_price(avg_price)
-                    if price_tier:
-                        price_tier_reduction = float(price_tier.reduction_percentage)
-                        price_tier_info = {
-                            'average_price': avg_price,
-                            'tier_name': price_tier.name,
-                            'price_range': price_tier.price_range_display(),
-                            'reduction': price_tier_reduction
-                        }
-                    else:
-                        # No matching price tier found
-                        price_tier_info = {
-                            'average_price': avg_price,
-                            'tier_name': 'No Tier Match',
-                            'price_range': 'N/A',
-                            'reduction': 0,
-                            'warning': 'No price tier configured for this price range'
-                        }
-                except Exception as e:
-                    # Error getting price tier
-                    price_tier_info = {
-                        'average_price': avg_price,
-                        'tier_name': 'Error',
-                        'price_range': 'N/A',
-                        'reduction': 0,
-                        'error': f'Error determining price tier: {str(e)}'
-                    }
-                
-                if condition_assessments is not None:
-                    # Calculate total from manual assessments (excluding auto-detected categories)
-                    manual_assessments = {k: v for k, v in condition_assessments.items() 
-                                        if k not in ['brand_category', 'price_tier']}
-                    manual_assessments_total = sum(manual_assessments.values())
-                    
-                    # Add auto-detected reductions
-                    layer2_reduction = manual_assessments_total + brand_category_reduction + price_tier_reduction
-                    
-                    # Apply Layer 2 cap
-                    layer2_reduction = min(layer2_reduction, float(mileage_config.layer2_max_cap))
-                    
-                    # Build condition breakdown
-                    condition_breakdown = manual_assessments.copy()
-                    condition_breakdown['brand_category'] = brand_category_reduction
-                    condition_breakdown['price_tier'] = price_tier_reduction
                 else:
-                    # Only auto-detected reductions
-                    layer2_reduction = brand_category_reduction + price_tier_reduction
-                    condition_breakdown = {
-                        'brand_category': brand_category_reduction,
-                        'price_tier': price_tier_reduction
-                    }
+                    print(f"DEBUG: No valid price data in FastAPI response: {estimation_data}")
+                    return None
                 
-                # Total reduction
-                total_reduction = layer1_reduction + layer2_reduction
+            avg_mileage = stats.get('average_mileage', 100000)  # Default fallback
+            avg_price = stats.get('average_price', 0)
+            total_data = stats.get('data_count', 0)
+            
+            if total_data == 0:
+                print(f"DEBUG: No data found for {brand} {model} {variant} {year}")
+                return None
                 
-                # Calculate final adjusted price
-                adjusted_price = avg_price * (1 - total_reduction / 100)
-                price_savings = avg_price - adjusted_price
-                
-                # Update result with all calculations
-                if user_mileage is not None:
-                    result.update({
-                        'user_mileage': int(user_mileage),
-                        'mileage_diff_percent': round(mileage_diff_percent, 1),
-                    })
-                
-                result.update({
-                    'layer1_reduction': round(layer1_reduction, 1),
-                    'layer2_reduction': round(layer2_reduction, 1),
-                    'total_reduction': round(total_reduction, 1),
-                    'adjusted_price': round(adjusted_price),
-                    'price_savings': round(price_savings),
-                    'condition_breakdown': condition_breakdown,
-                    'brand_category_info': brand_category_info,
-                    'price_tier_info': price_tier_info,
-                    'config_version': 'simplified_with_auto_brand_and_price_tier_detection'
-                })
-                
-                return result
+        except APIError as e:
+            print(f"DEBUG: FastAPI error: {e}")
+            # Fallback if FastAPI fails - return None to indicate no data
+            return None
+            
+        result = {
+            'brand_norm': brand,
+            'model_norm': model,
+            'variant_norm': variant,
+            'year': year,
+            'rata_rata_mileage_bulat': avg_mileage,
+            'rata_rata_price_bulat': avg_price,
+            'total_data': total_data,
+        }
+        
+        # Calculate price adjustments with dynamic 2-layer system
+        avg_mileage = float(avg_mileage)
+        avg_price = float(avg_price)
+        
+        # Layer 1: Mileage-based reduction
+        layer1_reduction = 0
+        mileage_diff_percent = 0
+        
+        if user_mileage is not None:
+            user_mileage = float(user_mileage)
+            if user_mileage > avg_mileage:
+                mileage_diff_percent = ((user_mileage - avg_mileage) / avg_mileage) * 100
+                threshold = float(mileage_config.threshold_percent)
+                reduction_per_threshold = float(mileage_config.reduction_percent)
+                layer1_reduction = (mileage_diff_percent / threshold) * reduction_per_threshold
+                # Apply cap
+                layer1_reduction = min(layer1_reduction, float(mileage_config.max_reduction_cap))
+            else:
+                mileage_diff_percent = ((user_mileage - avg_mileage) / avg_mileage) * 100
+        
+        # Layer 2: Condition assessment reduction + Brand Category Auto-Detection
+        layer2_reduction = 0
+        condition_breakdown = {}
+        brand_category_reduction = 0
+        brand_category_info = None
+        
+        # Auto-detect brand category reduction
+        try:
+            brand_category_mapping = BrandCategory.objects.select_related('category').get(brand=brand)
+            # Get the reduction percentage directly from the category model
+            brand_category_reduction = float(brand_category_mapping.category.reduction_percentage)
+            brand_category_info = {
+                'brand': brand,
+                'category': brand_category_mapping.category.name,
+                'reduction': brand_category_reduction
+            }
+        except BrandCategory.DoesNotExist:
+            # Brand not classified - use 0% reduction
+            brand_category_reduction = 0
+            brand_category_info = {
+                'brand': brand,
+                'category': 'Unclassified',
+                'reduction': 0,
+                'warning': 'Brand not classified - admin should classify this brand'
+            }
+        
+        # Auto-detect price tier reduction
+        price_tier_reduction = 0
+        price_tier_info = None
+        
+        try:
+            price_tier = PriceTier.get_tier_for_price(avg_price)
+            if price_tier:
+                price_tier_reduction = float(price_tier.reduction_percentage)
+                price_tier_info = {
+                    'average_price': avg_price,
+                    'tier_name': price_tier.name,
+                    'price_range': price_tier.price_range_display(),
+                    'reduction': price_tier_reduction
+                }
+            else:
+                # No matching price tier found
+                price_tier_info = {
+                    'average_price': avg_price,
+                    'tier_name': 'No Tier Match',
+                    'price_range': 'N/A',
+                    'reduction': 0,
+                    'warning': 'No price tier configured for this price range'
+                }
+        except Exception as e:
+            # Error getting price tier
+            price_tier_info = {
+                'average_price': avg_price,
+                'tier_name': 'Error',
+                'price_range': 'N/A',
+                'reduction': 0,
+                'error': f'Error determining price tier: {str(e)}'
+            }
+        
+        if condition_assessments is not None:
+            # Calculate total from manual assessments (excluding auto-detected categories)
+            manual_assessments = {k: v for k, v in condition_assessments.items() 
+                                if k not in ['brand_category', 'price_tier']}
+            manual_assessments_total = sum(manual_assessments.values())
+            
+            # Add auto-detected reductions
+            layer2_reduction = manual_assessments_total + brand_category_reduction + price_tier_reduction
+            
+            # Apply Layer 2 cap
+            layer2_reduction = min(layer2_reduction, float(mileage_config.layer2_max_cap))
+            
+            # Build condition breakdown
+            condition_breakdown = manual_assessments.copy()
+            condition_breakdown['brand_category'] = brand_category_reduction
+            condition_breakdown['price_tier'] = price_tier_reduction
+        else:
+            # Only auto-detected reductions
+            layer2_reduction = brand_category_reduction + price_tier_reduction
+            condition_breakdown = {
+                'brand_category': brand_category_reduction,
+                'price_tier': price_tier_reduction
+            }
+        
+        # Total reduction
+        total_reduction = layer1_reduction + layer2_reduction
+        
+        # Calculate final adjusted price
+        adjusted_price = avg_price * (1 - total_reduction / 100)
+        price_savings = avg_price - adjusted_price
+        
+        # Update result with all calculations
+        if user_mileage is not None:
+            result.update({
+                'user_mileage': int(user_mileage),
+                'mileage_diff_percent': round(mileage_diff_percent, 1),
+            })
+        
+        result.update({
+            'layer1_reduction': round(layer1_reduction, 1),
+            'layer2_reduction': round(layer2_reduction, 1),
+            'total_reduction': round(total_reduction, 1),
+            'adjusted_price': round(adjusted_price),
+            'price_savings': round(price_savings),
+            'condition_breakdown': condition_breakdown,
+            'brand_category_info': brand_category_info,
+            'price_tier_info': price_tier_info,
+            'config_version': 'simplified_with_auto_brand_and_price_tier_detection'
+        })
+        
+        return result
     except Exception as e:
         print(f"Error in get_car_statistics: {e}")
         return None
@@ -823,13 +822,25 @@ class CustomAdminLoginView(LoginView):
 def admin_dashboard_view(request):
     """Admin dashboard"""
     # Get statistics
-    today = timezone.now().date()
-    stats = {
-        'verified_phones': VerifiedPhone.objects.filter(is_active=True).count(),
-        'car_records': CarUnified.objects.count(),
-        'today_calculations': 0,  # This would need to be tracked separately
-        'today_ads_data': CarUnified.objects.filter(information_ads_date=today).count(),
-    }
+    try:
+        # Get statistics from FastAPI
+        fastapi_stats = get_statistics()
+        today_count = get_today_count()
+        
+        stats = {
+            'verified_phones': VerifiedPhone.objects.filter(is_active=True).count(),
+            'car_records': fastapi_stats.get('car_records', 0),
+            'today_calculations': 0,  # This would need to be tracked separately
+            'today_ads_data': today_count,
+        }
+    except APIError:
+        # Fallback to local database if FastAPI fails
+        stats = {
+            'verified_phones': VerifiedPhone.objects.filter(is_active=True).count(),
+            'car_records': 0,
+            'today_calculations': 0,
+            'today_ads_data': 0,
+        }
     
     # Get recent activity (mock data for now)
     recent_activities = [
@@ -1003,13 +1014,27 @@ def condition_option_delete(request, option_id):
 @user_passes_test(is_staff_user, login_url='/login/')
 def car_data_view(request):
     """Car database management view with DataTables"""
-    context = {
-        'page_title': 'Car Database',
-        'total_cars': CarUnified.objects.count(),
-        'total_brands': CarUnified.objects.values('brand').distinct().count(),
-        'total_models': CarUnified.objects.values('model').distinct().count(),
-        'sources': CarUnified.SOURCE_CHOICES,
-    }
+    try:
+        # Get statistics from FastAPI
+        fastapi_stats = get_statistics()
+        
+        context = {
+            'page_title': 'Car Database',
+            'total_cars': fastapi_stats.get('car_records', 0),
+            'total_brands': fastapi_stats.get('total_brands', 0),
+            'total_models': fastapi_stats.get('total_models', 0),
+            'sources': [('carlistmy', 'CarlistMY'), ('mudahmy', 'MudahMY')],
+        }
+    except APIError:
+        # Fallback if FastAPI fails
+        context = {
+            'page_title': 'Car Database',
+            'total_cars': 0,
+            'total_brands': 0,
+            'total_models': 0,
+            'sources': [('carlistmy', 'CarlistMY'), ('mudahmy', 'MudahMY')],
+        }
+    
     return render(request, 'admin/car-data.html', context)
 
 @csrf_exempt
@@ -1030,115 +1055,32 @@ def car_data_api(request):
         
         # Column mapping for ordering
         columns = ['id', 'source', 'brand', 'model', 'variant', 'year', 'mileage', 'price']
-        order_column = columns[order_column_index] if order_column_index < len(columns) else 'id'
+        order_column = str(order_column_index) if order_column_index < len(columns) else '0'
         
-        if order_direction == 'desc':
-            order_column = '-' + order_column
-        
-        # Base queryset
-        queryset = CarUnified.objects.all()
-        
-        # Additional filtering based on request parameters
+        # Additional filtering
         source_filter = request.GET.get('source_filter')
         year_filter = request.GET.get('year_filter')
         price_filter = request.GET.get('price_filter')
         
-        if source_filter:
-            queryset = queryset.filter(source=source_filter)
-            
-        if year_filter:
-            if year_filter == '2024-':
-                queryset = queryset.filter(year__gte=2024)
-            elif year_filter == '2020-2023':
-                queryset = queryset.filter(year__gte=2020, year__lte=2023)
-            elif year_filter == '2015-2019':
-                queryset = queryset.filter(year__gte=2015, year__lte=2019)
-            elif year_filter == '2010-2014':
-                queryset = queryset.filter(year__gte=2010, year__lte=2014)
-            elif year_filter == '-2009':
-                queryset = queryset.filter(year__lte=2009)
-                
-        if price_filter:
-            if price_filter == '0-50000':
-                queryset = queryset.filter(price__gte=0, price__lte=50000)
-            elif price_filter == '50000-100000':
-                queryset = queryset.filter(price__gte=50000, price__lte=100000)
-            elif price_filter == '100000-200000':
-                queryset = queryset.filter(price__gte=100000, price__lte=200000)
-            elif price_filter == '200000-':
-                queryset = queryset.filter(price__gte=200000)
+        # Call FastAPI
+        result = get_car_records(
+            draw=draw,
+            start=start,
+            length=length,
+            search=search_value if search_value else None,
+            order_column=order_column,
+            order_direction=order_direction,
+            source_filter=source_filter,
+            year_filter=year_filter,
+            price_filter=price_filter
+        )
         
-        # Search filtering
-        if search_value:
-            from django.db.models import Q
-            queryset = queryset.filter(
-                Q(brand__icontains=search_value) |
-                Q(model__icontains=search_value) |
-                Q(variant__icontains=search_value) |
-                Q(condition__icontains=search_value) |
-                Q(location__icontains=search_value) |
-                Q(source__icontains=search_value)
-            )
+        return JsonResponse(result)
         
-        # Total records
-        total_records = CarUnified.objects.count()
-        filtered_records = queryset.count()
-        
-        # Apply ordering and pagination
-        queryset = queryset.order_by(order_column)[start:start + length]
-        
-        # Build data for DataTables
-        data = []
-        for car in queryset:
-            # Format price
-            price_formatted = f"RM {car.price:,}" if car.price else "-"
-            
-            # Format mileage
-            mileage_formatted = f"{car.mileage:,} km" if car.mileage else "-"
-            
-            # Format year
-            year_formatted = str(car.year) if car.year else "-"
-            
-            # Format condition
-            condition_formatted = car.condition.title() if car.condition else "-"
-            
-            # Format source
-            source_formatted = dict(CarUnified.SOURCE_CHOICES).get(car.source, car.source)
-            
-            # Format location (truncate if too long)
-            location_formatted = (car.location[:30] + '...') if car.location and len(car.location) > 30 else (car.location or "-")
-            
-            # Actions column
-            actions = f'''<div class="btn-group btn-group-sm" role="group">
-                <a href="{car.listing_url}" target="_blank" class="btn btn-info btn-sm" title="View Listing">
-                    <i class="fas fa-external-link-alt"></i>
-                </a>
-                <button type="button" class="btn btn-primary btn-sm" onclick="viewCarDetails({car.id})" title="View Details">
-                    <i class="fas fa-eye"></i>
-                </button>
-            </div>'''
-            
-            data.append([
-                car.id,
-                source_formatted,
-                car.brand,
-                car.model,
-                car.variant or "-",
-                year_formatted,
-                car.mileage,  # Raw mileage data
-                car.price,    # Raw price data
-                actions
-            ])
-        
-        return JsonResponse({
-            'draw': draw,
-            'recordsTotal': total_records,
-            'recordsFiltered': filtered_records,
-            'data': data
-        })
-        
-    except Exception as e:
+    except APIError as e:
         return JsonResponse({'error': str(e)}, status=500)
+    except Exception as e:
+        return JsonResponse({'error': 'FastAPI connection failed'}, status=500)
 
 @csrf_exempt
 @login_required
@@ -1146,75 +1088,27 @@ def car_data_api(request):
 def car_detail_api(request, car_id):
     """API endpoint to get detailed car information"""
     try:
-        car = get_object_or_404(CarUnified, id=car_id)
-        
-        # Get related standard car info if available
-        standard_info = None
-        if car.cars_standard:
-            standard_info = {
-                'brand_norm': car.cars_standard.brand_norm,
-                'model_norm': car.cars_standard.model_norm,
-                'variant_norm': car.cars_standard.variant_norm,
-                'model_group_norm': car.cars_standard.model_group_norm,
-            }
-        
-        # Get category info
-        category_info = None
-        if car.category:
-            category_info = {
-                'name': car.category.name,
-                'id': car.category.id
-            }
-        
-        # Parse images if available
-        images = []
-        if car.images:
-            try:
-                import json
-                images = json.loads(car.images) if isinstance(car.images, str) else car.images
-            except:
-                images = []
-        
-        data = {
-            'id': car.id,
-            'source': dict(CarUnified.SOURCE_CHOICES).get(car.source, car.source),
-            'listing_url': car.listing_url,
-            'brand': car.brand,
-            'model': car.model,
-            'model_group': car.model_group,
-            'variant': car.variant,
-            'condition': car.condition,
-            'year': car.year,
-            'mileage': car.mileage,
-            'transmission': car.transmission,
-            'seat_capacity': car.seat_capacity,
-            'engine_cc': car.engine_cc,
-            'fuel_type': car.fuel_type,
-            'price': car.price,
-            'location': car.location,
-            'information_ads': car.information_ads,
-            'images': images,
-            'status': car.status,
-            'ads_tag': car.ads_tag,
-            'is_deleted': car.is_deleted,
-            'last_scraped_at': car.last_scraped_at.strftime('%Y-%m-%d %H:%M:%S') if car.last_scraped_at else None,
-            'version': car.version,
-            'sold_at': car.sold_at.strftime('%Y-%m-%d %H:%M:%S') if car.sold_at else None,
-            'last_status_check': car.last_status_check.strftime('%Y-%m-%d %H:%M:%S') if car.last_status_check else None,
-            'information_ads_date': car.information_ads_date.strftime('%Y-%m-%d') if car.information_ads_date else None,
-            'created_at': car.created_at.strftime('%Y-%m-%d %H:%M:%S'),
-            'updated_at': car.updated_at.strftime('%Y-%m-%d %H:%M:%S'),
-            'standard_info': standard_info,
-            'category_info': category_info
-        }
-        
+        car_detail = get_car_detail(car_id)
+        # Format response with success flag for template compatibility
         return JsonResponse({
             'success': True,
-            'data': data
+            'data': car_detail
         })
-        
+    except APINotFoundError:
+        return JsonResponse({
+            'success': False,
+            'error': 'Car not found'
+        }, status=404)
+    except APIError as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+        return JsonResponse({
+            'success': False,
+            'error': 'FastAPI connection failed'
+        }, status=500)
 
 # Verified Phones Management
 @login_required
@@ -1596,7 +1490,7 @@ def otp_sessions_api(request):
             from django.db.models import Q
             queryset = queryset.filter(
                 Q(phone_number__icontains=search_value) |
-                Q(otp_code__icontains=search_value) |
+                Q(verification_id__icontains=search_value) |
                 Q(ip_address__icontains=search_value)
             )
         
@@ -1840,10 +1734,16 @@ def categories_management_view(request):
         brand_count=Count('brandcategory')
     ).order_by('name')
     
-    # Get unclassified brands count
-    classified_brands = BrandCategory.objects.values_list('brand', flat=True)
-    all_brands = CarUnified.objects.values_list('brand', flat=True).distinct()
-    unclassified_count = len(set(all_brands) - set(classified_brands))
+    # Get unclassified brands count via FastAPI
+    try:
+        all_brands = get_brands()  # From FastAPI
+        classified_brands = list(BrandCategory.objects.values_list('brand', flat=True))
+        unclassified_count = len(set(all_brands) - set(classified_brands))
+        total_unique_brands = len(all_brands)
+    except APIError:
+        # Fallback if FastAPI is down
+        unclassified_count = 0
+        total_unique_brands = 0
     
     context = {
         'page_title': 'Brand Categories Management',
@@ -1851,7 +1751,7 @@ def categories_management_view(request):
         'total_categories': categories.count(),
         'total_classified_brands': BrandCategory.objects.count(),
         'unclassified_brands': unclassified_count,
-        'total_unique_brands': CarUnified.objects.values('brand').distinct().count(),
+        'total_unique_brands': total_unique_brands,
     }
     return render(request, 'admin/categories-management.html', context)
 
@@ -1980,8 +1880,12 @@ def category_brands_api(request, category_id):
         
         brands = []
         for bc in brand_categories:
-            # Count cars for this brand
-            car_count = CarUnified.objects.filter(brand=bc.brand).count()
+            # Get car count from FastAPI (we'll mock this for now since we don't have specific endpoint)
+            try:
+                # For now, we'll use a simple approach - you can add specific endpoint later
+                car_count = 0  # TODO: Add FastAPI endpoint for brand car count
+            except:
+                car_count = 0
             brands.append({
                 'id': bc.id,
                 'brand': bc.brand,
@@ -2009,10 +1913,13 @@ def brand_classification_view(request):
     """Brand classification interface"""
     from django.db.models import Count
     
-    # Get all brands that exist in CarUnified
-    existing_brands = set(CarUnified.objects.values_list('brand', flat=True).distinct())
+    # Get all brands from FastAPI
+    try:
+        existing_brands = set(get_brands())
+    except APIError:
+        existing_brands = set()
     
-    # Get only valid classified brands (that exist in CarUnified)
+    # Get only valid classified brands (that exist in FastAPI)
     valid_classified_brands = BrandCategory.objects.filter(brand__in=existing_brands)
     
     # Get statistics
@@ -2047,55 +1954,77 @@ def brands_data_api(request):
         status_filter = request.GET.get('status_filter', '')  # classified, unclassified, all
         category_filter = request.GET.get('category_filter', '')
         
-        # Get all unique brands with car counts
-        from django.db.models import Count, Q
+        # Get all brands from FastAPI
+        try:
+            all_fastapi_brands = get_brands()
+        except APIError:
+            all_fastapi_brands = []
         
-        # Base query: get all brands with their car counts
-        brands_query = CarUnified.objects.values('brand').annotate(
-            car_count=Count('id')
-        )
-        
-        # Get all brands that exist in CarUnified
-        existing_brands = set(CarUnified.objects.values_list('brand', flat=True).distinct())
-        
-        # Get classified brands mapping (only for brands that exist in CarUnified)
+        # Get classified brands mapping
         brand_categories_map = {}
-        for bc in BrandCategory.objects.select_related('category').filter(brand__in=existing_brands):
+        for bc in BrandCategory.objects.select_related('category'):
             brand_categories_map[bc.brand] = {
                 'category_id': bc.category.id,
                 'category_name': bc.category.name,
                 'mapping_id': bc.id
             }
         
+        # Get car counts for all brands in bulk from FastAPI
+        try:
+            brand_car_counts = get_brand_car_counts()
+        except APIError:
+            brand_car_counts = {}
+        
+        # Create brand list with car counts from FastAPI
+        brands_with_counts = []
+        for brand in all_fastapi_brands:
+            car_count = brand_car_counts.get(brand, 0)
+            brands_with_counts.append({
+                'brand': brand,
+                'car_count': car_count
+            })
+        
         # Apply search filter
         if search_value:
-            brands_query = brands_query.filter(brand__icontains=search_value)
+            brands_with_counts = [
+                brand_data for brand_data in brands_with_counts 
+                if search_value.lower() in brand_data['brand'].lower()
+            ]
         
         # Apply status filter
         if status_filter == 'classified':
             classified_brand_names = list(brand_categories_map.keys())
-            brands_query = brands_query.filter(brand__in=classified_brand_names)
+            brands_with_counts = [
+                brand_data for brand_data in brands_with_counts
+                if brand_data['brand'] in classified_brand_names
+            ]
         elif status_filter == 'unclassified':
             classified_brand_names = list(brand_categories_map.keys())
-            brands_query = brands_query.exclude(brand__in=classified_brand_names)
+            brands_with_counts = [
+                brand_data for brand_data in brands_with_counts
+                if brand_data['brand'] not in classified_brand_names
+            ]
         
         # Apply category filter
         if category_filter:
             category_brands = BrandCategory.objects.filter(
                 category_id=category_filter
             ).values_list('brand', flat=True)
-            brands_query = brands_query.filter(brand__in=category_brands)
+            brands_with_counts = [
+                brand_data for brand_data in brands_with_counts
+                if brand_data['brand'] in category_brands
+            ]
         
-        # Get total counts
-        total_records = CarUnified.objects.values('brand').distinct().count()
-        filtered_records = brands_query.count()
+        # Get totals (before pagination)
+        total_records = len(all_fastapi_brands)
+        filtered_records = len(brands_with_counts)
         
-        # Apply pagination and ordering
-        brands_query = brands_query.order_by('brand')[start:start + length]
+        # Apply pagination
+        brands_with_counts = brands_with_counts[start:start + length]
         
         # Build data for DataTables
         data = []
-        for brand_data in brands_query:
+        for brand_data in brands_with_counts:
             brand_name = brand_data['brand']
             car_count = brand_data['car_count']
             
@@ -2122,7 +2051,7 @@ def brands_data_api(request):
             
             data.append([
                 brand_name,
-                f'{car_count:,}',
+                f'{car_count:,}' if isinstance(car_count, int) else str(car_count),
                 status_html,
                 category_html,
                 action_btn
@@ -2157,9 +2086,13 @@ def assign_brand_to_category(request):
         # Validate category exists
         category = get_object_or_404(Category, id=category_id)
         
-        # Validate brand exists in cars_unified
-        if not CarUnified.objects.filter(brand=brand_name).exists():
-            return JsonResponse({'error': 'Brand not found in database'}, status=400)
+        # Validate brand exists in FastAPI
+        try:
+            available_brands = get_brands()
+            if brand_name not in available_brands:
+                return JsonResponse({'error': 'Brand not found in FastAPI data'}, status=400)
+        except APIError:
+            return JsonResponse({'error': 'Unable to validate brand - FastAPI unavailable'}, status=500)
         
         # Check if brand is already classified
         if BrandCategory.objects.filter(brand=brand_name).exists():
@@ -2259,10 +2192,13 @@ def get_unclassified_brands_api(request):
     try:
         from django.db.models import Count
         
-        # Get all brands from cars_unified
-        all_brands_query = CarUnified.objects.values('brand').annotate(
-            car_count=Count('id')
-        ).order_by('brand')
+        # Get all brands from FastAPI
+        try:
+            all_brands = get_brands()
+            # Create mock data structure similar to Django query
+            all_brands_query = [{'brand': brand, 'car_count': 0} for brand in sorted(all_brands)]
+        except APIError:
+            all_brands_query = []
         
         # Get classified brands
         classified_brands = set(BrandCategory.objects.values_list('brand', flat=True))

@@ -156,3 +156,20 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # OTP System Settings
 PHONE_VERIFICATION_EXPIRY_DAYS = 30  # Phone active period (configurable)
 OTP_SESSION_COOKIE_AGE = 86400  # 1 day in seconds (for user convenience)
+
+# FastAPI Integration Settings
+FASTAPI_BASE_URL = config('FASTAPI_BASE_URL', default='http://localhost:8000/api')
+DJANGO_SECRET_KEY = config('DJANGO_SECRET_KEY', default='django-unlimited-access')
+API_REQUEST_TIMEOUT = config('API_REQUEST_TIMEOUT', default=30, cast=int)
+
+# Cache Settings (for API responses)
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'unique-snowflake',
+        'TIMEOUT': 300,  # 5 minutes default
+        'OPTIONS': {
+            'MAX_ENTRIES': 1000,
+        }
+    }
+}

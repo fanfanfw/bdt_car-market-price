@@ -9,10 +9,10 @@ urlpatterns = [
     
     # Car data APIs
     path('api/categories/', views.get_categories, name='get_categories'),
-    path('api/brands/', views.get_brands, name='get_brands'),
-    path('api/models/', views.get_models, name='get_models'),
-    path('api/variants/', views.get_variants, name='get_variants'),
-    path('api/years/', views.get_years, name='get_years'),
+    path('api/brands/', views.get_brands_api, name='get_brands'),
+    path('api/models/', views.get_models_api, name='get_models'),
+    path('api/variants/', views.get_variants_api, name='get_variants'),
+    path('api/years/', views.get_years_api, name='get_years'),
     
     # OTP system APIs
     path('api/check-phone/', views.check_phone_status, name='check_phone_status'),
