@@ -1,0 +1,1457 @@
+[
+{
+  "model": "main.category",
+  "pk": 1,
+  "fields": {
+    "name": "Continental",
+    "reduction_percentage": "10.00",
+    "created_at": "2025-09-12T13:20:16.645Z",
+    "updated_at": "2025-09-12T13:20:16.645Z"
+  }
+},
+{
+  "model": "main.category",
+  "pk": 2,
+  "fields": {
+    "name": "Japan",
+    "reduction_percentage": "0.00",
+    "created_at": "2025-09-12T13:20:24.359Z",
+    "updated_at": "2025-09-12T13:20:24.359Z"
+  }
+},
+{
+  "model": "main.category",
+  "pk": 3,
+  "fields": {
+    "name": "Local/Malay",
+    "reduction_percentage": "8.00",
+    "created_at": "2025-09-12T13:20:44.952Z",
+    "updated_at": "2025-09-12T13:20:44.952Z"
+  }
+},
+{
+  "model": "main.category",
+  "pk": 4,
+  "fields": {
+    "name": "Super Car",
+    "reduction_percentage": "30.00",
+    "created_at": "2025-09-12T13:20:57.850Z",
+    "updated_at": "2025-09-12T13:20:57.850Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 1,
+  "fields": {
+    "brand": "ABARTH",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:22.478Z",
+    "updated_at": "2025-09-07T16:44:22.478Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 2,
+  "fields": {
+    "brand": "AC",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:22.485Z",
+    "updated_at": "2025-09-07T16:44:22.485Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 3,
+  "fields": {
+    "brand": "ALPINE",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:22.490Z",
+    "updated_at": "2025-09-07T16:44:22.490Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 4,
+  "fields": {
+    "brand": "AUDI",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:22.496Z",
+    "updated_at": "2025-09-07T16:44:22.496Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 5,
+  "fields": {
+    "brand": "AUSTIN",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:22.502Z",
+    "updated_at": "2025-09-07T16:44:22.502Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 6,
+  "fields": {
+    "brand": "AUSTIN MORRIS",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:22.508Z",
+    "updated_at": "2025-09-07T16:44:22.508Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 7,
+  "fields": {
+    "brand": "BMW",
+    "category": 1,
+    "created_at": "2025-09-07T16:44:22.513Z",
+    "updated_at": "2025-09-13T06:37:02.478Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 8,
+  "fields": {
+    "brand": "BMW ALPINA",
+    "category": 1,
+    "created_at": "2025-09-07T16:44:22.519Z",
+    "updated_at": "2025-09-13T06:37:16.607Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 9,
+  "fields": {
+    "brand": "BRABUS",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:22.525Z",
+    "updated_at": "2025-09-07T16:44:22.525Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 10,
+  "fields": {
+    "brand": "CADILLAC",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:22.531Z",
+    "updated_at": "2025-09-07T16:44:22.531Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 11,
+  "fields": {
+    "brand": "CAM",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:22.536Z",
+    "updated_at": "2025-09-07T16:44:22.536Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 12,
+  "fields": {
+    "brand": "CHEVROLET",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:22.542Z",
+    "updated_at": "2025-09-07T16:44:22.542Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 13,
+  "fields": {
+    "brand": "CHRYSLER",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:22.548Z",
+    "updated_at": "2025-09-07T16:44:22.548Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 14,
+  "fields": {
+    "brand": "CITROEN",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:22.553Z",
+    "updated_at": "2025-09-07T16:44:22.553Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 15,
+  "fields": {
+    "brand": "DAIMLER",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:22.559Z",
+    "updated_at": "2025-09-07T16:44:22.559Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 16,
+  "fields": {
+    "brand": "DODGE",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:22.565Z",
+    "updated_at": "2025-09-07T16:44:22.565Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 17,
+  "fields": {
+    "brand": "DS",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:22.571Z",
+    "updated_at": "2025-09-07T16:44:22.571Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 18,
+  "fields": {
+    "brand": "DS AUTOMOBILES",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:22.576Z",
+    "updated_at": "2025-09-07T16:44:22.576Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 19,
+  "fields": {
+    "brand": "EXCALIBUR",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:22.582Z",
+    "updated_at": "2025-09-07T16:44:22.582Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 20,
+  "fields": {
+    "brand": "FIAT",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:22.588Z",
+    "updated_at": "2025-09-07T16:44:22.588Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 21,
+  "fields": {
+    "brand": "FORD",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:22.593Z",
+    "updated_at": "2025-09-07T16:44:22.593Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 22,
+  "fields": {
+    "brand": "GMC",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:22.599Z",
+    "updated_at": "2025-09-07T16:44:22.599Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 23,
+  "fields": {
+    "brand": "HUMMER",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:22.605Z",
+    "updated_at": "2025-09-07T16:44:22.605Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 24,
+  "fields": {
+    "brand": "IVECO",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:22.610Z",
+    "updated_at": "2025-09-07T16:44:22.610Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 25,
+  "fields": {
+    "brand": "JAGUAR",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:22.616Z",
+    "updated_at": "2025-09-07T16:44:22.616Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 26,
+  "fields": {
+    "brand": "JEEP",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:22.621Z",
+    "updated_at": "2025-09-07T16:44:22.621Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 27,
+  "fields": {
+    "brand": "LAND ROVER",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:22.627Z",
+    "updated_at": "2025-09-07T16:44:22.627Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 28,
+  "fields": {
+    "brand": "LMG",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:22.633Z",
+    "updated_at": "2025-09-07T16:44:22.633Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 29,
+  "fields": {
+    "brand": "LOTUS",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:22.638Z",
+    "updated_at": "2025-09-07T16:44:22.638Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 30,
+  "fields": {
+    "brand": "MASERATI",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:22.644Z",
+    "updated_at": "2025-09-07T16:44:22.644Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 31,
+  "fields": {
+    "brand": "MERCEDES BENZ",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:22.650Z",
+    "updated_at": "2025-09-07T16:44:22.650Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 32,
+  "fields": {
+    "brand": "MERCEDES MAYBACH",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:22.655Z",
+    "updated_at": "2025-09-07T16:44:22.655Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 33,
+  "fields": {
+    "brand": "MG",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:22.661Z",
+    "updated_at": "2025-09-07T16:44:22.661Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 34,
+  "fields": {
+    "brand": "MINI",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:22.667Z",
+    "updated_at": "2025-09-07T16:44:22.667Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 35,
+  "fields": {
+    "brand": "MORGAN",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:22.672Z",
+    "updated_at": "2025-09-07T16:44:22.672Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 36,
+  "fields": {
+    "brand": "MORRIS",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:22.678Z",
+    "updated_at": "2025-09-07T16:44:22.678Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 37,
+  "fields": {
+    "brand": "OPEL",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:22.684Z",
+    "updated_at": "2025-09-07T16:44:22.684Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 38,
+  "fields": {
+    "brand": "PEUGEOT",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:22.690Z",
+    "updated_at": "2025-09-07T16:44:22.690Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 39,
+  "fields": {
+    "brand": "POLESTAR",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:22.695Z",
+    "updated_at": "2025-09-07T16:44:22.695Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 40,
+  "fields": {
+    "brand": "RENAULT",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:22.701Z",
+    "updated_at": "2025-09-07T16:44:22.701Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 41,
+  "fields": {
+    "brand": "ROVER",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:22.706Z",
+    "updated_at": "2025-09-07T16:44:22.706Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 42,
+  "fields": {
+    "brand": "SAAB",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:22.712Z",
+    "updated_at": "2025-09-07T16:44:22.712Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 43,
+  "fields": {
+    "brand": "SKODA",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:22.718Z",
+    "updated_at": "2025-09-07T16:44:22.718Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 44,
+  "fields": {
+    "brand": "SMART",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:22.723Z",
+    "updated_at": "2025-09-07T16:44:22.723Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 45,
+  "fields": {
+    "brand": "SUTTON",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:22.729Z",
+    "updated_at": "2025-09-07T16:44:22.729Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 46,
+  "fields": {
+    "brand": "TESLA",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:22.735Z",
+    "updated_at": "2025-09-07T16:44:22.735Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 47,
+  "fields": {
+    "brand": "VOLKSWAGEN",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:22.741Z",
+    "updated_at": "2025-09-07T16:44:22.741Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 48,
+  "fields": {
+    "brand": "VOLVO",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:22.747Z",
+    "updated_at": "2025-09-07T16:44:22.747Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 49,
+  "fields": {
+    "brand": "BISON",
+    "category": 3,
+    "created_at": "2025-09-07T16:44:22.752Z",
+    "updated_at": "2025-09-07T16:44:22.752Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 50,
+  "fields": {
+    "brand": "DAIHATSU",
+    "category": 3,
+    "created_at": "2025-09-07T16:44:22.758Z",
+    "updated_at": "2025-09-07T16:44:22.758Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 51,
+  "fields": {
+    "brand": "DATSUN",
+    "category": 3,
+    "created_at": "2025-09-07T16:44:22.763Z",
+    "updated_at": "2025-09-07T16:44:22.763Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 52,
+  "fields": {
+    "brand": "FUSO",
+    "category": 3,
+    "created_at": "2025-09-07T16:44:22.769Z",
+    "updated_at": "2025-09-07T16:44:22.769Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 53,
+  "fields": {
+    "brand": "HINO",
+    "category": 3,
+    "created_at": "2025-09-07T16:44:22.775Z",
+    "updated_at": "2025-09-07T16:44:22.775Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 54,
+  "fields": {
+    "brand": "HONDA",
+    "category": 3,
+    "created_at": "2025-09-07T16:44:22.783Z",
+    "updated_at": "2025-09-07T16:44:22.783Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 55,
+  "fields": {
+    "brand": "INFINITI",
+    "category": 3,
+    "created_at": "2025-09-07T16:44:22.792Z",
+    "updated_at": "2025-09-07T16:44:22.792Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 56,
+  "fields": {
+    "brand": "ISUZU",
+    "category": 3,
+    "created_at": "2025-09-07T16:44:22.797Z",
+    "updated_at": "2025-09-07T16:44:22.797Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 57,
+  "fields": {
+    "brand": "LEXUS",
+    "category": 3,
+    "created_at": "2025-09-07T16:44:22.803Z",
+    "updated_at": "2025-09-07T16:44:22.803Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 58,
+  "fields": {
+    "brand": "MAZDA",
+    "category": 3,
+    "created_at": "2025-09-07T16:44:22.809Z",
+    "updated_at": "2025-09-07T16:44:22.809Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 59,
+  "fields": {
+    "brand": "MITSUBISHI",
+    "category": 3,
+    "created_at": "2025-09-07T16:44:22.815Z",
+    "updated_at": "2025-09-07T16:44:22.815Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 60,
+  "fields": {
+    "brand": "MITSUOKA",
+    "category": 3,
+    "created_at": "2025-09-07T16:44:22.821Z",
+    "updated_at": "2025-09-07T16:44:22.821Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 61,
+  "fields": {
+    "brand": "NISSAN",
+    "category": 3,
+    "created_at": "2025-09-07T16:44:22.826Z",
+    "updated_at": "2025-09-07T16:44:22.826Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 62,
+  "fields": {
+    "brand": "PORSCHE",
+    "category": 3,
+    "created_at": "2025-09-07T16:44:22.832Z",
+    "updated_at": "2025-09-07T16:44:22.832Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 63,
+  "fields": {
+    "brand": "SUBARU",
+    "category": 3,
+    "created_at": "2025-09-07T16:44:22.838Z",
+    "updated_at": "2025-09-07T16:44:22.838Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 64,
+  "fields": {
+    "brand": "SUZUKI",
+    "category": 3,
+    "created_at": "2025-09-07T16:44:22.843Z",
+    "updated_at": "2025-09-07T16:44:22.843Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 65,
+  "fields": {
+    "brand": "TOYOTA",
+    "category": 3,
+    "created_at": "2025-09-07T16:44:22.849Z",
+    "updated_at": "2025-09-07T16:44:22.849Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 66,
+  "fields": {
+    "brand": "UD TRUCKS",
+    "category": 3,
+    "created_at": "2025-09-07T16:44:22.855Z",
+    "updated_at": "2025-09-07T16:44:22.855Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 67,
+  "fields": {
+    "brand": "ASIA MOTORS",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:22.861Z",
+    "updated_at": "2025-09-07T16:44:22.861Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 68,
+  "fields": {
+    "brand": "BAIC",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:22.867Z",
+    "updated_at": "2025-09-07T16:44:22.867Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 70,
+  "fields": {
+    "brand": "BUFORI",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:22.879Z",
+    "updated_at": "2025-09-07T16:44:22.879Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 71,
+  "fields": {
+    "brand": "BYD",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:22.885Z",
+    "updated_at": "2025-09-07T16:44:22.885Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 72,
+  "fields": {
+    "brand": "CHANA",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:22.890Z",
+    "updated_at": "2025-09-07T16:44:22.890Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 73,
+  "fields": {
+    "brand": "CHANGAN",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:22.896Z",
+    "updated_at": "2025-09-07T16:44:22.896Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 74,
+  "fields": {
+    "brand": "CHERY",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:22.902Z",
+    "updated_at": "2025-09-07T16:44:22.902Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 75,
+  "fields": {
+    "brand": "DENZA",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:22.908Z",
+    "updated_at": "2025-09-07T16:44:22.908Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 76,
+  "fields": {
+    "brand": "DONGFENG",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:22.913Z",
+    "updated_at": "2025-09-07T16:44:22.913Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 77,
+  "fields": {
+    "brand": "FAW",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:22.919Z",
+    "updated_at": "2025-09-07T16:44:22.919Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 78,
+  "fields": {
+    "brand": "FOTON",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:22.925Z",
+    "updated_at": "2025-09-07T16:44:22.925Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 79,
+  "fields": {
+    "brand": "GAC",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:22.930Z",
+    "updated_at": "2025-09-07T16:44:22.930Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 80,
+  "fields": {
+    "brand": "GAC AION",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:22.936Z",
+    "updated_at": "2025-09-07T16:44:22.936Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 81,
+  "fields": {
+    "brand": "GOLDEN DRAGON",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:22.942Z",
+    "updated_at": "2025-09-07T16:44:22.942Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 82,
+  "fields": {
+    "brand": "GREAT WALL",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:22.947Z",
+    "updated_at": "2025-09-07T16:44:22.947Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 83,
+  "fields": {
+    "brand": "GREAT WALL MOTOR",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:22.953Z",
+    "updated_at": "2025-09-07T16:44:22.953Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 84,
+  "fields": {
+    "brand": "GWM",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:22.958Z",
+    "updated_at": "2025-09-07T16:44:22.958Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 85,
+  "fields": {
+    "brand": "HAVAL",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:22.964Z",
+    "updated_at": "2025-09-07T16:44:22.964Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 86,
+  "fields": {
+    "brand": "HOLDEN",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:22.970Z",
+    "updated_at": "2025-09-07T16:44:22.970Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 87,
+  "fields": {
+    "brand": "HYUNDAI",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:22.975Z",
+    "updated_at": "2025-09-07T16:44:22.975Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 88,
+  "fields": {
+    "brand": "JAC",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:22.981Z",
+    "updated_at": "2025-09-07T16:44:22.981Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 89,
+  "fields": {
+    "brand": "JAECOO",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:22.987Z",
+    "updated_at": "2025-09-07T16:44:22.987Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 90,
+  "fields": {
+    "brand": "JETOUR",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:22.992Z",
+    "updated_at": "2025-09-07T16:44:22.992Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 91,
+  "fields": {
+    "brand": "JMC",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:22.998Z",
+    "updated_at": "2025-09-07T16:44:22.998Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 92,
+  "fields": {
+    "brand": "JOY LONG",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:23.004Z",
+    "updated_at": "2025-09-07T16:44:23.004Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 93,
+  "fields": {
+    "brand": "KAICENE",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:23.010Z",
+    "updated_at": "2025-09-07T16:44:23.010Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 94,
+  "fields": {
+    "brand": "KIA",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:23.016Z",
+    "updated_at": "2025-09-07T16:44:23.016Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 95,
+  "fields": {
+    "brand": "KING LONG",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:23.021Z",
+    "updated_at": "2025-09-07T16:44:23.021Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 96,
+  "fields": {
+    "brand": "LEAPMOTOR",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:23.027Z",
+    "updated_at": "2025-09-07T16:44:23.027Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 97,
+  "fields": {
+    "brand": "MAHINDRA",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:23.033Z",
+    "updated_at": "2025-09-07T16:44:23.033Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 98,
+  "fields": {
+    "brand": "MAXUS",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:23.038Z",
+    "updated_at": "2025-09-07T16:44:23.038Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 99,
+  "fields": {
+    "brand": "MGC",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:23.044Z",
+    "updated_at": "2025-09-07T16:44:23.044Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 100,
+  "fields": {
+    "brand": "NETA",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:23.049Z",
+    "updated_at": "2025-09-07T16:44:23.049Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 101,
+  "fields": {
+    "brand": "SHENYANG BRILLIANCE",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:23.055Z",
+    "updated_at": "2025-09-07T16:44:23.055Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 102,
+  "fields": {
+    "brand": "SSANGYONG",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:23.061Z",
+    "updated_at": "2025-09-07T16:44:23.061Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 103,
+  "fields": {
+    "brand": "TATA",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:23.067Z",
+    "updated_at": "2025-09-07T16:44:23.067Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 104,
+  "fields": {
+    "brand": "WESTSTAR MAXUS",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:23.072Z",
+    "updated_at": "2025-09-07T16:44:23.072Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 105,
+  "fields": {
+    "brand": "XPENG",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:23.078Z",
+    "updated_at": "2025-09-07T16:44:23.078Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 106,
+  "fields": {
+    "brand": "YANGTSE",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:23.083Z",
+    "updated_at": "2025-09-07T16:44:23.083Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 107,
+  "fields": {
+    "brand": "ZEEKR",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:23.089Z",
+    "updated_at": "2025-09-07T16:44:23.089Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 108,
+  "fields": {
+    "brand": "ZXAUTO",
+    "category": 4,
+    "created_at": "2025-09-07T16:44:23.094Z",
+    "updated_at": "2025-09-07T16:44:23.094Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 109,
+  "fields": {
+    "brand": "BOON KOON",
+    "category": 2,
+    "created_at": "2025-09-07T16:44:23.099Z",
+    "updated_at": "2025-09-07T16:44:23.099Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 110,
+  "fields": {
+    "brand": "FARID",
+    "category": 2,
+    "created_at": "2025-09-07T16:44:23.105Z",
+    "updated_at": "2025-09-07T16:44:23.105Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 111,
+  "fields": {
+    "brand": "HICOM",
+    "category": 2,
+    "created_at": "2025-09-07T16:44:23.110Z",
+    "updated_at": "2025-09-07T16:44:23.111Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 112,
+  "fields": {
+    "brand": "INOKOM",
+    "category": 2,
+    "created_at": "2025-09-07T16:44:23.116Z",
+    "updated_at": "2025-09-07T16:44:23.116Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 113,
+  "fields": {
+    "brand": "NAZA",
+    "category": 2,
+    "created_at": "2025-09-07T16:44:23.122Z",
+    "updated_at": "2025-09-07T16:44:23.122Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 114,
+  "fields": {
+    "brand": "PERODUA",
+    "category": 2,
+    "created_at": "2025-09-07T16:44:23.130Z",
+    "updated_at": "2025-09-07T16:44:23.130Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 115,
+  "fields": {
+    "brand": "PROTON",
+    "category": 2,
+    "created_at": "2025-09-07T16:44:23.135Z",
+    "updated_at": "2025-09-07T16:44:23.135Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 116,
+  "fields": {
+    "brand": "WESTSTAR",
+    "category": 2,
+    "created_at": "2025-09-07T16:44:23.141Z",
+    "updated_at": "2025-09-07T16:44:23.141Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 117,
+  "fields": {
+    "brand": "ALFA ROMEO",
+    "category": 1,
+    "created_at": "2025-09-07T16:44:23.147Z",
+    "updated_at": "2025-09-07T16:44:23.147Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 118,
+  "fields": {
+    "brand": "ASTON MARTIN",
+    "category": 1,
+    "created_at": "2025-09-07T16:44:23.152Z",
+    "updated_at": "2025-09-07T16:44:23.152Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 119,
+  "fields": {
+    "brand": "BENTLEY",
+    "category": 1,
+    "created_at": "2025-09-07T16:44:23.158Z",
+    "updated_at": "2025-09-07T16:44:23.158Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 120,
+  "fields": {
+    "brand": "FERRARI",
+    "category": 1,
+    "created_at": "2025-09-07T16:44:23.163Z",
+    "updated_at": "2025-09-07T16:44:23.163Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 121,
+  "fields": {
+    "brand": "KTM",
+    "category": 1,
+    "created_at": "2025-09-07T16:44:23.169Z",
+    "updated_at": "2025-09-07T16:44:23.169Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 122,
+  "fields": {
+    "brand": "LAMBORGHINI",
+    "category": 1,
+    "created_at": "2025-09-07T16:44:23.174Z",
+    "updated_at": "2025-09-07T16:44:23.174Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 123,
+  "fields": {
+    "brand": "MCLAREN",
+    "category": 1,
+    "created_at": "2025-09-07T16:44:23.180Z",
+    "updated_at": "2025-09-07T16:44:23.180Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 124,
+  "fields": {
+    "brand": "ROLLS ROYCE",
+    "category": 1,
+    "created_at": "2025-09-07T16:44:23.186Z",
+    "updated_at": "2025-09-07T16:44:23.186Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 125,
+  "fields": {
+    "brand": "DONG FENG",
+    "category": 4,
+    "created_at": "2025-09-11T02:03:29.511Z",
+    "updated_at": "2025-09-11T02:03:29.511Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 126,
+  "fields": {
+    "brand": "BWM",
+    "category": 1,
+    "created_at": "2025-09-12T14:58:25.133Z",
+    "updated_at": "2025-09-12T14:58:25.133Z"
+  }
+},
+{
+  "model": "main.brandcategory",
+  "pk": 127,
+  "fields": {
+    "brand": "BAW",
+    "category": 4,
+    "created_at": "2025-09-12T14:59:36.923Z",
+    "updated_at": "2025-09-12T14:59:36.923Z"
+  }
+},
+{
+  "model": "main.vehicleconditioncategory",
+  "pk": 1,
+  "fields": {
+    "category_key": "exterior_condition",
+    "display_name": "Exterior Condition",
+    "order": 1,
+    "is_active": true,
+    "created_at": "2025-09-12T12:19:58.108Z",
+    "updated_at": "2025-09-12T12:19:58.108Z"
+  }
+},
+{
+  "model": "main.vehicleconditioncategory",
+  "pk": 2,
+  "fields": {
+    "category_key": "interior_condition",
+    "display_name": "Interior Condition",
+    "order": 2,
+    "is_active": true,
+    "created_at": "2025-09-12T12:19:58.108Z",
+    "updated_at": "2025-09-12T12:19:58.108Z"
+  }
+},
+{
+  "model": "main.vehicleconditioncategory",
+  "pk": 3,
+  "fields": {
+    "category_key": "mechanical_condition",
+    "display_name": "Mechanical Condition",
+    "order": 3,
+    "is_active": true,
+    "created_at": "2025-09-12T12:19:58.108Z",
+    "updated_at": "2025-09-12T12:19:58.108Z"
+  }
+},
+{
+  "model": "main.vehicleconditioncategory",
+  "pk": 4,
+  "fields": {
+    "category_key": "accident_history",
+    "display_name": "Accident History",
+    "order": 4,
+    "is_active": true,
+    "created_at": "2025-09-12T12:19:58.108Z",
+    "updated_at": "2025-09-12T12:19:58.108Z"
+  }
+},
+{
+  "model": "main.vehicleconditioncategory",
+  "pk": 5,
+  "fields": {
+    "category_key": "service_history",
+    "display_name": "Service History",
+    "order": 5,
+    "is_active": true,
+    "created_at": "2025-09-12T12:19:58.108Z",
+    "updated_at": "2025-09-12T12:19:58.108Z"
+  }
+},
+{
+  "model": "main.vehicleconditioncategory",
+  "pk": 6,
+  "fields": {
+    "category_key": "number_of_owners",
+    "display_name": "Number of Owners",
+    "order": 6,
+    "is_active": true,
+    "created_at": "2025-09-12T12:19:58.108Z",
+    "updated_at": "2025-09-12T12:19:58.108Z"
+  }
+},
+{
+  "model": "main.vehicleconditioncategory",
+  "pk": 7,
+  "fields": {
+    "category_key": "tires_brakes",
+    "display_name": "Tires & Brakes",
+    "order": 7,
+    "is_active": true,
+    "created_at": "2025-09-12T12:19:58.108Z",
+    "updated_at": "2025-09-12T12:19:58.108Z"
+  }
+},
+{
+  "model": "main.vehicleconditioncategory",
+  "pk": 8,
+  "fields": {
+    "category_key": "modifications",
+    "display_name": "Modifications",
+    "order": 8,
+    "is_active": true,
+    "created_at": "2025-09-12T12:19:58.108Z",
+    "updated_at": "2025-09-12T12:19:58.108Z"
+  }
+},
+{
+  "model": "main.vehicleconditioncategory",
+  "pk": 9,
+  "fields": {
+    "category_key": "market_demand",
+    "display_name": "Market Demand",
+    "order": 9,
+    "is_active": true,
+    "created_at": "2025-09-12T12:19:58.108Z",
+    "updated_at": "2025-09-12T12:19:58.108Z"
+  }
+},
+{
+  "model": "main.conditionoption",
+  "pk": 1,
+  "fields": {
+    "category": 1,
+    "label": "Excellent",
+    "reduction_percentage": "0.00",
+    "order": 0,
+    "created_at": "2025-09-12T12:48:16.987Z",
+    "updated_at": "2025-09-12T13:13:37.105Z"
+  }
+},
+{
+  "model": "main.conditionoption",
+  "pk": 2,
+  "fields": {
+    "category": 1,
+    "label": "Good",
+    "reduction_percentage": "3.00",
+    "order": 1,
+    "created_at": "2025-09-12T13:13:45.574Z",
+    "updated_at": "2025-09-12T13:13:45.574Z"
+  }
+},
+{
+  "model": "main.conditionoption",
+  "pk": 3,
+  "fields": {
+    "category": 1,
+    "label": "Fair",
+    "reduction_percentage": "6.00",
+    "order": 2,
+    "created_at": "2025-09-12T13:13:54.719Z",
+    "updated_at": "2025-09-12T13:13:54.719Z"
+  }
+},
+{
+  "model": "main.conditionoption",
+  "pk": 4,
+  "fields": {
+    "category": 1,
+    "label": "Poor",
+    "reduction_percentage": "10.00",
+    "order": 3,
+    "created_at": "2025-09-12T13:14:04.952Z",
+    "updated_at": "2025-09-12T13:14:04.952Z"
+  }
+}]
