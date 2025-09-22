@@ -261,13 +261,47 @@ class PriceTier(models.Model):
         try:
             price = float(price)
             tiers = cls.objects.filter(is_active=True).order_by('min_price')
-            
+
             for tier in tiers:
                 if price >= float(tier.min_price):
                     if tier.max_price is None or price <= float(tier.max_price):
                         return tier
-                        
+
             # If no tier matches, return None
             return None
         except (ValueError, TypeError):
             return None
+
+
+class CalculationLog(models.Model):
+    """Track all price calculations for analytics"""
+    phone_number = models.CharField(max_length=15, help_text='Phone number of user who made calculation')
+    brand = models.CharField(max_length=100)
+    model = models.CharField(max_length=100)
+    variant = models.CharField(max_length=200)
+    year = models.PositiveIntegerField()
+    user_mileage = models.PositiveIntegerField(null=True, blank=True)
+    estimated_price = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    final_price = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    total_reduction_percent = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)
+    ip_address = models.GenericIPAddressField(blank=True, null=True)
+    user_agent = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'calculation_logs'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['phone_number']),
+            models.Index(fields=['created_at']),
+            models.Index(fields=['brand', 'model']),
+        ]
+
+    def __str__(self):
+        return f"{self.phone_number} - {self.brand} {self.model} ({self.created_at.date()})"
+
+    @classmethod
+    def get_today_count(cls):
+        """Get count of calculations made today"""
+        today = timezone.now().date()
+        return cls.objects.filter(created_at__date=today).count()

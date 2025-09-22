@@ -20,7 +20,7 @@ from django.conf import settings
 from decouple import config
 from .models import (
     Category, BrandCategory, VerifiedPhone, OTPSession,
-    MileageConfiguration, VehicleConditionCategory, ConditionOption, PriceTier
+    MileageConfiguration, VehicleConditionCategory, ConditionOption, PriceTier, CalculationLog
 )
 # FastAPI Client (hanya untuk cars_unified & price_history_unified)
 from .api_client import (
@@ -767,10 +767,25 @@ def get_secure_results(request):
             # Update access count
             verified_phone.access_count += 1
             verified_phone.save()
-            
+
+            # Log the calculation for analytics
+            CalculationLog.objects.create(
+                phone_number=verified_phone.phone_number,
+                brand=calculation_data['brand'],
+                model=calculation_data['model'],
+                variant=calculation_data['variant'],
+                year=calculation_data['year'],
+                user_mileage=calculation_data.get('user_mileage'),
+                estimated_price=result_data.get('estimated_market_price'),
+                final_price=result_data.get('adjusted_price'),
+                total_reduction_percent=result_data.get('total_reduction_percentage', 0),
+                ip_address=request.META.get('REMOTE_ADDR'),
+                user_agent=request.META.get('HTTP_USER_AGENT', '')
+            )
+
             # Don't clear session data so user can recalculate with same data
             # Session data will be cleared when user starts new calculation
-            
+
             return JsonResponse({
                 'success': True,
                 'result': result_data
@@ -830,7 +845,7 @@ def admin_dashboard_view(request):
         stats = {
             'verified_phones': VerifiedPhone.objects.filter(is_active=True).count(),
             'car_records': fastapi_stats.get('car_records', 0),
-            'today_calculations': 0,  # This would need to be tracked separately
+            'today_calculations': CalculationLog.get_today_count(),
             'today_ads_data': today_count,
         }
     except APIError:
@@ -838,7 +853,7 @@ def admin_dashboard_view(request):
         stats = {
             'verified_phones': VerifiedPhone.objects.filter(is_active=True).count(),
             'car_records': 0,
-            'today_calculations': 0,
+            'today_calculations': CalculationLog.get_today_count(),
             'today_ads_data': 0,
         }
     
@@ -1737,11 +1752,14 @@ def categories_management_view(request):
     # Get unclassified brands count via FastAPI
     try:
         all_brands = get_brands()  # From FastAPI
-        classified_brands = list(BrandCategory.objects.values_list('brand', flat=True))
-        unclassified_count = len(set(all_brands) - set(classified_brands))
+        # Get only valid classified brands (that exist in FastAPI)
+        valid_classified_brands = BrandCategory.objects.filter(brand__in=all_brands)
+        classified_brands_count = valid_classified_brands.count()
+        unclassified_count = len(all_brands) - classified_brands_count
         total_unique_brands = len(all_brands)
     except APIError:
         # Fallback if FastAPI is down
+        classified_brands_count = BrandCategory.objects.count()
         unclassified_count = 0
         total_unique_brands = 0
     
@@ -1749,7 +1767,7 @@ def categories_management_view(request):
         'page_title': 'Brand Categories Management',
         'categories': categories,
         'total_categories': categories.count(),
-        'total_classified_brands': BrandCategory.objects.count(),
+        'total_classified_brands': classified_brands_count,
         'unclassified_brands': unclassified_count,
         'total_unique_brands': total_unique_brands,
     }
