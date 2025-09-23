@@ -82,6 +82,13 @@ def result(request):
             context['phone_not_verified'] = not phone_already_verified
             context['car_info'] = f"{brand} {model} {variant} ({year})"
 
+            # Add OTP configuration from environment for dynamic frontend config
+            from decouple import config
+            expiry_minutes = int(config('OTP_EXPIRY_MINUTES', default=5))
+            context['otp_provider'] = config('OTP_PROVIDER', default='copycode')
+            context['otp_digits'] = 6 if context['otp_provider'] == 'copycode' else 4
+            context['otp_expiry_seconds'] = expiry_minutes * 60  # Convert to seconds
+
             # If phone already verified, we can show results immediately via JavaScript
             if phone_already_verified:
                 context['skip_otp'] = True

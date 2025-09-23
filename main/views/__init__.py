@@ -5,7 +5,7 @@ from .api import (
     car_data_api, car_detail_api
 )
 from .auth import (
-    check_phone_status, send_otp, verify_otp, get_secure_results
+    check_phone_status, send_otp, verify_otp, get_secure_results, check_copycode_balance
 )
 from .admin import (
     CustomAdminLoginView, admin_dashboard_view, admin_logout_view,
@@ -21,8 +21,8 @@ from .admin import (
 )
 from .utils import (
     get_mileage_config, get_car_statistics, get_client_ip,
-    format_phone_number_for_message_central, normalize_phone_number,
-    generate_otp, is_staff_user, export_verified_phones, export_otp_sessions
+    normalize_phone_number, generate_otp, is_staff_user,
+    export_verified_phones, export_otp_sessions
 )
 
 # Maintain backward compatibility
@@ -35,7 +35,7 @@ __all__ = [
     'get_years_api', 'car_data_api', 'car_detail_api',
 
     # Auth views
-    'check_phone_status', 'send_otp', 'verify_otp', 'get_secure_results',
+    'check_phone_status', 'send_otp', 'verify_otp', 'get_secure_results', 'check_copycode_balance',
 
     # Admin views
     'CustomAdminLoginView', 'admin_dashboard_view', 'admin_logout_view',
@@ -51,6 +51,6 @@ __all__ = [
 
     # Utilities
     'get_mileage_config', 'get_car_statistics', 'get_client_ip',
-    'format_phone_number_for_message_central', 'normalize_phone_number',
-    'generate_otp', 'is_staff_user', 'export_verified_phones', 'export_otp_sessions'
+    'normalize_phone_number', 'generate_otp', 'is_staff_user',
+    'export_verified_phones', 'export_otp_sessions'
 ]

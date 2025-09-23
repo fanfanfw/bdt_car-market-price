@@ -19,6 +19,7 @@ urlpatterns = [
     path('api/send-otp/', views.send_otp, name='send_otp'),
     path('api/verify-otp/', views.verify_otp, name='verify_otp'),
     path('api/get-results/', views.get_secure_results, name='get_secure_results'),
+    path('api/check-balance/', views.check_copycode_balance, name='check_copycode_balance'),
     
     # Simplified admin configuration URLs
     path('panel/formula-config/', views.formula_config_edit, name='formula_config_edit'),

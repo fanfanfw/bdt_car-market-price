@@ -132,10 +132,14 @@
                     <tr class="border-b border-gray-200">
                         <th class="text-left py-3 px-4 font-medium text-gray-700">ID</th>
                         <th class="text-left py-3 px-4 font-medium text-gray-700">Phone Number</th>
-                        <th class="text-left py-3 px-4 font-medium text-gray-700">Verified At</th>
+                        <th class="text-left py-3 px-4 font-medium text-gray-700">First Verified</th>
+                        <th class="text-left py-3 px-4 font-medium text-gray-700">Current Verified</th>
+                        <th class="text-left py-3 px-4 font-medium text-gray-700">Last Re-verified</th>
+                        <th class="text-left py-3 px-4 font-medium text-gray-700">Re-verify Count</th>
                         <th class="text-left py-3 px-4 font-medium text-gray-700">Last Accessed</th>
-                        <th class="text-left py-3 px-4 font-medium text-gray-700">Access Count</th>
+                        <th class="text-left py-3 px-4 font-medium text-gray-700">Calculation Count</th>
                         <th class="text-left py-3 px-4 font-medium text-gray-700">Status</th>
+                        <th class="text-left py-3 px-4 font-medium text-gray-700">Expires At</th>
                         <th class="text-left py-3 px-4 font-medium text-gray-700">IP Address</th>
                         <th class="text-left py-3 px-4 font-medium text-gray-700">Actions</th>
                     </tr>
@@ -237,35 +241,34 @@ $(document).ready(function() {
             }
         },
         columns: [
-            { 
+            {
                 data: 0,
                 render: function(data, type, row) {
                     return `<span class="font-mono text-xs">${data}</span>`;
                 }
             },
-            { 
+            {
                 data: 1,
                 render: function(data, type, row) {
                     return `<span class="font-mono">${data}</span>`;
                 }
             },
-            { data: 2 },
-            { data: 3 },
-            { 
-                data: 4,
-                render: function(data, type, row) {
-                    return `<span class="inline-flex px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">${data}</span>`;
-                }
-            },
-            { data: 5 },
-            { 
-                data: 6,
+            { data: 2 }, // First Verified
+            { data: 3 }, // Current Verified
+            { data: 4 }, // Last Re-verified
+            { data: 5 }, // Re-verify Count
+            { data: 6 }, // Last Accessed
+            { data: 7 }, // Calculation Count
+            { data: 8 }, // Status
+            { data: 9 }, // Expires At
+            {
+                data: 10, // IP Address
                 render: function(data, type, row) {
                     return `<span class="font-mono">${data || '-'}</span>`;
                 }
             },
-            { 
-                data: 7,
+            {
+                data: 11, // Actions
                 orderable: false,
                 searchable: false,
                 render: function(data, type, row) {

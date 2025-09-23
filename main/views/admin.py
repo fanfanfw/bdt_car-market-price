@@ -320,7 +320,7 @@ def verified_phones_api(request):
         order_direction = request.GET.get('order[0][dir]', 'asc')
 
         # Column mapping for ordering
-        columns = ['id', 'phone_number', 'verified_at', 'last_accessed', 'access_count', 'is_active', 'ip_address']
+        columns = ['id', 'phone_number', 'first_verified_at', 'verified_at', 'last_reverified_at', 'reverification_count', 'last_accessed', 'access_count', 'is_active', 'ip_address']
         order_column = columns[order_column_index] if order_column_index < len(columns) else 'id'
 
         if order_direction == 'desc':
@@ -373,26 +373,39 @@ def verified_phones_api(request):
             # Format access count with badge
             access_count_formatted = f'<span class="badge badge-outline">{phone.access_count}</span>'
 
+            # Format reverification count with badge
+            reverification_count_formatted = f'<span class="badge badge-info">{phone.reverification_count}</span>'
+
             # Format phone number (mask middle digits for privacy)
             masked_phone = phone.phone_number[:4] + '*' * (len(phone.phone_number) - 8) + phone.phone_number[-4:]
 
+            # Format expiry date
+            expiry_date = phone.get_expiry_date()
+            days_remaining = phone.days_until_expiry()
+
+            if days_remaining <= 1:
+                expiry_formatted = f'<span class="text-red-600 font-medium">{expiry_date.strftime("%Y-%m-%d %H:%M")}</span>'
+            elif days_remaining <= 3:
+                expiry_formatted = f'<span class="text-yellow-600 font-medium">{expiry_date.strftime("%Y-%m-%d %H:%M")}</span>'
+            else:
+                expiry_formatted = f'<span class="text-green-600">{expiry_date.strftime("%Y-%m-%d %H:%M")}</span>'
+
             # Actions column
-            actions = f'''<div class="btn-group btn-group-sm" role="group">
-                <button type="button" class="btn btn-info btn-sm" onclick="viewPhoneDetails({phone.id})" title="View Details">
-                    <i class="fas fa-eye"></i>
-                </button>
-                <button type="button" class="btn btn-warning btn-sm" onclick="togglePhoneStatus({phone.id}, {str(phone.is_active).lower()})" title="Toggle Status">
-                    <i class="fas fa-toggle-{'on' if phone.is_active else 'off'}"></i>
-                </button>
-            </div>'''
+            actions = f'''<button type="button" class="btn btn-warning btn-sm" onclick="togglePhoneStatus({phone.id}, {str(phone.is_active).lower()})" title="Toggle Status">
+                <i class="fas fa-toggle-{'on' if phone.is_active else 'off'}"></i>
+            </button>'''
 
             data.append([
                 phone.id,
                 masked_phone,
+                phone.first_verified_at.strftime('%Y-%m-%d %H:%M'),
                 phone.verified_at.strftime('%Y-%m-%d %H:%M'),
+                phone.last_reverified_at.strftime('%Y-%m-%d %H:%M') if phone.last_reverified_at else '-',
+                reverification_count_formatted,
                 phone.last_accessed.strftime('%Y-%m-%d %H:%M'),
                 access_count_formatted,
                 status_badge,
+                expiry_formatted,
                 phone.ip_address or '-',
                 actions
             ])
@@ -499,7 +512,7 @@ def otp_sessions_api(request):
         order_direction = request.GET.get('order[0][dir]', 'asc')
 
         # Column mapping for ordering
-        columns = ['id', 'phone_number', 'verification_id', 'created_at', 'is_used', 'ip_address']
+        columns = ['id', 'phone_number', 'otp_code', 'created_at', 'is_used', 'ip_address']
         order_column = columns[order_column_index] if order_column_index < len(columns) else 'id'
 
         if order_direction == 'desc':
@@ -515,15 +528,19 @@ def otp_sessions_api(request):
         elif status_filter == 'unused':
             queryset = queryset.filter(is_used=False)
         elif status_filter == 'expired':
+            # Use configurable expiry time (5 minutes for CopyCode)
+            from decouple import config
+            expiry_minutes = int(config('OTP_EXPIRY_MINUTES', default=5))
             queryset = queryset.filter(
                 is_used=False,
-                created_at__lt=timezone.now() - timezone.timedelta(minutes=1)
+                created_at__lt=timezone.now() - timezone.timedelta(minutes=expiry_minutes)
             )
 
         # Search filtering
         if search_value:
             queryset = queryset.filter(
                 Q(phone_number__icontains=search_value) |
+                Q(otp_code__icontains=search_value) |
                 Q(verification_id__icontains=search_value) |
                 Q(ip_address__icontains=search_value)
             )
@@ -538,26 +555,33 @@ def otp_sessions_api(request):
         # Build data for DataTables
         data = []
         for otp in queryset:
-            # Check if expired
-            is_expired = otp.is_expired()
+            # Check if time expired (for display)
+            is_time_expired = otp.is_time_expired()
 
-            # Format status
+            # Format status (proper logic for display)
             if otp.is_used:
                 status_badge = '<span class="badge badge-success">Used</span>'
-            elif is_expired:
+            elif is_time_expired:
                 status_badge = '<span class="badge badge-error">Expired</span>'
             else:
-                status_badge = '<span class="badge badge-warning">Active</span>'
+                status_badge = '<span class="badge badge-warning">Not Used</span>'
 
             # Format phone number (mask middle digits for privacy)
             masked_phone = otp.phone_number[:4] + '*' * (len(otp.phone_number) - 8) + otp.phone_number[-4:]
 
-            # Format verification ID (partially masked for security)
-            masked_verification_id = (otp.verification_id[:3] + '***' + otp.verification_id[-3:]) if otp.verification_id and len(otp.verification_id) > 6 else (otp.verification_id or '-')
+            # Format OTP code/verification ID for display (prioritize OTP code for CopyCode)
+            if otp.otp_code:
+                # CopyCode: Show masked 6-digit OTP code
+                display_code = otp.otp_code[:2] + '****'
+            elif otp.verification_id:
+                # Legacy Message Central: Show partially masked verification ID
+                display_code = (otp.verification_id[:3] + '***' + otp.verification_id[-3:]) if len(otp.verification_id) > 6 else otp.verification_id
+            else:
+                display_code = '-'
 
             # Actions column
             actions = f'''<div class="btn-group btn-group-sm" role="group">
-                <button type="button" class="btn btn-info btn-sm" onclick="viewOTPDetails({otp.id})" title="View Details">
+                <button type="button" class="btn btn-info btn-sm" onclick="viewOTPDetail({otp.id})" title="View Details">
                     <i class="fas fa-eye"></i>
                 </button>
             </div>'''
@@ -565,7 +589,7 @@ def otp_sessions_api(request):
             data.append([
                 otp.id,
                 masked_phone,
-                masked_verification_id,
+                display_code,
                 otp.created_at.strftime('%Y-%m-%d %H:%M:%S'),
                 status_badge,
                 otp.ip_address or '-',
@@ -591,16 +615,21 @@ def otp_session_detail_api(request, session_id):
     try:
         otp = get_object_or_404(OTPSession, id=session_id)
 
+        # Get configurable expiry time
+        from decouple import config
+        expiry_minutes = int(config('OTP_EXPIRY_MINUTES', default=5))
+
         data = {
             'id': otp.id,
             'phone_number': otp.phone_number,
-            'verification_id': otp.verification_id,
+            'otp_code': otp.otp_code,  # Add OTP code for CopyCode
+            'verification_id': otp.verification_id,  # Keep for legacy compatibility
             'created_at': otp.created_at.strftime('%Y-%m-%d %H:%M:%S'),
             'is_used': otp.is_used,
-            'is_expired': otp.is_expired(),
-            'is_valid': otp.is_valid(),
+            'is_expired': otp.is_time_expired(),
             'ip_address': otp.ip_address,
-            'expires_at': (otp.created_at + timezone.timedelta(minutes=1)).strftime('%Y-%m-%d %H:%M:%S'),
+            'expires_at': (otp.created_at + timezone.timedelta(minutes=expiry_minutes)).strftime('%Y-%m-%d %H:%M:%S'),
+            'expiry_minutes': expiry_minutes,  # Add expiry info for display
         }
 
         return JsonResponse({

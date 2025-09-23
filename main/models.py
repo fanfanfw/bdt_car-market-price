@@ -39,33 +39,46 @@ class BrandCategory(models.Model):
 class VerifiedPhone(models.Model):
     """Phone verification tracking for OTP system"""
     phone_number = models.CharField(
-        max_length=15, 
+        max_length=15,
         unique=True,
         help_text='Phone number with country code (+60xxxxxxxxx or +62xxxxxxxxx)'
     )
     verified_at = models.DateTimeField(
         auto_now_add=True,
-        help_text='First time verified'
+        help_text='Current verification expiry reference'
+    )
+    first_verified_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text='First time verified (never changes)'
+    )
+    last_reverified_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text='Last time re-verified'
+    )
+    reverification_count = models.PositiveIntegerField(
+        default=0,
+        help_text='Number of times re-verified'
     )
     last_accessed = models.DateTimeField(
         auto_now=True,
-        help_text='Last time accessed'
+        help_text='Last time accessed for calculation'
     )
     access_count = models.PositiveIntegerField(
         default=1,
-        help_text='Number of times accessed'
+        help_text='Number of times used for calculation'
     )
     is_active = models.BooleanField(
         default=True,
         help_text='Whether phone is still active'
     )
     user_agent = models.TextField(
-        blank=True, 
+        blank=True,
         null=True,
         help_text='Browser/device info'
     )
     ip_address = models.GenericIPAddressField(
-        blank=True, 
+        blank=True,
         null=True,
         help_text='Last IP address'
     )
@@ -85,22 +98,37 @@ class VerifiedPhone(models.Model):
 
     def is_expired(self):
         """Check if phone verification has expired"""
-        from django.conf import settings
-        expiry_days = getattr(settings, 'PHONE_VERIFICATION_EXPIRY_DAYS', 30)
+        from decouple import config
+        expiry_days = int(config('PHONE_VERIFICATION_EXPIRY_DAYS', default=7))
         expiry_date = self.verified_at + timedelta(days=expiry_days)
         return timezone.now() > expiry_date
 
     def extend_expiry(self):
         """Extend the expiry by updating verified_at to now"""
         self.verified_at = timezone.now()
+        self.last_reverified_at = timezone.now()
+        self.reverification_count += 1
         self.is_active = True
         self.save()
 
+    def get_expiry_date(self):
+        """Get the expiry date for this verification"""
+        from decouple import config
+        expiry_days = int(config('PHONE_VERIFICATION_EXPIRY_DAYS', default=7))
+        return self.verified_at + timedelta(days=expiry_days)
+
+    def days_until_expiry(self):
+        """Get days remaining until expiry"""
+        expiry_date = self.get_expiry_date()
+        remaining = expiry_date - timezone.now()
+        return max(0, remaining.days)
+
 
 class OTPSession(models.Model):
-    """Temporary OTP sessions (1 minute validity)"""
+    """Temporary OTP sessions (configurable validity)"""
     phone_number = models.CharField(max_length=15)
-    verification_id = models.CharField(max_length=50, blank=True, null=True)
+    verification_id = models.CharField(max_length=50, blank=True, null=True)  # Legacy field - no longer used
+    otp_code = models.CharField(max_length=6, blank=True, null=True, help_text='6-digit OTP code for CopyCode')
     created_at = models.DateTimeField(auto_now_add=True)
     is_used = models.BooleanField(default=False)
     ip_address = models.GenericIPAddressField(blank=True, null=True)
@@ -115,16 +143,30 @@ class OTPSession(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.phone_number} - {self.verification_id} - {self.created_at}"
+        return f"{self.phone_number} - {self.created_at}"
 
     def is_expired(self):
-        """Check if OTP has expired (1 minute)"""
-        expiry_time = self.created_at + timedelta(minutes=1)
+        """Check if OTP has expired (configurable minutes) - for verification logic"""
+        # If OTP is already used, it cannot be expired (it was used successfully before expiry)
+        if self.is_used:
+            return False
+
+        from decouple import config
+
+        # Get expiry minutes from config, default to 5 minutes
+        expiry_minutes = int(config('OTP_EXPIRY_MINUTES', default=5))
+        expiry_time = self.created_at + timedelta(minutes=expiry_minutes)
         return timezone.now() > expiry_time
 
-    def is_valid(self):
-        """Check if OTP is still valid and unused"""
-        return not self.is_used and not self.is_expired()
+    def is_time_expired(self):
+        """Check if OTP time has expired regardless of usage status - for display purposes"""
+        from decouple import config
+
+        # Get expiry minutes from config, default to 5 minutes
+        expiry_minutes = int(config('OTP_EXPIRY_MINUTES', default=5))
+        expiry_time = self.created_at + timedelta(minutes=expiry_minutes)
+        return timezone.now() > expiry_time
+
 
 
 # Simplified Pricing Configuration Models

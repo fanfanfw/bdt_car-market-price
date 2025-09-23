@@ -228,43 +228,10 @@ def get_client_ip(request):
     return ip
 
 
-def format_phone_number_for_message_central(phone, country_code):
-    """Format phone number for Message_Central API (Indonesia +62 and Malaysia +60)"""
-    # Remove all non-digits from phone
-    cleaned_phone = re.sub(r'[^\d]', '', phone)
-    # Extract country code number (remove + sign)
-    country_num = re.sub(r'[^\d]', '', country_code)
-
-    # Handle country code formatting according to Message_Central API
-    if country_num == '62':
-        # Indonesia: countryCode=62, mobileNumber=89525521887
-        country_code_formatted = '62'
-        mobile_number = cleaned_phone
-
-        # Remove leading 0 if present (08xxx -> 8xxx)
-        if mobile_number.startswith('0'):
-            mobile_number = mobile_number[1:]
-
-        return country_code_formatted, mobile_number
-
-    elif country_num == '60':
-        # Malaysia: countryCode=60, mobileNumber=173023419
-        country_code_formatted = '60'
-        mobile_number = cleaned_phone
-
-        # Remove leading 0 if present (01xxx -> 1xxx)
-        if mobile_number.startswith('0'):
-            mobile_number = mobile_number[1:]
-
-        return country_code_formatted, mobile_number
-
-    else:
-        # Unsupported country
-        return None, None
 
 
 def normalize_phone_number(phone, country_code):
-    """Normalize phone number format (legacy function for backward compatibility)"""
+    """Normalize phone number format"""
     # Remove all non-digits
     phone_digits = re.sub(r'\D', '', phone)
 
@@ -277,7 +244,7 @@ def normalize_phone_number(phone, country_code):
 
 
 def generate_otp():
-    """Generate 6-digit OTP"""
+    """Generate 6-digit OTP for CopyCode"""
     return str(random.randint(100000, 999999))
 
 
@@ -444,7 +411,7 @@ def export_otp_sessions(request, export_format):
             from django.db.models import Q
             queryset = queryset.filter(
                 Q(phone_number__icontains=search_value) |
-                Q(verification_id__icontains=search_value) |
+                Q(otp_code__icontains=search_value) |
                 Q(ip_address__icontains=search_value)
             )
 
@@ -455,7 +422,7 @@ def export_otp_sessions(request, export_format):
             response['Content-Disposition'] = f'attachment; filename="otp_sessions_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv"'
 
             writer = csv.writer(response)
-            writer.writerow(['ID', 'Phone Number', 'Verification ID', 'Created At', 'Status', 'IP Address'])
+            writer.writerow(['ID', 'Phone Number', 'OTP Code', 'Created At', 'Status', 'IP Address'])
 
             for otp in queryset:
                 is_expired = otp.is_expired()
@@ -465,15 +432,18 @@ def export_otp_sessions(request, export_format):
                 elif is_expired:
                     status = 'Expired'
                 else:
-                    status = 'Active'
+                    status = 'Not Used'
 
                 # Mask phone number
                 masked_phone = otp.phone_number[:4] + '*' * (len(otp.phone_number) - 8) + otp.phone_number[-4:] if otp.phone_number else ''
 
+                # Mask OTP code for security
+                masked_otp = otp.otp_code[:2] + '****' if otp.otp_code else 'N/A'
+
                 writer.writerow([
                     otp.id,
                     masked_phone,
-                    otp.verification_id or '',
+                    masked_otp,
                     otp.created_at.strftime('%Y-%m-%d %H:%M:%S'),
                     status,
                     otp.ip_address or ''
@@ -492,7 +462,7 @@ def export_otp_sessions(request, export_format):
                 ws.title = "OTP Sessions"
 
                 # Headers
-                headers = ['ID', 'Phone Number', 'Verification ID', 'Created At', 'Status', 'IP Address']
+                headers = ['ID', 'Phone Number', 'OTP Code', 'Created At', 'Status', 'IP Address']
                 for col, header in enumerate(headers, 1):
                     cell = ws.cell(row=1, column=col, value=header)
                     cell.font = Font(bold=True)
@@ -507,14 +477,15 @@ def export_otp_sessions(request, export_format):
                     elif is_expired:
                         status = 'Expired'
                     else:
-                        status = 'Active'
+                        status = 'Not Used'
 
-                    # Mask phone number
+                    # Mask phone number and OTP code
                     masked_phone = otp.phone_number[:4] + '*' * (len(otp.phone_number) - 8) + otp.phone_number[-4:] if otp.phone_number else ''
+                    masked_otp = otp.otp_code[:2] + '****' if otp.otp_code else 'N/A'
 
                     ws.cell(row=row, column=1, value=otp.id)
                     ws.cell(row=row, column=2, value=masked_phone)
-                    ws.cell(row=row, column=3, value=otp.verification_id or '')
+                    ws.cell(row=row, column=3, value=masked_otp)
                     ws.cell(row=row, column=4, value=otp.created_at.strftime('%Y-%m-%d %H:%M:%S'))
                     ws.cell(row=row, column=5, value=status)
                     ws.cell(row=row, column=6, value=otp.ip_address or '')

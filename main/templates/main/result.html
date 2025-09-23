@@ -158,17 +158,28 @@
 
 {% block extra_js %}
 <script>
-// Global variables  
+// Global variables
 let phoneNumber = '{{ verified_phone|default:"" }}';
 const phoneNotVerified = {{ phone_not_verified|yesno:"true,false" }};
 const skipOTP = {{ skip_otp|yesno:"true,false" }};
 
+// OTP Configuration - dynamically loaded from backend
+const OTP_CONFIG = {
+    provider: '{{ otp_provider|default:"copycode" }}',
+    digits: {{ otp_digits|default:6 }},
+    expiry: {{ otp_expiry_seconds|default:300 }}  // Automatically synced from backend OTP_EXPIRY_MINUTES
+};
+
 // Auto-start verification process
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
     console.log('Debug - skipOTP:', skipOTP);
     console.log('Debug - phoneNumber:', phoneNumber);
     console.log('Debug - phoneNotVerified:', phoneNotVerified);
-    
+    console.log('Debug - OTP_CONFIG loaded from backend:', OTP_CONFIG);
+
+    // Detect OTP provider configuration from backend
+    await detectOTPConfig();
+
     if (skipOTP && phoneNumber) {
         // Phone already verified, load results directly
         console.log('Loading results directly - phone already verified');
@@ -179,6 +190,18 @@ document.addEventListener('DOMContentLoaded', function() {
         showOTPVerification();
     }
 });
+
+// Detect OTP configuration from backend
+async function detectOTPConfig() {
+    try {
+        // You can add an API endpoint to get OTP config or detect from first OTP send response
+        // For now, we'll determine based on response structure
+        console.log('Using CopyCode configuration: 6 digits, 5 minutes expiry');
+        // OTP_CONFIG is already set correctly for CopyCode
+    } catch (error) {
+        console.log('Using default CopyCode configuration');
+    }
+}
 
 // Check phone status before asking for OTP
 async function checkPhoneStatus(phoneNumber, countryCode) {
@@ -336,11 +359,7 @@ async function sendOTPCode() {
         const data = await response.json();
         
         if (data.success) {
-            // Show verification_id for testing in console (but don't use it for auto-validation)
-            if (data.verification_id) {
-                console.log('Verification ID:', data.verification_id);
-                console.log('WhatsApp OTP sent successfully');
-            }
+            console.log('CopyCode OTP sent successfully');
             
             await showOTPInput(null, true); // No auto OTP, user must enter manually from WhatsApp
         } else {
@@ -361,7 +380,7 @@ async function sendOTPCode() {
 async function showOTPInput(testOTP = null, isNewOTP = true) {
     // Initialize timer only for new OTP requests
     if (isNewOTP) {
-        window.otpTimeLeft = 60;
+        window.otpTimeLeft = OTP_CONFIG.expiry; // Use configured expiry time
         window.otpCancelButtonDisabled = true;
         window.otpVerificationSuccess = false; // Reset success flag
         
@@ -381,7 +400,7 @@ async function showOTPInput(testOTP = null, isNewOTP = true) {
                         <i class="fas fa-check-circle"></i>
                         <span>OTP has been sent to ${phoneNumber}</span>
                     </div>
-                    <input type="text" id="otp-input" class="swal2-input text-center text-2xl" placeholder="1234" maxlength="4" autocomplete="off" style="font-size: 1.5rem; text-align: center; letter-spacing: 0.5rem;">
+                    <input type="text" id="otp-input" class="swal2-input text-center text-2xl" placeholder="Enter ${OTP_CONFIG.digits}-digit code" maxlength="${OTP_CONFIG.digits}" autocomplete="off" style="font-size: 1.5rem; text-align: center; letter-spacing: 0.5rem;">
                     <div class="text-sm text-gray-500" id="otp-timer">Valid for <strong>${window.otpTimeLeft}</strong> seconds</div>
                 </div>
             `,
@@ -409,9 +428,12 @@ async function showOTPInput(testOTP = null, isNewOTP = true) {
                     }
                 }
                 
-                // Update timer display with current value
+                // Update timer display with current value (show minutes:seconds)
                 if (window.otpTimeLeft > 0) {
-                    timer.innerHTML = `Valid for <strong>${window.otpTimeLeft}</strong> seconds`;
+                    const minutes = Math.floor(window.otpTimeLeft / 60);
+                    const seconds = window.otpTimeLeft % 60;
+                    const timeDisplay = minutes > 0 ? `${minutes}:${seconds.toString().padStart(2, '0')}` : `${seconds} seconds`;
+                    timer.innerHTML = `Valid for <strong>${timeDisplay}</strong>`;
                 } else {
                     timer.innerHTML = '<strong class="text-red-500">OTP code expired - Please resend</strong>';
                 }
@@ -419,11 +441,11 @@ async function showOTPInput(testOTP = null, isNewOTP = true) {
                 // Focus on input
                 input.focus();
                 
-                // Only allow numbers and auto-submit on 4 digits
+                // Only allow numbers and auto-submit when reaching configured digit length
                 input.addEventListener('input', async function(e) {
                     this.value = this.value.replace(/[^0-9]/g, '');
-                    if (this.value.length === 4) {
-                        // Auto verify when 4 digits are entered
+                    if (this.value.length === OTP_CONFIG.digits) {
+                        // Auto verify when all digits are entered
                         const otpCode = this.value;
                         
                         // Disable input while verifying
@@ -466,8 +488,11 @@ async function showOTPInput(testOTP = null, isNewOTP = true) {
                 if (window.otpTimeLeft > 0 && !window.otpTimerInterval) {
                     window.otpTimerInterval = setInterval(() => {
                         window.otpTimeLeft--;
-                        timer.innerHTML = `Valid for <strong>${window.otpTimeLeft}</strong> seconds`;
-                        
+                        const minutes = Math.floor(window.otpTimeLeft / 60);
+                        const seconds = window.otpTimeLeft % 60;
+                        const timeDisplay = minutes > 0 ? `${minutes}:${seconds.toString().padStart(2, '0')}` : `${seconds} seconds`;
+                        timer.innerHTML = `Valid for <strong>${timeDisplay}</strong>`;
+
                         if (window.otpTimeLeft <= 0) {
                             clearInterval(window.otpTimerInterval);
                             window.otpTimerInterval = null;
