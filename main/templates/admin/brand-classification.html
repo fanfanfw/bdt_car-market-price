@@ -364,7 +364,8 @@ function confirmAssignment() {
         },
         body: JSON.stringify({
             brand_name: currentAssignData.brand,
-            category_id: categoryId
+            category_id: categoryId,
+            mapping_id: currentAssignData.mappingId
         })
     })
     .then(response => response.json())
@@ -406,7 +407,8 @@ function removeBrandClassification(brandName, mappingId) {
                     'X-CSRFToken': getCsrfToken()
                 },
                 body: JSON.stringify({
-                    brand: brandName
+                    brand_name: brandName,
+                    mapping_id: mappingId
                 })
             })
             .then(response => response.json())

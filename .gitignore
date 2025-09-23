@@ -23,7 +23,7 @@ note.txt
 *.md
 *.pdf
 *.docx
-
+*.backup
 # CSS output files
 main/static/main/css/output.css
 
