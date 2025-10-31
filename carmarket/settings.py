@@ -36,6 +36,7 @@ CSRF_TRUSTED_ORIGINS = [
     'https://localhost',
     'http://localhost',
     'https://aiagent.fanfanfw.biz.id',
+    'http://localhost.carmarket'
 ]
 
 # Application definition
