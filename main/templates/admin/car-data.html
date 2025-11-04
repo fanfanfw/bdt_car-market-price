@@ -77,7 +77,31 @@
             </div>
             <h2 class="text-lg font-semibold text-gray-900">Filters</h2>
         </div>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            <div class="space-y-2">
+                <label class="block text-sm font-medium text-gray-700">Brand</label>
+                <select id="brandFilter" class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" disabled>
+                    <option value="">All Brands</option>
+                </select>
+            </div>
+            <div class="space-y-2">
+                <label class="block text-sm font-medium text-gray-700">Model</label>
+                <select id="modelFilter" class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" disabled>
+                    <option value="">All Models</option>
+                </select>
+            </div>
+            <div class="space-y-2">
+                <label class="block text-sm font-medium text-gray-700">Variant</label>
+                <select id="variantFilter" class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" disabled>
+                    <option value="">All Variants</option>
+                </select>
+            </div>
+            <div class="space-y-2">
+                <label class="block text-sm font-medium text-gray-700">Year</label>
+                <select id="yearValueFilter" class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" disabled>
+                    <option value="">All Years</option>
+                </select>
+            </div>
             <div class="space-y-2">
                 <label class="block text-sm font-medium text-gray-700">Data Source</label>
                 <select id="sourceFilter" class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
@@ -85,17 +109,6 @@
                     {% for source_key, source_name in sources %}
                     <option value="{{ source_key }}">{{ source_name }}</option>
                     {% endfor %}
-                </select>
-            </div>
-            <div class="space-y-2">
-                <label class="block text-sm font-medium text-gray-700">Year Range</label>
-                <select id="yearFilter" class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                    <option value="">All Years</option>
-                    <option value="2024-">2024 and newer</option>
-                    <option value="2020-2023">2020-2023</option>
-                    <option value="2015-2019">2015-2019</option>
-                    <option value="2010-2014">2010-2014</option>
-                    <option value="-2009">Before 2010</option>
                 </select>
             </div>
             <div class="space-y-2">
@@ -222,8 +235,21 @@
 {% block extra_js %}
 <script>
 let carTable;
+let brandFilter, modelFilter, variantFilter, yearValueFilter;
+
+const brandsUrl = '{% url "main:get_brands" %}';
+const modelsUrl = '{% url "main:get_models" %}';
+const variantsUrl = '{% url "main:get_variants" %}';
+const yearsUrl = '{% url "main:get_years" %}';
 
 $(document).ready(function() {
+    brandFilter = $('#brandFilter');
+    modelFilter = $('#modelFilter');
+    variantFilter = $('#variantFilter');
+    yearValueFilter = $('#yearValueFilter');
+
+    initializeFilterDropdowns();
+
     // Initialize DataTable
     carTable = $('#carTable').DataTable({
         processing: true,
@@ -233,8 +259,11 @@ $(document).ready(function() {
             type: 'GET',
             data: function(d) {
                 d.source_filter = $('#sourceFilter').val();
-                d.year_filter = $('#yearFilter').val();
                 d.price_filter = $('#priceFilter').val();
+                d.brand_filter = brandFilter.val();
+                d.model_filter = modelFilter.val();
+                d.variant_filter = variantFilter.val();
+                d.year_value = yearValueFilter.val();
             }
         },
         columns: [
@@ -340,9 +369,48 @@ $(document).ready(function() {
             $('.dataTables_filter input').addClass('input input-bordered input-sm');
         }
     });
-    
     // Filter event listeners
-    $('#sourceFilter, #yearFilter, #priceFilter').on('change', function() {
+    $('#sourceFilter, #priceFilter').on('change', function() {
+        carTable.ajax.reload();
+    });
+
+    brandFilter.on('change', async function() {
+        resetModelFilter();
+        resetVariantFilter();
+        resetYearFilter();
+
+        const brand = $(this).val();
+        if (brand) {
+            await loadModels(brand);
+        }
+        carTable.ajax.reload();
+    });
+
+    modelFilter.on('change', async function() {
+        resetVariantFilter();
+        resetYearFilter();
+
+        const brand = brandFilter.val();
+        const model = $(this).val();
+        if (brand && model) {
+            await loadVariants(brand, model);
+        }
+        carTable.ajax.reload();
+    });
+
+    variantFilter.on('change', async function() {
+        resetYearFilter();
+
+        const brand = brandFilter.val();
+        const model = modelFilter.val();
+        const variant = $(this).val();
+        if (brand && model && variant) {
+            await loadYears(brand, model, variant);
+        }
+        carTable.ajax.reload();
+    });
+
+    yearValueFilter.on('change', function() {
         carTable.ajax.reload();
     });
 });
@@ -350,9 +418,141 @@ $(document).ready(function() {
 // Filter functions
 function clearFilters() {
     $('#sourceFilter').val('');
-    $('#yearFilter').val('');
     $('#priceFilter').val('');
+    brandFilter.val('');
+    modelFilter.val('');
+    variantFilter.val('');
+    yearValueFilter.val('');
+    resetModelFilter(true);
+    resetVariantFilter(true);
+    resetYearFilter(true);
     carTable.ajax.reload();
+}
+
+function initializeFilterDropdowns() {
+    setSelectOptions(brandFilter, [], 'All Brands');
+    brandFilter.prop('disabled', true);
+    resetModelFilter();
+    resetVariantFilter();
+    resetYearFilter();
+    loadBrands();
+}
+
+function setSelectOptions($select, options, placeholder) {
+    $select.empty();
+    $select.append(new Option(placeholder, ''));
+    if (Array.isArray(options)) {
+        options.forEach(option => {
+            if (option !== null && option !== undefined && option !== '') {
+                $select.append(new Option(option, option));
+            }
+        });
+    }
+}
+
+function showLoadingOption($select, text) {
+    $select.empty();
+    $select.append(new Option(text, ''));
+}
+
+function resetModelFilter(disable = true) {
+    setSelectOptions(modelFilter, [], 'All Models');
+    modelFilter.prop('disabled', disable);
+}
+
+function resetVariantFilter(disable = true) {
+    setSelectOptions(variantFilter, [], 'All Variants');
+    variantFilter.prop('disabled', disable);
+}
+
+function resetYearFilter(disable = true) {
+    setSelectOptions(yearValueFilter, [], 'All Years');
+    yearValueFilter.prop('disabled', disable);
+}
+
+async function loadBrands() {
+    try {
+        const response = await fetch(brandsUrl);
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || 'Failed to load brands');
+        }
+
+        setSelectOptions(brandFilter, data, 'All Brands');
+        brandFilter.prop('disabled', false);
+    } catch (error) {
+        console.error('Failed to load brands:', error);
+        setSelectOptions(brandFilter, [], 'All Brands');
+        brandFilter.prop('disabled', false);
+        Swal.fire('Error', 'Gagal memuat data brand.', 'error');
+    }
+}
+
+async function loadModels(brand) {
+    showLoadingOption(modelFilter, 'Loading...');
+    modelFilter.prop('disabled', true);
+
+    try {
+        const response = await fetch(`${modelsUrl}?brand=${encodeURIComponent(brand)}`);
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || 'Failed to load models');
+        }
+
+        setSelectOptions(modelFilter, data, 'All Models');
+        modelFilter.prop('disabled', data.length === 0);
+    } catch (error) {
+        console.error('Failed to load models:', error);
+        setSelectOptions(modelFilter, [], 'All Models');
+        modelFilter.prop('disabled', true);
+        Swal.fire('Error', 'Gagal memuat data model.', 'error');
+    }
+}
+
+async function loadVariants(brand, model) {
+    showLoadingOption(variantFilter, 'Loading...');
+    variantFilter.prop('disabled', true);
+
+    try {
+        const response = await fetch(`${variantsUrl}?brand=${encodeURIComponent(brand)}&model=${encodeURIComponent(model)}`);
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || 'Failed to load variants');
+        }
+
+        setSelectOptions(variantFilter, data, 'All Variants');
+        variantFilter.prop('disabled', data.length === 0);
+    } catch (error) {
+        console.error('Failed to load variants:', error);
+        setSelectOptions(variantFilter, [], 'All Variants');
+        variantFilter.prop('disabled', true);
+        Swal.fire('Error', 'Gagal memuat data varian.', 'error');
+    }
+}
+
+async function loadYears(brand, model, variant) {
+    showLoadingOption(yearValueFilter, 'Loading...');
+    yearValueFilter.prop('disabled', true);
+
+    try {
+        const response = await fetch(`${yearsUrl}?brand=${encodeURIComponent(brand)}&model=${encodeURIComponent(model)}&variant=${encodeURIComponent(variant)}`);
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || 'Failed to load years');
+        }
+
+        setSelectOptions(yearValueFilter, data, 'All Years');
+        yearValueFilter.prop('disabled', data.length === 0);
+    } catch (error) {
+        console.error('Failed to load years:', error);
+        setSelectOptions(yearValueFilter, [], 'All Years');
+        yearValueFilter.prop('disabled', true);
+        Swal.fire('Error', 'Gagal memuat data tahun.', 'error');
+    }
 }
 
 function refreshTable() {

@@ -128,7 +128,11 @@ class FastAPIClient:
         order_direction: str = "asc",
         source_filter: Optional[str] = None,
         year_filter: Optional[str] = None,
-        price_filter: Optional[str] = None
+        price_filter: Optional[str] = None,
+        brand_filter: Optional[str] = None,
+        model_filter: Optional[str] = None,
+        variant_filter: Optional[str] = None,
+        year_value: Optional[int] = None
     ) -> Dict[str, Any]:
         """Get car records for DataTables"""
         params = {
@@ -148,6 +152,14 @@ class FastAPIClient:
             params['year_filter'] = year_filter
         if price_filter:
             params['price_filter'] = price_filter
+        if brand_filter:
+            params['brand_filter'] = brand_filter
+        if model_filter:
+            params['model_filter'] = model_filter
+        if variant_filter:
+            params['variant_filter'] = variant_filter
+        if year_value:
+            params['year_value'] = year_value
         
         return self._make_request('GET', '/django/cars', params=params)
     

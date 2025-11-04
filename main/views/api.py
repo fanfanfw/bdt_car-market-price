@@ -111,6 +111,19 @@ def car_data_api(request):
             source_filter = request.GET.get('source_filter')
             year_filter = request.GET.get('year_filter')
             price_filter = request.GET.get('price_filter')
+            brand_filter = request.GET.get('brand_filter')
+            model_filter = request.GET.get('model_filter')
+            variant_filter = request.GET.get('variant_filter')
+            year_value_raw = request.GET.get('year_value')
+            year_value = int(year_value_raw) if year_value_raw and year_value_raw.isdigit() else None
+
+            # Normalize string filters
+            source_filter = source_filter.strip() if source_filter else None
+            year_filter = year_filter.strip() if year_filter else None
+            price_filter = price_filter.strip() if price_filter else None
+            brand_filter = brand_filter.strip() if brand_filter else None
+            model_filter = model_filter.strip() if model_filter else None
+            variant_filter = variant_filter.strip() if variant_filter else None
 
             # Call FastAPI
             result = get_car_records(
@@ -122,7 +135,11 @@ def car_data_api(request):
                 order_direction=order_direction,
                 source_filter=source_filter,
                 year_filter=year_filter,
-                price_filter=price_filter
+                price_filter=price_filter,
+                brand_filter=brand_filter,
+                model_filter=model_filter,
+                variant_filter=variant_filter,
+                year_value=year_value
             )
 
             return JsonResponse(result)
