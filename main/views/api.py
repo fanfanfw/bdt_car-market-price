@@ -146,7 +146,8 @@ def car_detail_api(request, car_id):
     @user_passes_test(is_staff_user, login_url='/login/')
     def _car_detail_api(request, car_id):
         try:
-            car_detail = get_car_detail(car_id)
+            source = request.GET.get('source') or None
+            car_detail = get_car_detail(car_id, source)
             # Format response with success flag for template compatibility
             return JsonResponse({
                 'success': True,

@@ -264,7 +264,7 @@ def car_data_view(request):
             'total_cars': fastapi_stats.get('car_records', 0),
             'total_brands': fastapi_stats.get('total_brands', 0),
             'total_models': fastapi_stats.get('total_models', 0),
-            'sources': [('carlistmy', 'CarlistMY'), ('mudahmy', 'MudahMY')],
+            'sources': [('carlistmy', 'CarlistMY'), ('mudahmy', 'MudahMY'), ('carsome', 'Carsome')],
         }
     except APIError:
         # Fallback if FastAPI fails
@@ -273,7 +273,7 @@ def car_data_view(request):
             'total_cars': 0,
             'total_brands': 0,
             'total_models': 0,
-            'sources': [('carlistmy', 'CarlistMY'), ('mudahmy', 'MudahMY')],
+            'sources': [('carlistmy', 'CarlistMY'), ('mudahmy', 'MudahMY'), ('carsome', 'Carsome')],
         }
 
     return render(request, 'admin/car-data.html', context)

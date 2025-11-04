@@ -151,9 +151,11 @@ class FastAPIClient:
         
         return self._make_request('GET', '/django/cars', params=params)
     
-    def get_car_detail(self, car_id: int) -> Dict[str, Any]:
+    def get_car_detail(self, car_id: int, source: Optional[str] = None) -> Dict[str, Any]:
         """Get detailed car information"""
-        return self._make_request('GET', f'/django/car/{car_id}')
+        params = {'source': source} if source else None
+        kwargs = {'params': params} if params else {}
+        return self._make_request('GET', f'/django/car/{car_id}', **kwargs)
     
     def get_statistics(self) -> Dict[str, Any]:
         """Get dashboard statistics"""
@@ -247,9 +249,9 @@ def get_car_records(**kwargs) -> Dict[str, Any]:
     """Get car records for DataTables"""
     return api_client.get_car_records(**kwargs)
 
-def get_car_detail(car_id: int) -> Dict[str, Any]:
+def get_car_detail(car_id: int, source: Optional[str] = None) -> Dict[str, Any]:
     """Get detailed car information"""
-    return api_client.get_car_detail(car_id)
+    return api_client.get_car_detail(car_id, source)
 
 def get_statistics() -> Dict[str, Any]:
     """Get dashboard statistics"""
