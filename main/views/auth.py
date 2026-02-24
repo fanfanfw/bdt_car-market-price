@@ -13,7 +13,8 @@ from decouple import config
 
 from ..models import VerifiedPhone, OTPSession, CalculationLog
 from .utils import (
-    normalize_phone_number, get_client_ip, get_car_statistics, generate_otp
+    normalize_phone_number, get_client_ip, get_car_statistics, generate_otp,
+    is_otp_bypass_phone
 )
 from ..copycode_client import copycode_client, CopyCodeAPIError
 
@@ -32,6 +33,24 @@ def check_phone_status(request):
 
         # Normalize phone number
         full_phone = normalize_phone_number(phone, country_code)
+
+        # OTP bypass (configured in env OTP_BYPASS_PHONE)
+        if is_otp_bypass_phone(full_phone):
+            response = JsonResponse({
+                'verified': True,
+                'phone': full_phone,
+                'message': 'OTP bypass enabled for this phone number.'
+            })
+
+            cookie_age = getattr(settings, 'OTP_SESSION_COOKIE_AGE', 86400)
+            response.set_cookie(
+                'verified_phone',
+                full_phone,
+                max_age=cookie_age,
+                httponly=False,
+                samesite='Strict'
+            )
+            return response
 
         # Check if phone exists and is active
         try:
@@ -130,6 +149,14 @@ def send_otp(request):
         if not phone:
             return JsonResponse({'error': 'Phone number required'}, status=400)
 
+        # OTP bypass - do not send OTP for bypassed phones
+        full_phone = normalize_phone_number(phone, country_code)
+        if is_otp_bypass_phone(full_phone):
+            return JsonResponse({
+                'success': False,
+                'error': 'OTP bypass enabled for this phone number. No OTP is required.'
+            }, status=400)
+
         # Use CopyCode API for OTP
         return _send_otp_copycode(request, phone, country_code)
 
@@ -209,6 +236,24 @@ def verify_otp(request):
 
         if not phone or not otp_code:
             return JsonResponse({'error': 'Phone number and OTP required'}, status=400)
+
+        # OTP bypass - treat as verified without OTP
+        full_phone = normalize_phone_number(phone, country_code)
+        if is_otp_bypass_phone(full_phone):
+            response = JsonResponse({
+                'success': True,
+                'phone': full_phone,
+                'message': 'OTP bypass enabled for this phone number.'
+            })
+            cookie_age = getattr(settings, 'OTP_SESSION_COOKIE_AGE', 86400)
+            response.set_cookie(
+                'verified_phone',
+                full_phone,
+                max_age=cookie_age,
+                httponly=False,
+                samesite='Strict'
+            )
+            return response
 
         # Use CopyCode for OTP verification
         return _verify_otp_copycode(request, phone, otp_code, country_code)
@@ -304,21 +349,25 @@ def get_secure_results(request):
         if not phone_number:
             return JsonResponse({'error': 'Phone number required'}, status=400)
 
-        # Verify phone is active
-        try:
-            verified_phone = VerifiedPhone.objects.get(phone_number=phone_number)
+        is_bypass = is_otp_bypass_phone(phone_number)
+        verified_phone = None
 
-            # Check if phone is manually set to inactive
-            if not verified_phone.is_active:
-                return JsonResponse({'error': 'Phone verification is inactive. Please verify again.'}, status=403)
+        # Verify phone is active unless bypass is enabled
+        if not is_bypass:
+            try:
+                verified_phone = VerifiedPhone.objects.get(phone_number=phone_number)
 
-            if verified_phone.is_expired():
-                # Mark as inactive and return error
-                verified_phone.is_active = False
-                verified_phone.save()
-                return JsonResponse({'error': 'Phone verification expired. Please verify again.'}, status=403)
-        except VerifiedPhone.DoesNotExist:
-            return JsonResponse({'error': 'Phone not verified'}, status=403)
+                # Check if phone is manually set to inactive
+                if not verified_phone.is_active:
+                    return JsonResponse({'error': 'Phone verification is inactive. Please verify again.'}, status=403)
+
+                if verified_phone.is_expired():
+                    # Mark as inactive and return error
+                    verified_phone.is_active = False
+                    verified_phone.save()
+                    return JsonResponse({'error': 'Phone verification expired. Please verify again.'}, status=403)
+            except VerifiedPhone.DoesNotExist:
+                return JsonResponse({'error': 'Phone not verified'}, status=403)
 
         # Get calculation data from session
         calculation_data = request.session.get('calculation_request')
@@ -336,13 +385,14 @@ def get_secure_results(request):
         )
 
         if result_data:
-            # Update access count
-            verified_phone.access_count += 1
-            verified_phone.save()
+            # Update access count (non-bypass only)
+            if verified_phone is not None:
+                verified_phone.access_count += 1
+                verified_phone.save()
 
             # Log the calculation for analytics
             CalculationLog.objects.create(
-                phone_number=verified_phone.phone_number,
+                phone_number=(verified_phone.phone_number if verified_phone is not None else phone_number),
                 brand=calculation_data['brand'],
                 model=calculation_data['model'],
                 variant=calculation_data['variant'],

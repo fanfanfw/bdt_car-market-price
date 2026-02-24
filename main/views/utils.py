@@ -1,16 +1,51 @@
 """
 Utility functions and helpers for views
 """
+from functools import lru_cache
 import random
 import re
 from django.http import HttpResponse
 from django.utils import timezone
 from datetime import timedelta
+from decouple import config
 
 from ..models import (
     MileageConfiguration, BrandCategory, PriceTier, VerifiedPhone, CalculationLog
 )
 from ..api_client import get_price_estimation, APIError
+
+
+def _normalize_phone_e164_like(phone: str) -> str:
+    """
+    Normalize to a simple +<digits> form for consistent matching.
+    This is not a full E.164 validator; it only strips non-digits.
+    """
+    digits = re.sub(r"\D", "", phone or "")
+    return f"+{digits}" if digits else ""
+
+
+@lru_cache(maxsize=1)
+def get_otp_bypass_phones() -> set[str]:
+    """
+    Return a set of normalized phone numbers that bypass OTP.
+
+    Configure via env var OTP_BYPASS_PHONE.
+    Example:
+      OTP_BYPASS_PHONE=+60123456789,+6281234567890
+    """
+    raw = config("OTP_BYPASS_PHONE", default="") or ""
+    if not raw.strip():
+        return set()
+
+    # Split by commas, whitespace, or semicolons.
+    parts = [p.strip() for p in re.split(r"[,\s;]+", raw) if p and p.strip()]
+    return {p for p in (_normalize_phone_e164_like(x) for x in parts) if p}
+
+
+def is_otp_bypass_phone(phone: str) -> bool:
+    """Check whether a phone number is configured to bypass OTP."""
+    normalized = _normalize_phone_e164_like(phone)
+    return bool(normalized) and normalized in get_otp_bypass_phones()
 
 
 def get_mileage_config():

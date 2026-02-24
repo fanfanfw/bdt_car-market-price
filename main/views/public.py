@@ -6,7 +6,7 @@ from django.contrib import messages
 from django.utils import timezone
 
 from ..models import VehicleConditionCategory, VerifiedPhone
-from .utils import get_car_statistics
+from .utils import get_car_statistics, is_otp_bypass_phone
 
 
 def index(request):
@@ -67,17 +67,21 @@ def result(request):
 
             if verified_phone_cookie:
                 # Check if phone is still active in database (1 month verification)
-                try:
-                    verified_phone = VerifiedPhone.objects.get(phone_number=verified_phone_cookie)
-                    if not verified_phone.is_expired() and verified_phone.is_active:
-                        phone_already_verified = True
-                        context['verified_phone'] = verified_phone_cookie
-                    else:
-                        # Phone expired, mark for cookie deletion
+                if is_otp_bypass_phone(verified_phone_cookie):
+                    phone_already_verified = True
+                    context['verified_phone'] = verified_phone_cookie
+                else:
+                    try:
+                        verified_phone = VerifiedPhone.objects.get(phone_number=verified_phone_cookie)
+                        if not verified_phone.is_expired() and verified_phone.is_active:
+                            phone_already_verified = True
+                            context['verified_phone'] = verified_phone_cookie
+                        else:
+                            # Phone expired, mark for cookie deletion
+                            cookie_should_be_deleted = True
+                    except VerifiedPhone.DoesNotExist:
+                        # Phone not found in database, mark for cookie deletion
                         cookie_should_be_deleted = True
-                except VerifiedPhone.DoesNotExist:
-                    # Phone not found in database, mark for cookie deletion
-                    cookie_should_be_deleted = True
 
             context['phone_not_verified'] = not phone_already_verified
             context['car_info'] = f"{brand} {model} {variant} ({year})"
