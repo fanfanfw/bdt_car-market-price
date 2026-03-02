@@ -162,10 +162,10 @@ def openapi_schema(request):
                 'PriceEstimateRequest': {
                     'type': 'object',
                     'properties': {
-                        'brand': {'type': 'string', 'example': 'Toyota'},
-                        'model': {'type': 'string', 'example': 'Vios'},
-                        'variant': {'type': 'string', 'example': '1.5 G'},
-                        'year': {'type': 'integer', 'example': 2020},
+                        'brand': {'type': 'string', 'example': 'TOYOTA'},
+                        'model': {'type': 'string', 'example': 'YARIS'},
+                        'variant': {'type': 'string', 'example': 'E'},
+                        'year': {'type': 'integer', 'example': 2025},
                         'mileage': {'type': 'integer', 'nullable': True, 'example': 85000},
                         'condition': {
                             'type': 'object',
@@ -175,11 +175,11 @@ def openapi_schema(request):
                                 'interior_condition': 'good',
                                 'mechanical_condition': 'fair',
                                 'accident_history': 'none',
-                                'service_history': 'complete',
+                                'service_history': 'full',
                                 'number_of_owners': '2_owners',
                                 'tires_brakes': 'fair',
                                 'modifications': 'minor',
-                                'market_demand': 'normal',
+                                'market_demand': 'average',
                             },
                         },
                     },
