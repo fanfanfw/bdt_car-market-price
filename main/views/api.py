@@ -45,7 +45,6 @@ def get_categories(request):
         return JsonResponse({'error': str(e)}, status=500)
 
 
-@require_api_key
 def get_brands_api(request):
     """API endpoint to get all brands"""
     try:
@@ -58,7 +57,6 @@ def get_brands_api(request):
         return JsonResponse({'error': 'FastAPI connection failed'}, status=500)
 
 
-@require_api_key
 def get_models_api(request):
     """API endpoint to get models for selected brand"""
     try:
@@ -74,7 +72,6 @@ def get_models_api(request):
         return JsonResponse({'error': 'FastAPI connection failed'}, status=500)
 
 
-@require_api_key
 def get_variants_api(request):
     """API endpoint to get variants for selected brand and model"""
     try:
@@ -92,7 +89,6 @@ def get_variants_api(request):
         return JsonResponse({'error': 'FastAPI connection failed'}, status=500)
 
 
-@require_api_key
 def get_years_api(request):
     """API endpoint to get years for selected brand, model, and variant"""
     try:
@@ -197,7 +193,6 @@ def openapi_schema(request):
                     'tags': ['Lookup'],
                     'summary': 'Get brands',
                     'description': 'Returns all available car brands.',
-                    'security': [{'ApiKeyAuth': []}],
                     'responses': {
                         '200': {
                             'description': 'Brand list',
@@ -211,7 +206,6 @@ def openapi_schema(request):
                                 }
                             },
                         },
-                        '401': {'description': 'Invalid API key'},
                     },
                 }
             },
@@ -220,7 +214,6 @@ def openapi_schema(request):
                     'tags': ['Lookup'],
                     'summary': 'Get models by brand',
                     'description': 'Returns models for a selected brand.',
-                    'security': [{'ApiKeyAuth': []}],
                     'parameters': [
                         {
                             'name': 'brand',
@@ -244,7 +237,6 @@ def openapi_schema(request):
                             },
                         },
                         '400': {'description': 'Brand parameter required'},
-                        '401': {'description': 'Invalid API key'},
                     },
                 }
             },
@@ -253,7 +245,6 @@ def openapi_schema(request):
                     'tags': ['Lookup'],
                     'summary': 'Get variants by brand and model',
                     'description': 'Returns variants for a selected brand and model.',
-                    'security': [{'ApiKeyAuth': []}],
                     'parameters': [
                         {
                             'name': 'brand',
@@ -284,7 +275,6 @@ def openapi_schema(request):
                             },
                         },
                         '400': {'description': 'Brand and model parameters required'},
-                        '401': {'description': 'Invalid API key'},
                     },
                 }
             },
@@ -293,7 +283,6 @@ def openapi_schema(request):
                     'tags': ['Lookup'],
                     'summary': 'Get years by brand, model, and variant',
                     'description': 'Returns years for a selected brand, model, and variant.',
-                    'security': [{'ApiKeyAuth': []}],
                     'parameters': [
                         {
                             'name': 'brand',
@@ -331,7 +320,6 @@ def openapi_schema(request):
                             },
                         },
                         '400': {'description': 'Brand, model, and variant parameters required'},
-                        '401': {'description': 'Invalid API key'},
                     },
                 }
             },
