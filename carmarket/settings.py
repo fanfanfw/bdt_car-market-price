@@ -163,6 +163,7 @@ OTP_SESSION_COOKIE_AGE = 86400  # 1 day in seconds (for user convenience)
 FASTAPI_BASE_URL = config('FASTAPI_BASE_URL', default='http://localhost:8000/api')
 DJANGO_SECRET_KEY = config('DJANGO_SECRET_KEY', default='django-unlimited-access')
 API_REQUEST_TIMEOUT = config('API_REQUEST_TIMEOUT', default=30, cast=int)
+API_KEY = config('API_KEY', default='')
 
 # Cache Settings (for API responses)
 CACHES = {

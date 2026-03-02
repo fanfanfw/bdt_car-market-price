@@ -13,7 +13,10 @@ urlpatterns = [
     path('api/models/', views.get_models_api, name='get_models'),
     path('api/variants/', views.get_variants_api, name='get_variants'),
     path('api/years/', views.get_years_api, name='get_years'),
+    path('api/price-estimate/', views.price_estimate_api, name='price_estimate_api'),
     path('api/condition-options/', views.get_condition_options_api, name='get_condition_options'),
+    path('api/docs/', views.swagger_ui, name='swagger_ui'),
+    path('api/docs/openapi.json', views.openapi_schema, name='openapi_schema'),
     
     # OTP system APIs
     path('api/check-phone/', views.check_phone_status, name='check_phone_status'),
