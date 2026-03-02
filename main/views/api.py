@@ -4,7 +4,7 @@ API endpoints for data retrieval
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 
-from ..models import Category
+from ..models import Category, VehicleConditionCategory
 from ..api_client import (
     get_brands, get_models, get_variants, get_years, get_car_records,
     get_car_detail, APIError, APINotFoundError
@@ -80,6 +80,37 @@ def get_years_api(request):
         return JsonResponse({'error': str(e)}, status=500)
     except Exception as e:
         return JsonResponse({'error': 'FastAPI connection failed'}, status=500)
+
+
+def get_condition_options_api(request):
+    """API endpoint to get dynamic condition categories and option codes."""
+    try:
+        categories = (
+            VehicleConditionCategory.objects.filter(is_active=True)
+            .exclude(category_key__in=['brand_category', 'price_tier'])
+            .prefetch_related('options')
+            .order_by('order')
+        )
+
+        payload = []
+        for category in categories:
+            options = []
+            for option in category.options.all():
+                options.append({
+                    'option_code': option.option_code,
+                    'label': option.label,
+                    'reduction_percentage': float(option.reduction_percentage),
+                })
+
+            payload.append({
+                'category_key': category.category_key,
+                'display_name': category.display_name,
+                'options': options,
+            })
+
+        return JsonResponse({'categories': payload})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
 
 
 def car_data_api(request):

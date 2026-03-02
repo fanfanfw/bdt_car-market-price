@@ -1,5 +1,6 @@
 from django.db import models
 from django.utils import timezone
+from django.utils.text import slugify
 from datetime import timedelta
 
 
@@ -246,10 +247,20 @@ class VehicleConditionCategory(models.Model):
         return self.display_name
 
 
+def normalize_option_code(value: str) -> str:
+    """Normalize option code into a stable machine-friendly token."""
+    normalized = slugify((value or "").strip()).replace("-", "_")
+    return normalized[:100]
+
+
 class ConditionOption(models.Model):
     """Options for each condition category"""
     category = models.ForeignKey(VehicleConditionCategory, on_delete=models.CASCADE, related_name='options')
-    
+    option_code = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="Stable API code for integration (example: excellent, poor, no_accident)"
+    )
     label = models.CharField(max_length=100, help_text="Display label (e.g., 'Excellent', 'Good')")
     reduction_percentage = models.DecimalField(
         max_digits=5, decimal_places=2, 
@@ -263,10 +274,43 @@ class ConditionOption(models.Model):
     class Meta:
         db_table = 'condition_options'
         ordering = ['category__order', 'order']
-        unique_together = [['category', 'label']]
+        unique_together = [['category', 'label'], ['category', 'option_code']]
+
+    @classmethod
+    def generate_unique_code(cls, category_id: int, seed: str, exclude_id: int | None = None) -> str:
+        """Generate a unique option code inside a category."""
+        base_code = normalize_option_code(seed) or 'option'
+        candidate = base_code
+        suffix = 2
+
+        queryset = cls.objects.filter(category_id=category_id)
+        if exclude_id is not None:
+            queryset = queryset.exclude(id=exclude_id)
+
+        while queryset.filter(option_code=candidate).exists():
+            candidate = f"{base_code}_{suffix}"
+            suffix += 1
+
+        return candidate
+
+    def save(self, *args, **kwargs):
+        if not self.category_id:
+            raise ValueError("Condition option must have a category.")
+
+        if self.option_code:
+            self.option_code = normalize_option_code(self.option_code)
+
+        if not self.option_code:
+            self.option_code = self.generate_unique_code(
+                category_id=self.category_id,
+                seed=self.label,
+                exclude_id=self.id,
+            )
+
+        super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.category.display_name}: {self.label} (-{self.reduction_percentage}%)"
+        return f"{self.category.display_name}: {self.label} [{self.option_code}] (-{self.reduction_percentage}%)"
 
 
 class PriceTier(models.Model):

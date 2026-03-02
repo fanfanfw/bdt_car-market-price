@@ -13,6 +13,7 @@ urlpatterns = [
     path('api/models/', views.get_models_api, name='get_models'),
     path('api/variants/', views.get_variants_api, name='get_variants'),
     path('api/years/', views.get_years_api, name='get_years'),
+    path('api/condition-options/', views.get_condition_options_api, name='get_condition_options'),
     
     # OTP system APIs
     path('api/check-phone/', views.check_phone_status, name='check_phone_status'),
