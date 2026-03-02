@@ -72,12 +72,14 @@
                     <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
                         <div class="flex-1">
                             <span class="font-medium text-gray-900">{{ option.label }}</span>
+                            <span class="inline-flex px-2 py-1 ml-2 text-xs font-medium bg-slate-100 text-slate-700 rounded-full font-mono">{{ option.option_code }}</span>
                             <span class="inline-flex px-2 py-1 ml-2 text-xs font-medium bg-red-100 text-red-800 rounded-full">-{{ option.reduction_percentage }}%</span>
                         </div>
                         <div class="flex gap-1">
                             <button 
                                 class="inline-flex items-center px-2 py-1 text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded hover:bg-blue-100 hover:text-blue-700 transition-colors edit-option-btn"
                                 data-option-id="{{ option.id }}"
+                                data-option-code="{{ option.option_code }}"
                                 data-label="{{ option.label }}"
                                 data-percentage="{{ option.reduction_percentage }}"
                                 title="Edit Option"
@@ -128,6 +130,16 @@
             
             <div class="p-6">
                 <form id="editOptionForm" class="space-y-4">
+                    <div class="space-y-2">
+                        <label class="block text-sm font-medium text-gray-700">Option Code (Stable API Key)</label>
+                        <input
+                            type="text"
+                            id="editOptionCode"
+                            class="block w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 font-mono text-sm"
+                            readonly
+                        >
+                        <p class="text-xs text-gray-500">This code is used by external integrations and should not change.</p>
+                    </div>
                     <div class="space-y-2">
                         <label class="block text-sm font-medium text-gray-700">Option Label</label>
                         <input 
@@ -202,6 +214,16 @@
                         >
                     </div>
                     <div class="space-y-2">
+                        <label class="block text-sm font-medium text-gray-700">Option Code (Optional)</label>
+                        <input
+                            type="text"
+                            id="addOptionCode"
+                            class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 font-mono text-sm"
+                            placeholder="example: excellent"
+                        >
+                        <p class="text-xs text-gray-500">If empty, code will be auto-generated from label and then locked for API stability.</p>
+                    </div>
+                    <div class="space-y-2">
                         <label class="block text-sm font-medium text-gray-700">Reduction Percentage</label>
                         <div class="relative">
                             <input 
@@ -239,9 +261,11 @@ $(document).ready(function() {
     // Edit Option Modal
     $(document).on('click', '.edit-option-btn', function() {
         currentOptionId = $(this).data('option-id');
+        const optionCode = $(this).data('option-code');
         const label = $(this).data('label');
         const percentage = $(this).data('percentage');
-        
+
+        $('#editOptionCode').val(optionCode);
         $('#editOptionLabel').val(label);
         $('#editOptionPercentage').val(percentage);
         $('#editOptionModal').removeClass('hidden');
@@ -311,6 +335,7 @@ $(document).ready(function() {
         
         $('#addOptionCategoryName').val(categoryName);
         $('#addOptionLabel').val('');
+        $('#addOptionCode').val('');
         $('#addOptionPercentage').val('');
         $('#addOptionModal').removeClass('hidden');
     });
@@ -326,10 +351,16 @@ $(document).ready(function() {
         e.preventDefault();
         
         const label = $('#addOptionLabel').val().trim();
+        const optionCode = $('#addOptionCode').val().trim();
         const percentage = parseFloat($('#addOptionPercentage').val());
         
         if (!label) {
             Swal.fire('Error', 'Please enter an option label', 'error');
+            return;
+        }
+
+        if (optionCode && !/^[a-z0-9_-]+$/.test(optionCode)) {
+            Swal.fire('Error', 'Option code can only contain lowercase letters, numbers, underscore, or hyphen.', 'error');
             return;
         }
         
@@ -351,6 +382,7 @@ $(document).ready(function() {
             },
             data: JSON.stringify({
                 label: label,
+                option_code: optionCode,
                 reduction_percentage: percentage
             }),
             success: function(data) {

@@ -16,7 +16,7 @@ from io import BytesIO
 
 from ..models import (
     VerifiedPhone, OTPSession, MileageConfiguration, VehicleConditionCategory,
-    ConditionOption, Category, BrandCategory, PriceTier, CalculationLog
+    ConditionOption, Category, BrandCategory, PriceTier, CalculationLog, normalize_option_code
 )
 from ..api_client import (
     get_statistics, get_today_count, get_car_records, get_car_detail,
@@ -162,17 +162,28 @@ def condition_option_edit(request, option_id):
         option = get_object_or_404(ConditionOption, id=option_id)
         data = json.loads(request.body)
 
-        option.label = data.get('label', '').strip()
-        option.reduction_percentage = float(data.get('reduction_percentage', 0))
+        label = data.get('label', '').strip()
+        try:
+            reduction_percentage = float(data.get('reduction_percentage', 0))
+        except (TypeError, ValueError):
+            return JsonResponse({'error': 'Reduction percentage must be numeric'}, status=400)
+        if reduction_percentage < 0 or reduction_percentage > 100:
+            return JsonResponse({'error': 'Reduction percentage must be between 0 and 100'}, status=400)
 
-        if not option.label:
+        if not label:
             return JsonResponse({'error': 'Option label is required'}, status=400)
 
+        if option.category.options.exclude(id=option.id).filter(label=label).exists():
+            return JsonResponse({'error': 'Option with this label already exists'}, status=400)
+
+        option.label = label
+        option.reduction_percentage = reduction_percentage
         option.save()
 
         return JsonResponse({
             'success': True,
-            'message': f'Option "{option.label}" updated successfully'
+            'message': f'Option "{option.label}" updated successfully',
+            'option_code': option.option_code
         })
 
     except Exception as e:
@@ -192,7 +203,15 @@ def condition_option_add(request, category_id):
         data = json.loads(request.body)
 
         label = data.get('label', '').strip()
-        reduction_percentage = float(data.get('reduction_percentage', 0))
+        raw_option_code = data.get('option_code', '')
+        option_code = normalize_option_code(raw_option_code) if raw_option_code else ''
+
+        try:
+            reduction_percentage = float(data.get('reduction_percentage', 0))
+        except (TypeError, ValueError):
+            return JsonResponse({'error': 'Reduction percentage must be numeric'}, status=400)
+        if reduction_percentage < 0 or reduction_percentage > 100:
+            return JsonResponse({'error': 'Reduction percentage must be between 0 and 100'}, status=400)
 
         if not label:
             return JsonResponse({'error': 'Option label is required'}, status=400)
@@ -201,11 +220,18 @@ def condition_option_add(request, category_id):
         if category.options.filter(label=label).exists():
             return JsonResponse({'error': 'Option with this label already exists'}, status=400)
 
+        if raw_option_code and not option_code:
+            return JsonResponse({'error': 'Option code format is invalid'}, status=400)
+
+        if option_code and category.options.filter(option_code=option_code).exists():
+            return JsonResponse({'error': 'Option code already exists in this category'}, status=400)
+
         # Get next order
         next_order = category.options.count()
 
         option = ConditionOption.objects.create(
             category=category,
+            option_code=option_code,
             label=label,
             reduction_percentage=reduction_percentage,
             order=next_order
@@ -214,7 +240,8 @@ def condition_option_add(request, category_id):
         return JsonResponse({
             'success': True,
             'message': f'Option "{option.label}" added successfully',
-            'option_id': option.id
+            'option_id': option.id,
+            'option_code': option.option_code
         })
 
     except Exception as e:
