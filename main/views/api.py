@@ -201,7 +201,8 @@ def openapi_schema(request):
                                     'schema': {
                                         'type': 'array',
                                         'items': {'type': 'string'},
-                                    }
+                                    },
+                                    'example': ['TOYOTA', 'HONDA', 'PROTON']
                                 }
                             },
                         },
@@ -219,7 +220,7 @@ def openapi_schema(request):
                             'in': 'query',
                             'required': True,
                             'schema': {'type': 'string'},
-                            'example': 'Toyota',
+                            'example': 'TOYOTA',
                         }
                     ],
                     'responses': {
@@ -230,7 +231,8 @@ def openapi_schema(request):
                                     'schema': {
                                         'type': 'array',
                                         'items': {'type': 'string'},
-                                    }
+                                    },
+                                    'example': ['YARIS']
                                 }
                             },
                         },
@@ -249,14 +251,14 @@ def openapi_schema(request):
                             'in': 'query',
                             'required': True,
                             'schema': {'type': 'string'},
-                            'example': 'Toyota',
+                            'example': 'TOYOTA',
                         },
                         {
                             'name': 'model',
                             'in': 'query',
                             'required': True,
                             'schema': {'type': 'string'},
-                            'example': 'Vios',
+                            'example': 'YARIS',
                         },
                     ],
                     'responses': {
@@ -267,7 +269,8 @@ def openapi_schema(request):
                                     'schema': {
                                         'type': 'array',
                                         'items': {'type': 'string'},
-                                    }
+                                    },
+                                    'example': ['E']
                                 }
                             },
                         },
@@ -286,21 +289,21 @@ def openapi_schema(request):
                             'in': 'query',
                             'required': True,
                             'schema': {'type': 'string'},
-                            'example': 'Toyota',
+                            'example': 'TOYOTA',
                         },
                         {
                             'name': 'model',
                             'in': 'query',
                             'required': True,
                             'schema': {'type': 'string'},
-                            'example': 'Vios',
+                            'example': 'YARIS',
                         },
                         {
                             'name': 'variant',
                             'in': 'query',
                             'required': True,
                             'schema': {'type': 'string'},
-                            'example': '1.5 G',
+                            'example': 'E',
                         },
                     ],
                     'responses': {
@@ -311,7 +314,8 @@ def openapi_schema(request):
                                     'schema': {
                                         'type': 'array',
                                         'items': {'type': 'integer'},
-                                    }
+                                    },
+                                    'example': [2025]
                                 }
                             },
                         },
