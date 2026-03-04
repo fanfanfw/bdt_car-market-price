@@ -150,7 +150,7 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
 
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
@@ -172,6 +172,16 @@ FASTAPI_BASE_URL = config('FASTAPI_BASE_URL', default='http://localhost:8000/api
 DJANGO_SECRET_KEY = config('DJANGO_SECRET_KEY', default='django-unlimited-access')
 API_REQUEST_TIMEOUT = config('API_REQUEST_TIMEOUT', default=30, cast=int)
 API_KEY = config('API_KEY', default='')
+API_KEYS = [k.strip() for k in config('API_KEYS', default='').split(',') if k.strip()]
+if API_KEY and API_KEY not in API_KEYS:
+    API_KEYS.append(API_KEY)
+
+# Lookup rate limiting.
+# Anonymous (no/invalid X-API-Key): per IP.
+# Auth (valid X-API-Key): per API key.
+LOOKUP_RL_ANON_LIMIT = config('LOOKUP_RL_ANON_LIMIT', default=60, cast=int)
+LOOKUP_RL_AUTH_LIMIT = config('LOOKUP_RL_AUTH_LIMIT', default=600, cast=int)
+LOOKUP_RL_WINDOW_SECONDS = config('LOOKUP_RL_WINDOW_SECONDS', default=60, cast=int)
 
 # Cache Settings (for API responses)
 CACHES = {

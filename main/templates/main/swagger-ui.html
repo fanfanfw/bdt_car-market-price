@@ -1,33 +1,41 @@
 <!DOCTYPE html>
 <html lang="en">
+{% load static %}
+{% get_static_prefix as STATIC_PREFIX %}
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Car Market Price API Docs</title>
-    <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css">
     <style>
         html, body {
             margin: 0;
             padding: 0;
             background: #ffffff;
         }
+        #swagger-ui-loading {
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+            padding: 16px;
+            color: #111827;
+        }
+        #swagger-ui-error {
+            display: none;
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+            padding: 16px;
+            color: #991b1b;
+            background: #fef2f2;
+            border-top: 1px solid #fecaca;
+        }
     </style>
 </head>
 <body>
-    <div id="swagger-ui"></div>
+    <div
+        id="swagger-ui"
+        data-openapi-url="/api/docs/openapi.json"
+        data-static-prefix="{{ STATIC_PREFIX }}"
+    ></div>
+    <div id="swagger-ui-loading">Loading API docs…</div>
+    <div id="swagger-ui-error"></div>
 
-    <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
-    <script>
-        window.addEventListener('DOMContentLoaded', function () {
-            SwaggerUIBundle({
-                url: '/api/docs/openapi.json',
-                dom_id: '#swagger-ui',
-                deepLinking: true,
-                presets: [SwaggerUIBundle.presets.apis],
-                layout: 'BaseLayout',
-                persistAuthorization: true,
-            });
-        });
-    </script>
+    <script src="{% static 'main/swagger-ui-loader.js' %}"></script>
 </body>
 </html>
