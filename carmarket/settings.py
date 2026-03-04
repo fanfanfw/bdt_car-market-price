@@ -182,6 +182,7 @@ if API_KEY and API_KEY not in API_KEYS:
 LOOKUP_RL_ANON_LIMIT = config('LOOKUP_RL_ANON_LIMIT', default=60, cast=int)
 LOOKUP_RL_AUTH_LIMIT = config('LOOKUP_RL_AUTH_LIMIT', default=600, cast=int)
 LOOKUP_RL_WINDOW_SECONDS = config('LOOKUP_RL_WINDOW_SECONDS', default=60, cast=int)
+LOOKUP_RL_INVALID_KEY_LIMIT = config('LOOKUP_RL_INVALID_KEY_LIMIT', default=30, cast=int)
 
 # Cache Settings (for API responses)
 CACHES = {

@@ -17,18 +17,28 @@ from ..api_client import (
     get_car_detail, APIError, APINotFoundError
 )
 from .utils import get_car_statistics
+from .rate_limit import rate_limit_by_api_key_or_ip
+
+lookup_rate_limit = rate_limit_by_api_key_or_ip(
+    scope="lookup",
+    anon_limit=getattr(settings, "LOOKUP_RL_ANON_LIMIT", 60),
+    auth_limit=getattr(settings, "LOOKUP_RL_AUTH_LIMIT", 600),
+    window_seconds=getattr(settings, "LOOKUP_RL_WINDOW_SECONDS", 60),
+    reject_invalid_api_key_header=True,
+    invalid_key_limit=getattr(settings, "LOOKUP_RL_INVALID_KEY_LIMIT", 30),
+)
 
 
 def require_api_key(view_func):
     """Protect integration endpoints with X-API-Key header."""
     @wraps(view_func)
     def _wrapped(request, *args, **kwargs):
-        configured_api_key = getattr(settings, 'API_KEY', '')
-        if not configured_api_key:
+        configured_api_keys = getattr(settings, 'API_KEYS', None) or []
+        if not configured_api_keys:
             return JsonResponse({'error': 'API key is not configured on server'}, status=503)
 
         provided_api_key = request.headers.get('X-API-Key') or request.META.get('HTTP_X_API_KEY')
-        if provided_api_key != configured_api_key:
+        if provided_api_key not in configured_api_keys:
             return JsonResponse({'error': 'Invalid API key'}, status=401)
 
         return view_func(request, *args, **kwargs)
@@ -45,6 +55,8 @@ def get_categories(request):
         return JsonResponse({'error': str(e)}, status=500)
 
 
+@lookup_rate_limit
+@require_http_methods(["GET"])
 def get_brands_api(request):
     """API endpoint to get all brands"""
     try:
@@ -57,6 +69,8 @@ def get_brands_api(request):
         return JsonResponse({'error': 'FastAPI connection failed'}, status=500)
 
 
+@lookup_rate_limit
+@require_http_methods(["GET"])
 def get_models_api(request):
     """API endpoint to get models for selected brand"""
     try:
@@ -72,6 +86,8 @@ def get_models_api(request):
         return JsonResponse({'error': 'FastAPI connection failed'}, status=500)
 
 
+@lookup_rate_limit
+@require_http_methods(["GET"])
 def get_variants_api(request):
     """API endpoint to get variants for selected brand and model"""
     try:
@@ -89,6 +105,8 @@ def get_variants_api(request):
         return JsonResponse({'error': 'FastAPI connection failed'}, status=500)
 
 
+@lookup_rate_limit
+@require_http_methods(["GET"])
 def get_years_api(request):
     """API endpoint to get years for selected brand, model, and variant"""
     try:
