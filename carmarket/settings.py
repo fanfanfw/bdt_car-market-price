@@ -11,7 +11,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
-from decouple import config
+from decouple import Csv, config
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -28,7 +28,7 @@ DEBUG = config('DEBUG', default=False, cast=bool)
 
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='*').split(',')
 
-CSRF_TRUSTED_ORIGINS = [
+_DEFAULT_CSRF_TRUSTED_ORIGINS = [
     'https://192.168.1.111:8001',
     'http://192.168.1.111:8001',
     'https://127.0.0.1',
@@ -39,6 +39,14 @@ CSRF_TRUSTED_ORIGINS = [
     'http://localhost.carmarket',
     'http://localhost.scrapresultdash',
 ]
+
+# Override via `.env`:
+# CSRF_TRUSTED_ORIGINS=https://car-market.ifcontech.com,https://192.168.1.111:8001,http://localhost
+CSRF_TRUSTED_ORIGINS = config(
+    'CSRF_TRUSTED_ORIGINS',
+    default=",".join(_DEFAULT_CSRF_TRUSTED_ORIGINS),
+    cast=Csv(),
+)
 
 # Application definition
 
