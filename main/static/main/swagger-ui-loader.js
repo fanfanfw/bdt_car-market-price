@@ -63,7 +63,10 @@
     });
   }
 
-  window.addEventListener("DOMContentLoaded", function () {
+  function runOnce() {
+    if (runOnce._didRun) return;
+    runOnce._didRun = true;
+
     var root = byId("swagger-ui");
     if (!root) return;
 
@@ -97,6 +100,14 @@
       }
       initSwagger(openapiUrl);
     });
-  });
-})();
+  }
 
+  // Cloudflare Rocket Loader can execute scripts after DOMContentLoaded.
+  // Run immediately when possible, and fall back to both DOMContentLoaded + load.
+  if (document.readyState === "loading") {
+    window.addEventListener("DOMContentLoaded", runOnce);
+    window.addEventListener("load", runOnce);
+  } else {
+    runOnce();
+  }
+})();
