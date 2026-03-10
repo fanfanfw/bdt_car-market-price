@@ -16,7 +16,7 @@ from ..api_client import (
     get_brands, get_models, get_variants, get_years, get_car_records,
     get_car_detail, APIError, APINotFoundError
 )
-from .utils import get_car_statistics
+from .utils import get_car_statistics, get_comparable_listings
 from .rate_limit import rate_limit_by_api_key_or_ip
 
 lookup_rate_limit = rate_limit_by_api_key_or_ip(
@@ -44,6 +44,39 @@ def require_api_key(view_func):
         return view_func(request, *args, **kwargs)
 
     return _wrapped
+
+
+def serialize_integration_result(result_data):
+    """Return an English-only payload contract for external integrations."""
+    return {
+        'brand': result_data.get('brand_norm'),
+        'model': result_data.get('model_norm'),
+        'variant': result_data.get('variant_norm'),
+        'year': result_data.get('year'),
+        'average_mileage': result_data.get('rata_rata_mileage_bulat'),
+        'average_price': result_data.get('rata_rata_price_bulat'),
+        'sample_size': result_data.get('sample_size', result_data.get('total_data')),
+        'user_mileage': result_data.get('user_mileage'),
+        'mileage_diff_percent': result_data.get('mileage_diff_percent'),
+        'layer1_reduction': result_data.get('layer1_reduction'),
+        'layer2_reduction': result_data.get('layer2_reduction'),
+        'total_reduction': result_data.get('total_reduction'),
+        'adjusted_price': result_data.get('adjusted_price'),
+        'price_savings': result_data.get('price_savings'),
+        'condition_breakdown': result_data.get('condition_breakdown'),
+        'selected_condition_details': result_data.get('selected_condition_details'),
+        'brand_category_info': result_data.get('brand_category_info'),
+        'price_tier_info': result_data.get('price_tier_info'),
+        'config_version': result_data.get('config_version'),
+        'estimated_market_price': result_data.get('estimated_market_price'),
+        'total_reduction_percentage': result_data.get('total_reduction_percentage'),
+        'score': result_data.get('score'),
+        'grade': result_data.get('grade'),
+        'confidence_level': result_data.get('confidence_level'),
+        'market_price_position': result_data.get('market_price_position'),
+        'comparables_count': result_data.get('comparables_count'),
+        'summary': result_data.get('summary'),
+    }
 
 
 def get_categories(request):
@@ -161,9 +194,10 @@ def openapi_schema(request):
                     'properties': {
                         'option_code': {'type': 'string', 'example': 'excellent'},
                         'label': {'type': 'string', 'example': 'Excellent'},
+                        'display_value': {'type': 'string', 'example': 'Excellent'},
                         'reduction_percentage': {'type': 'number', 'format': 'float', 'example': 0.0},
                     },
-                    'required': ['option_code', 'label', 'reduction_percentage'],
+                    'required': ['option_code', 'label', 'display_value', 'reduction_percentage'],
                 },
                 'ConditionCategory': {
                     'type': 'object',
@@ -202,6 +236,38 @@ def openapi_schema(request):
                         },
                     },
                     'required': ['brand', 'model', 'variant', 'year', 'condition'],
+                },
+                'PriceEstimateResponse': {
+                    'type': 'object',
+                    'properties': {
+                        'success': {'type': 'boolean', 'example': True},
+                        'result': {
+                            'type': 'object',
+                            'properties': {
+                                'brand': {'type': 'string', 'example': 'TOYOTA'},
+                                'model': {'type': 'string', 'example': 'YARIS'},
+                                'variant': {'type': 'string', 'example': 'E'},
+                                'year': {'type': 'integer', 'example': 2025},
+                                'average_mileage': {'type': 'integer', 'example': 6677},
+                                'average_price': {'type': 'integer', 'example': 76076},
+                                'sample_size': {'type': 'integer', 'example': 10},
+                                'user_mileage': {'type': 'integer', 'example': 85000},
+                                'mileage_diff_percent': {'type': 'number', 'example': 1173.0},
+                                'score': {'type': 'integer', 'example': 82},
+                                'grade': {'type': 'string', 'example': 'B'},
+                                'confidence_level': {'type': 'string', 'example': 'high'},
+                                'comparables_count': {'type': 'integer', 'example': 10},
+                                'market_price_position': {
+                                    'type': 'object',
+                                    'properties': {
+                                        'floor_price': {'type': 'integer', 'example': 52000},
+                                        'recommended_price': {'type': 'integer', 'example': 62500},
+                                        'ceiling_price': {'type': 'integer', 'example': 68000},
+                                    },
+                                },
+                            },
+                        },
+                    },
                 },
             },
         },
@@ -385,7 +451,73 @@ def openapi_schema(request):
                     'responses': {
                         '200': {
                             'description': 'Calculation success',
-                            'content': {'application/json': {'schema': {'type': 'object'}}},
+                            'content': {
+                                'application/json': {
+                                    'schema': {'$ref': '#/components/schemas/PriceEstimateResponse'}
+                                }
+                            },
+                        },
+                        '400': {'description': 'Validation error'},
+                        '401': {'description': 'Invalid API key'},
+                    },
+                }
+            },
+            '/api/comparable-listings/': {
+                'get': {
+                    'tags': ['Integration'],
+                    'summary': 'Get comparable listings',
+                    'description': 'Returns paginated comparable listings for the selected vehicle and recommendation price.',
+                    'security': [{'ApiKeyAuth': []}],
+                    'parameters': [
+                        {'name': 'brand', 'in': 'query', 'required': True, 'schema': {'type': 'string'}, 'example': 'TOYOTA'},
+                        {'name': 'model', 'in': 'query', 'required': True, 'schema': {'type': 'string'}, 'example': 'YARIS'},
+                        {'name': 'variant', 'in': 'query', 'required': True, 'schema': {'type': 'string'}, 'example': 'E'},
+                        {'name': 'year', 'in': 'query', 'required': True, 'schema': {'type': 'integer'}, 'example': 2025},
+                        {'name': 'recommended_price', 'in': 'query', 'required': True, 'schema': {'type': 'number'}, 'example': 62500},
+                        {'name': 'page', 'in': 'query', 'required': False, 'schema': {'type': 'integer', 'default': 1}},
+                        {'name': 'page_size', 'in': 'query', 'required': False, 'schema': {'type': 'integer', 'default': 20}},
+                    ],
+                    'responses': {
+                        '200': {
+                            'description': 'Comparable listings retrieved',
+                            'content': {
+                                'application/json': {
+                                    'schema': {
+                                        'type': 'object',
+                                        'properties': {
+                                            'success': {'type': 'boolean', 'example': True},
+                                            'count': {'type': 'integer', 'example': 769},
+                                            'page': {'type': 'integer', 'example': 1},
+                                            'page_size': {'type': 'integer', 'example': 20},
+                                            'total_pages': {'type': 'integer', 'example': 39},
+                                            'results': {
+                                                'type': 'array',
+                                                'items': {
+                                                    'type': 'object',
+                                                    'properties': {
+                                                        'listing': {
+                                                            'type': 'object',
+                                                            'properties': {
+                                                                'brand': {'type': 'string', 'example': 'TOYOTA'},
+                                                                'model': {'type': 'string', 'example': 'VIOS'},
+                                                                'variant': {'type': 'string', 'example': 'G'},
+                                                                'title': {'type': 'string', 'example': 'TOYOTA VIOS G'},
+                                                                'location': {'type': 'string', 'example': 'Selangor'},
+                                                                'information_ads_date': {'type': 'string', 'example': '2026-03-01'},
+                                                            },
+                                                        },
+                                                        'year': {'type': 'integer', 'example': 2020},
+                                                        'mileage': {'type': 'integer', 'example': 48200},
+                                                        'price': {'type': 'integer', 'example': 63500},
+                                                        'appraisal_delta': {'type': 'integer', 'example': 1000},
+                                                        'source': {'type': 'string', 'example': 'mudahmy'},
+                                                    },
+                                                },
+                                            },
+                                        },
+                                    }
+                                }
+                            },
                         },
                         '400': {'description': 'Validation error'},
                         '401': {'description': 'Invalid API key'},
@@ -459,6 +591,7 @@ def price_estimate_api(request):
 
     condition_assessments = {}
     invalid_options = []
+    selected_condition_details = {}
 
     for category in categories:
         option_code = (condition.get(category.category_key) or '').strip()
@@ -479,6 +612,14 @@ def price_estimate_api(request):
             continue
 
         condition_assessments[category.category_key] = float(option.reduction_percentage)
+        selected_condition_details[category.category_key] = {
+            'category_key': category.category_key,
+            'display_name': category.display_name,
+            'option_code': option.option_code,
+            'label': option.label,
+            'display_value': option.display_value or option.label,
+            'reduction_percentage': float(option.reduction_percentage),
+        }
 
     if invalid_options:
         return JsonResponse({
@@ -493,6 +634,7 @@ def price_estimate_api(request):
         year=year,
         user_mileage=mileage,
         condition_assessments=condition_assessments,
+        selected_condition_details=selected_condition_details,
     )
 
     if result_data is None:
@@ -504,7 +646,61 @@ def price_estimate_api(request):
 
     return JsonResponse({
         'success': True,
-        'result': result_data,
+        'result': serialize_integration_result(result_data),
+    })
+
+
+@require_http_methods(["GET"])
+@require_api_key
+def comparable_listings_api(request):
+    """API endpoint to get paginated comparable listings for integrations."""
+    brand = (request.GET.get('brand') or '').strip()
+    model = (request.GET.get('model') or '').strip()
+    variant = (request.GET.get('variant') or '').strip()
+    year = request.GET.get('year')
+    recommended_price = request.GET.get('recommended_price')
+    page = request.GET.get('page', 1)
+    page_size = request.GET.get('page_size', 20)
+
+    if not all([brand, model, variant]) or year is None or recommended_price in [None, '']:
+        return JsonResponse({
+            'error': 'Required query parameters: brand, model, variant, year, recommended_price'
+        }, status=400)
+
+    try:
+        year = int(year)
+    except (TypeError, ValueError):
+        return JsonResponse({'error': 'year must be an integer'}, status=400)
+
+    try:
+        recommended_price = float(recommended_price)
+    except (TypeError, ValueError):
+        return JsonResponse({'error': 'recommended_price must be numeric'}, status=400)
+
+    try:
+        page = max(int(page), 1)
+        page_size = max(int(page_size), 1)
+    except (TypeError, ValueError):
+        return JsonResponse({'error': 'page and page_size must be integers'}, status=400)
+
+    comparable_result = get_comparable_listings(
+        estimation_data=None,
+        brand=brand,
+        model=model,
+        variant=variant,
+        year=year,
+        recommended_price=recommended_price,
+        page=page,
+        page_size=page_size,
+    )
+
+    return JsonResponse({
+        'success': True,
+        'count': comparable_result['total_count'],
+        'page': comparable_result['page'],
+        'page_size': comparable_result['page_size'],
+        'total_pages': comparable_result['total_pages'],
+        'results': comparable_result['items'],
     })
 
 
@@ -526,6 +722,7 @@ def get_condition_options_api(request):
                 options.append({
                     'option_code': option.option_code,
                     'label': option.label,
+                    'display_value': option.display_value or option.label,
                     'reduction_percentage': float(option.reduction_percentage),
                 })
 

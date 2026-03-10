@@ -391,19 +391,19 @@ def get_secure_results(request):
                 verified_phone.save()
 
             # Log the calculation for analytics
-            CalculationLog.objects.create(
-                phone_number=(verified_phone.phone_number if verified_phone is not None else phone_number),
-                brand=calculation_data['brand'],
-                model=calculation_data['model'],
-                variant=calculation_data['variant'],
-                year=calculation_data['year'],
-                user_mileage=calculation_data.get('user_mileage'),
-                estimated_price=result_data.get('estimated_market_price'),
-                final_price=result_data.get('adjusted_price'),
-                total_reduction_percent=result_data.get('total_reduction_percentage', 0),
-                ip_address=request.META.get('REMOTE_ADDR'),
-                user_agent=request.META.get('HTTP_USER_AGENT', '')
-            )
+                CalculationLog.objects.create(
+                    phone_number=(verified_phone.phone_number if verified_phone is not None else phone_number),
+                    brand=calculation_data['brand'],
+                    model=calculation_data['model'],
+                    variant=calculation_data['variant'],
+                    year=calculation_data['year'],
+                    user_mileage=calculation_data.get('user_mileage'),
+                    estimated_price=result_data.get('estimated_market_price') or result_data.get('rata_rata_price_bulat'),
+                    final_price=result_data.get('adjusted_price'),
+                    total_reduction_percent=result_data.get('total_reduction_percentage', result_data.get('total_reduction', 0)),
+                    ip_address=request.META.get('REMOTE_ADDR'),
+                    user_agent=request.META.get('HTTP_USER_AGENT', '')
+                )
 
             # Don't clear session data so user can recalculate with same data
             # Session data will be cleared when user starts new calculation

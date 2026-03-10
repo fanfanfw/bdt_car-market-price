@@ -2,7 +2,7 @@
 from .public import index, result
 from .api import (
     get_categories, get_brands_api, get_models_api, get_variants_api, get_years_api,
-    get_condition_options_api, price_estimate_api, openapi_schema, swagger_ui,
+    get_condition_options_api, price_estimate_api, comparable_listings_api, openapi_schema, swagger_ui,
     car_data_api, car_detail_api
 )
 from .auth import (
@@ -33,7 +33,7 @@ __all__ = [
 
     # API views
     'get_categories', 'get_brands_api', 'get_models_api', 'get_variants_api',
-    'get_years_api', 'get_condition_options_api', 'price_estimate_api',
+    'get_years_api', 'get_condition_options_api', 'price_estimate_api', 'comparable_listings_api',
     'openapi_schema', 'swagger_ui', 'car_data_api', 'car_detail_api',
 
     # Auth views

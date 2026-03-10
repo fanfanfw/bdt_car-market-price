@@ -4,15 +4,17 @@ Utility functions and helpers for views
 from functools import lru_cache
 import random
 import re
+from datetime import date, datetime, timedelta
+
 from django.http import HttpResponse
 from django.utils import timezone
-from datetime import timedelta
 from decouple import config
 
 from ..models import (
-    MileageConfiguration, BrandCategory, PriceTier, VerifiedPhone, CalculationLog
+    MileageConfiguration, BrandCategory, PriceTier, VerifiedPhone, CalculationLog,
+    VehicleConditionCategory
 )
-from ..api_client import get_price_estimation, APIError
+from ..api_client import get_price_estimation, get_car_records, get_car_detail, APIError
 
 
 def _normalize_phone_e164_like(phone: str) -> str:
@@ -57,11 +59,20 @@ def get_mileage_config():
         return type('obj', (object,), {
             'threshold_percent': 10.0,
             'reduction_percent': 2.0,
-            'max_reduction_cap': 15.0
+            'max_reduction_cap': 15.0,
+            'layer2_max_cap': 70.0,
         })
 
 
-def get_car_statistics(brand, model, variant, year, user_mileage=None, condition_assessments=None):
+def get_car_statistics(
+    brand,
+    model,
+    variant,
+    year,
+    user_mileage=None,
+    condition_assessments=None,
+    selected_condition_details=None,
+):
     """Get car statistics including average mileage and price with condition assessments using FastAPI"""
     try:
         # Get mileage configuration
@@ -95,7 +106,8 @@ def get_car_statistics(brand, model, variant, year, user_mileage=None, condition
 
             avg_mileage = stats.get('average_mileage', 100000)  # Default fallback
             avg_price = stats.get('average_price', 0)
-            total_data = stats.get('data_count', 0)
+            total_data = stats.get('data_count', estimation_data.get('sample_size', 0))
+            raw_price_range = estimation_data.get('price_range', {}) if isinstance(estimation_data, dict) else {}
 
             if total_data == 0:
                 print(f"DEBUG: No data found for {brand} {model} {variant} {year}")
@@ -114,6 +126,7 @@ def get_car_statistics(brand, model, variant, year, user_mileage=None, condition
             'rata_rata_mileage_bulat': avg_mileage,
             'rata_rata_price_bulat': avg_price,
             'total_data': total_data,
+            'sample_size': total_data,
         }
 
         # Calculate price adjustments with dynamic 2-layer system
@@ -195,6 +208,8 @@ def get_car_statistics(brand, model, variant, year, user_mileage=None, condition
                 'error': f'Error determining price tier: {str(e)}'
             }
 
+        resolved_condition_details = selected_condition_details.copy() if selected_condition_details else {}
+
         if condition_assessments is not None:
             # Calculate total from manual assessments (excluding auto-detected categories)
             manual_assessments = {k: v for k, v in condition_assessments.items()
@@ -211,6 +226,36 @@ def get_car_statistics(brand, model, variant, year, user_mileage=None, condition
             condition_breakdown = manual_assessments.copy()
             condition_breakdown['brand_category'] = brand_category_reduction
             condition_breakdown['price_tier'] = price_tier_reduction
+
+            selected_options = (
+                VehicleConditionCategory.objects.filter(is_active=True)
+                .exclude(category_key__in=['brand_category', 'price_tier'])
+                .prefetch_related('options')
+                .order_by('order')
+            )
+            for category in selected_options:
+                selected_reduction = manual_assessments.get(category.category_key)
+                if selected_reduction is None:
+                    continue
+
+                option = next(
+                    (
+                        candidate for candidate in category.options.all()
+                        if float(candidate.reduction_percentage) == float(selected_reduction)
+                    ),
+                    None,
+                )
+                if option is None:
+                    continue
+
+                resolved_condition_details[category.category_key] = {
+                    'category_key': category.category_key,
+                    'display_name': category.display_name,
+                    'option_code': option.option_code,
+                    'label': option.label,
+                    'display_value': option.display_value or option.label,
+                    'reduction_percentage': float(option.reduction_percentage),
+                }
         else:
             # Only auto-detected reductions
             layer2_reduction = brand_category_reduction + price_tier_reduction
@@ -226,6 +271,35 @@ def get_car_statistics(brand, model, variant, year, user_mileage=None, condition
         adjusted_price = avg_price * (1 - total_reduction / 100)
         price_savings = avg_price - adjusted_price
 
+        score = _calculate_condition_score(total_reduction)
+        grade = _grade_from_score(score)
+        comparable_result = get_comparable_listings(
+            estimation_data=estimation_data,
+            brand=brand,
+            model=model,
+            variant=variant,
+            year=year,
+            recommended_price=adjusted_price,
+            page=1,
+            page_size=10,
+        )
+        comparables_preview = comparable_result['items']
+        comparables_count = comparable_result['total_count']
+        market_price_position = _build_market_price_position(
+            comparables=comparables_preview,
+            price_range=raw_price_range,
+            recommended_price=adjusted_price,
+            average_price=avg_price,
+        )
+        confidence_level = _confidence_level(total_data)
+        summary = _build_summary(
+            score=score,
+            grade=grade,
+            user_mileage=user_mileage,
+            mileage_reduction=layer1_reduction,
+            selected_condition_details=resolved_condition_details,
+        )
+
         # Update result with all calculations
         if user_mileage is not None:
             result.update({
@@ -240,9 +314,18 @@ def get_car_statistics(brand, model, variant, year, user_mileage=None, condition
             'adjusted_price': round(adjusted_price),
             'price_savings': round(price_savings),
             'condition_breakdown': condition_breakdown,
+            'selected_condition_details': resolved_condition_details,
             'brand_category_info': brand_category_info,
             'price_tier_info': price_tier_info,
-            'config_version': 'simplified_with_auto_brand_and_price_tier_detection'
+            'config_version': 'simplified_with_auto_brand_and_price_tier_detection',
+            'estimated_market_price': round(avg_price),
+            'total_reduction_percentage': round(total_reduction, 1),
+            'score': score,
+            'grade': grade,
+            'confidence_level': confidence_level,
+            'market_price_position': market_price_position,
+            'comparables_count': comparables_count,
+            'summary': summary,
         })
 
         return result
@@ -261,6 +344,290 @@ def get_client_ip(request):
     else:
         ip = request.META.get('REMOTE_ADDR')
     return ip
+
+
+def _calculate_condition_score(total_reduction):
+    return max(0, round(100 - float(total_reduction)))
+
+
+def _grade_from_score(score):
+    if score >= 90:
+        return 'A'
+    if score >= 80:
+        return 'B'
+    if score >= 70:
+        return 'C'
+    return 'D'
+
+
+def _confidence_level(sample_size):
+    sample_size = int(sample_size or 0)
+    if sample_size >= 6:
+        return 'high'
+    if sample_size >= 3:
+        return 'medium'
+    return 'low'
+
+
+def _mileage_impact_label(mileage_reduction):
+    reduction = float(mileage_reduction or 0)
+    if reduction <= 0:
+        return 'Low'
+    if reduction < 5:
+        return 'Light'
+    if reduction < 10:
+        return 'Moderate'
+    return 'High'
+
+
+def _condition_label_from_grade(grade):
+    return {
+        'A': 'Excellent',
+        'B': 'Good',
+        'C': 'Fair',
+        'D': 'Needs Attention',
+    }.get(grade, 'Unknown')
+
+
+def _format_listing_date(value):
+    if isinstance(value, datetime):
+        return value.date().isoformat()
+    if isinstance(value, date):
+        return value.isoformat()
+    if value in [None, '']:
+        return None
+    return str(value)
+
+
+def _safe_float(value, default=0.0):
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _safe_int(value, default=None):
+    try:
+        return int(float(value))
+    except (TypeError, ValueError):
+        return default
+
+
+def _normalize_comparable_from_detail(detail, source, recommended_price):
+    if not isinstance(detail, dict):
+        return None
+
+    price = _safe_int(detail.get('price'))
+    brand = (detail.get('brand') or '').strip()
+    model = (detail.get('model') or '').strip()
+    variant = (detail.get('variant') or '').strip()
+    listing_title = " ".join(part for part in [brand, model, variant] if part).strip()
+
+    comparable = {
+        'id': detail.get('id'),
+        'listing': {
+            'brand': brand,
+            'model': model,
+            'variant': variant,
+            'title': listing_title,
+            'location': detail.get('location'),
+            'information_ads_date': _format_listing_date(
+                detail.get('information_ads_date') or detail.get('created_at')
+            ),
+        },
+        'year': _safe_int(detail.get('year')),
+        'mileage': _safe_int(detail.get('mileage')),
+        'price': price,
+        'appraisal_delta': None if price is None else round(price - float(recommended_price)),
+        'source': source or detail.get('source'),
+    }
+    return comparable
+
+
+def _normalize_comparable_from_row(row, recommended_price):
+    if not isinstance(row, (list, tuple)) or len(row) < 8:
+        return None
+
+    price = _safe_int(row[7])
+    comparable = {
+        'id': row[0],
+        'listing': {
+            'brand': row[2],
+            'model': row[3],
+            'variant': row[4],
+            'title': " ".join(str(part).strip() for part in [row[2], row[3], row[4]] if part).strip(),
+            'location': None,
+            'information_ads_date': None,
+        },
+        'year': _safe_int(row[5]),
+        'mileage': _safe_int(row[6]),
+        'price': price,
+        'appraisal_delta': None if price is None else round(price - float(recommended_price)),
+        'source': row[1],
+    }
+    return comparable
+
+
+def get_comparable_listings(estimation_data, brand, model, variant, year, recommended_price, page=1, page_size=20):
+    page = max(int(page or 1), 1)
+    page_size = max(int(page_size or 20), 1)
+    comparables = []
+
+    raw_comparables = None
+    if isinstance(estimation_data, dict):
+        for key in ['comparables', 'comparable_listings', 'listings']:
+            if isinstance(estimation_data.get(key), list):
+                raw_comparables = estimation_data.get(key)
+                break
+
+    if raw_comparables:
+        for item in raw_comparables:
+            if isinstance(item, dict):
+                comparable = _normalize_comparable_from_detail(item, item.get('source'), recommended_price)
+                if comparable:
+                    comparables.append(comparable)
+        total_count = len(comparables)
+        start = (page - 1) * page_size
+        end = start + page_size
+        return {
+            'items': comparables[start:end],
+            'total_count': total_count,
+            'page': page,
+            'page_size': page_size,
+            'total_pages': ((total_count - 1) // page_size + 1) if total_count else 0,
+        }
+
+    start = (page - 1) * page_size
+    try:
+        records = get_car_records(
+            draw=1,
+            start=start,
+            length=page_size,
+            brand_filter=brand,
+            model_filter=model,
+            variant_filter=variant,
+            year_value=year,
+        )
+    except APIError:
+        return {
+            'items': [],
+            'total_count': 0,
+            'page': page,
+            'page_size': page_size,
+            'total_pages': 0,
+        }
+
+    rows = records.get('data', []) if isinstance(records, dict) else []
+    total_count = 0
+    if isinstance(records, dict):
+        total_count = _safe_int(records.get('recordsFiltered'))
+        if total_count is None:
+            total_count = _safe_int(records.get('recordsTotal'), 0)
+
+    for row in rows:
+        comparable = _normalize_comparable_from_row(row, recommended_price)
+        if comparable is None:
+            continue
+
+        detail = None
+        if comparable.get('id') is not None and comparable.get('source'):
+            try:
+                detail = get_car_detail(comparable['id'], comparable['source'])
+            except APIError:
+                detail = None
+
+        if isinstance(detail, dict):
+            comparable = _normalize_comparable_from_detail(detail, comparable['source'], recommended_price) or comparable
+
+        comparables.append(comparable)
+
+    return {
+        'items': comparables,
+        'total_count': total_count if total_count is not None else len(comparables),
+        'page': page,
+        'page_size': page_size,
+        'total_pages': ((max(total_count or 0, len(comparables)) - 1) // page_size + 1) if max(total_count or 0, len(comparables)) else 0,
+    }
+
+
+def _build_market_price_position(comparables, price_range, recommended_price, average_price):
+    price_range = price_range if isinstance(price_range, dict) else {}
+    floor_price = _safe_int(price_range.get('min'))
+    if floor_price is None:
+        floor_price = _safe_int(price_range.get('low'))
+
+    ceiling_price = _safe_int(price_range.get('max'))
+    if ceiling_price is None:
+        ceiling_price = _safe_int(price_range.get('high'))
+
+    if floor_price is None or ceiling_price is None:
+        prices = [item['price'] for item in comparables if item.get('price') is not None]
+        if prices:
+            floor_price = min(prices) if floor_price is None else floor_price
+            ceiling_price = max(prices) if ceiling_price is None else ceiling_price
+
+    if floor_price is None or ceiling_price is None:
+        fallback_prices = [
+            floor_price,
+            ceiling_price,
+            _safe_int(price_range.get('avg')),
+            _safe_int(average_price),
+        ]
+        fallback_prices = [price for price in fallback_prices if price is not None]
+        floor_price = min(fallback_prices) if floor_price is None and fallback_prices else floor_price
+        ceiling_price = max(fallback_prices) if ceiling_price is None and fallback_prices else ceiling_price
+
+    if floor_price is None:
+        floor_price = round(float(recommended_price))
+    if ceiling_price is None:
+        ceiling_price = round(float(recommended_price))
+
+    return {
+        'floor_price': floor_price,
+        'recommended_price': round(float(recommended_price)),
+        'ceiling_price': ceiling_price,
+    }
+
+
+def _build_summary(score, grade, user_mileage, mileage_reduction, selected_condition_details):
+    summary_items = [
+        {
+            'key': 'condition',
+            'label': 'Condition',
+            'value': _condition_label_from_grade(grade),
+            'display_value': f"{_condition_label_from_grade(grade)} (Grade {grade})",
+        },
+        {
+            'key': 'mileage_score',
+            'label': 'Mileage Score',
+            'value': user_mileage,
+            'display_value': (
+                'Mileage not provided'
+                if user_mileage in [None, '']
+                else f"{_safe_int(user_mileage, 0):,} km - {_mileage_impact_label(mileage_reduction)}"
+            ),
+        },
+    ]
+
+    for category_key in ['accident_history', 'service_history', 'market_demand', 'number_of_owners']:
+        detail = selected_condition_details.get(category_key)
+        if not detail:
+            continue
+        summary_items.append({
+            'key': category_key,
+            'label': detail['display_name'],
+            'value': detail['label'],
+            'display_value': detail['display_value'],
+            'option_code': detail['option_code'],
+            'reduction_percentage': detail['reduction_percentage'],
+        })
+
+    return {
+        'score': score,
+        'grade': grade,
+        'condition_label': _condition_label_from_grade(grade),
+        'items': summary_items,
+    }
 
 
 
