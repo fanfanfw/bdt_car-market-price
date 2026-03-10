@@ -163,6 +163,7 @@ def condition_option_edit(request, option_id):
         data = json.loads(request.body)
 
         label = data.get('label', '').strip()
+        display_value = data.get('display_value', '').strip()
         try:
             reduction_percentage = float(data.get('reduction_percentage', 0))
         except (TypeError, ValueError):
@@ -177,6 +178,7 @@ def condition_option_edit(request, option_id):
             return JsonResponse({'error': 'Option with this label already exists'}, status=400)
 
         option.label = label
+        option.display_value = display_value
         option.reduction_percentage = reduction_percentage
         option.save()
 
@@ -203,6 +205,7 @@ def condition_option_add(request, category_id):
         data = json.loads(request.body)
 
         label = data.get('label', '').strip()
+        display_value = data.get('display_value', '').strip()
         raw_option_code = data.get('option_code', '')
         option_code = normalize_option_code(raw_option_code) if raw_option_code else ''
 
@@ -233,6 +236,7 @@ def condition_option_add(request, category_id):
             category=category,
             option_code=option_code,
             label=label,
+            display_value=display_value,
             reduction_percentage=reduction_percentage,
             order=next_order
         )

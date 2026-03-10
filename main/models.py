@@ -262,6 +262,12 @@ class ConditionOption(models.Model):
         help_text="Stable API code for integration (example: excellent, poor, no_accident)"
     )
     label = models.CharField(max_length=100, help_text="Display label (e.g., 'Excellent', 'Good')")
+    display_value = models.CharField(
+        max_length=150,
+        blank=True,
+        default='',
+        help_text="Optional display text for integrations/UI. Falls back to label when empty."
+    )
     reduction_percentage = models.DecimalField(
         max_digits=5, decimal_places=2, 
         help_text="Reduction percentage for this option"

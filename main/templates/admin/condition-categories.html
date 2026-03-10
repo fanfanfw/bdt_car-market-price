@@ -72,6 +72,9 @@
                     <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
                         <div class="flex-1">
                             <span class="font-medium text-gray-900">{{ option.label }}</span>
+                            {% if option.display_value %}
+                            <span class="text-xs text-gray-500 ml-2">({{ option.display_value }})</span>
+                            {% endif %}
                             <span class="inline-flex px-2 py-1 ml-2 text-xs font-medium bg-slate-100 text-slate-700 rounded-full font-mono">{{ option.option_code }}</span>
                             <span class="inline-flex px-2 py-1 ml-2 text-xs font-medium bg-red-100 text-red-800 rounded-full">-{{ option.reduction_percentage }}%</span>
                         </div>
@@ -81,6 +84,7 @@
                                 data-option-id="{{ option.id }}"
                                 data-option-code="{{ option.option_code }}"
                                 data-label="{{ option.label }}"
+                                data-display-value="{{ option.display_value }}"
                                 data-percentage="{{ option.reduction_percentage }}"
                                 title="Edit Option"
                             >
@@ -151,6 +155,16 @@
                         >
                     </div>
                     <div class="space-y-2">
+                        <label class="block text-sm font-medium text-gray-700">Display Value</label>
+                        <input
+                            type="text"
+                            id="editOptionDisplayValue"
+                            class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="Optional UI display text"
+                        >
+                        <p class="text-xs text-gray-500">Leave empty to use the option label in API responses.</p>
+                    </div>
+                    <div class="space-y-2">
                         <label class="block text-sm font-medium text-gray-700">Reduction Percentage</label>
                         <div class="relative">
                             <input 
@@ -214,6 +228,16 @@
                         >
                     </div>
                     <div class="space-y-2">
+                        <label class="block text-sm font-medium text-gray-700">Display Value</label>
+                        <input
+                            type="text"
+                            id="addOptionDisplayValue"
+                            class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                            placeholder="Optional UI display text"
+                        >
+                        <p class="text-xs text-gray-500">If empty, integrations will use the option label.</p>
+                    </div>
+                    <div class="space-y-2">
                         <label class="block text-sm font-medium text-gray-700">Option Code (Optional)</label>
                         <input
                             type="text"
@@ -263,10 +287,12 @@ $(document).ready(function() {
         currentOptionId = $(this).data('option-id');
         const optionCode = $(this).data('option-code');
         const label = $(this).data('label');
+        const displayValue = $(this).data('display-value');
         const percentage = $(this).data('percentage');
 
         $('#editOptionCode').val(optionCode);
         $('#editOptionLabel').val(label);
+        $('#editOptionDisplayValue').val(displayValue);
         $('#editOptionPercentage').val(percentage);
         $('#editOptionModal').removeClass('hidden');
     });
@@ -282,6 +308,7 @@ $(document).ready(function() {
         e.preventDefault();
         
         const label = $('#editOptionLabel').val().trim();
+        const displayValue = $('#editOptionDisplayValue').val().trim();
         const percentage = parseFloat($('#editOptionPercentage').val());
         
         if (!label) {
@@ -307,6 +334,7 @@ $(document).ready(function() {
             },
             data: JSON.stringify({
                 label: label,
+                display_value: displayValue,
                 reduction_percentage: percentage
             }),
             success: function(data) {
@@ -335,6 +363,7 @@ $(document).ready(function() {
         
         $('#addOptionCategoryName').val(categoryName);
         $('#addOptionLabel').val('');
+        $('#addOptionDisplayValue').val('');
         $('#addOptionCode').val('');
         $('#addOptionPercentage').val('');
         $('#addOptionModal').removeClass('hidden');
@@ -351,6 +380,7 @@ $(document).ready(function() {
         e.preventDefault();
         
         const label = $('#addOptionLabel').val().trim();
+        const displayValue = $('#addOptionDisplayValue').val().trim();
         const optionCode = $('#addOptionCode').val().trim();
         const percentage = parseFloat($('#addOptionPercentage').val());
         
@@ -382,6 +412,7 @@ $(document).ready(function() {
             },
             data: JSON.stringify({
                 label: label,
+                display_value: displayValue,
                 option_code: optionCode,
                 reduction_percentage: percentage
             }),
