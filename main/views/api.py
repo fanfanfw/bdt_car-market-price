@@ -16,7 +16,9 @@ from ..api_client import (
     get_brands, get_models, get_variants, get_years, get_car_records,
     get_car_detail, APIError, APINotFoundError
 )
-from .utils import get_car_statistics, get_comparable_listings
+from .utils import (
+    get_car_statistics, get_comparable_listings, serialize_condition_option_detail,
+)
 from .rate_limit import rate_limit_by_api_key_or_ip
 
 lookup_rate_limit = rate_limit_by_api_key_or_ip(
@@ -196,8 +198,10 @@ def openapi_schema(request):
                         'label': {'type': 'string', 'example': 'Excellent'},
                         'display_value': {'type': 'string', 'example': 'Excellent'},
                         'reduction_percentage': {'type': 'number', 'format': 'float', 'example': 0.0},
+                        'severity': {'type': 'string', 'example': 'good'},
+                        'color_token': {'type': 'string', 'example': 'green'},
                     },
-                    'required': ['option_code', 'label', 'display_value', 'reduction_percentage'],
+                    'required': ['option_code', 'label', 'display_value', 'reduction_percentage', 'severity', 'color_token'],
                 },
                 'ConditionCategory': {
                     'type': 'object',
@@ -612,14 +616,7 @@ def price_estimate_api(request):
             continue
 
         condition_assessments[category.category_key] = float(option.reduction_percentage)
-        selected_condition_details[category.category_key] = {
-            'category_key': category.category_key,
-            'display_name': category.display_name,
-            'option_code': option.option_code,
-            'label': option.label,
-            'display_value': option.display_value or option.label,
-            'reduction_percentage': float(option.reduction_percentage),
-        }
+        selected_condition_details[category.category_key] = serialize_condition_option_detail(category, option)
 
     if invalid_options:
         return JsonResponse({
@@ -719,11 +716,14 @@ def get_condition_options_api(request):
         for category in categories:
             options = []
             for option in category.options.all():
+                option_detail = serialize_condition_option_detail(category, option)
                 options.append({
-                    'option_code': option.option_code,
-                    'label': option.label,
-                    'display_value': option.display_value or option.label,
-                    'reduction_percentage': float(option.reduction_percentage),
+                    'option_code': option_detail['option_code'],
+                    'label': option_detail['label'],
+                    'display_value': option_detail['display_value'],
+                    'reduction_percentage': option_detail['reduction_percentage'],
+                    'severity': option_detail['severity'],
+                    'color_token': option_detail['color_token'],
                 })
 
             payload.append({

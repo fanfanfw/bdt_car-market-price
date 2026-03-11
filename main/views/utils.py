@@ -248,14 +248,7 @@ def get_car_statistics(
                 if option is None:
                     continue
 
-                resolved_condition_details[category.category_key] = {
-                    'category_key': category.category_key,
-                    'display_name': category.display_name,
-                    'option_code': option.option_code,
-                    'label': option.label,
-                    'display_value': option.display_value or option.label,
-                    'reduction_percentage': float(option.reduction_percentage),
-                }
+                resolved_condition_details[category.category_key] = serialize_condition_option_detail(category, option)
         else:
             # Only auto-detected reductions
             layer2_reduction = brand_category_reduction + price_tier_reduction
@@ -389,6 +382,23 @@ def _condition_label_from_grade(grade):
     }.get(grade, 'Unknown')
 
 
+def _grade_visual_hint(grade):
+    if grade in ['A', 'B']:
+        return {'severity': 'good', 'color_token': 'green'}
+    if grade == 'C':
+        return {'severity': 'warning', 'color_token': 'amber'}
+    return {'severity': 'bad', 'color_token': 'red'}
+
+
+def _mileage_visual_hint(mileage_reduction):
+    reduction = float(mileage_reduction or 0)
+    if reduction <= 0:
+        return {'severity': 'good', 'color_token': 'green'}
+    if reduction < 10:
+        return {'severity': 'warning', 'color_token': 'amber'}
+    return {'severity': 'bad', 'color_token': 'red'}
+
+
 def _format_listing_date(value):
     if isinstance(value, datetime):
         return value.date().isoformat()
@@ -411,6 +421,51 @@ def _safe_int(value, default=None):
         return int(float(value))
     except (TypeError, ValueError):
         return default
+
+
+def serialize_condition_option_detail(category, option):
+    """Serialize a condition option with a computed visual severity hint."""
+    option_payload = {
+        'category_key': category.category_key,
+        'display_name': category.display_name,
+        'option_code': option.option_code,
+        'label': option.label,
+        'display_value': option.display_value or option.label,
+        'reduction_percentage': float(option.reduction_percentage),
+    }
+    option_payload.update(_condition_visual_hint(category.options.all(), option.reduction_percentage))
+    return option_payload
+
+
+def _condition_visual_hint(options, selected_reduction):
+    reductions = sorted({
+        round(float(candidate.reduction_percentage), 4)
+        for candidate in options
+    })
+    selected_value = round(float(selected_reduction), 4)
+
+    if len(reductions) <= 1:
+        return {
+            'severity': 'neutral',
+            'color_token': 'gray',
+        }
+
+    if selected_value <= reductions[0]:
+        return {
+            'severity': 'good',
+            'color_token': 'green',
+        }
+
+    if selected_value >= reductions[-1]:
+        return {
+            'severity': 'bad',
+            'color_token': 'red',
+        }
+
+    return {
+        'severity': 'warning',
+        'color_token': 'amber',
+    }
 
 
 def _normalize_comparable_from_detail(detail, source, recommended_price):
@@ -596,6 +651,7 @@ def _build_summary(score, grade, user_mileage, mileage_reduction, selected_condi
             'label': 'Condition',
             'value': _condition_label_from_grade(grade),
             'display_value': f"{_condition_label_from_grade(grade)} (Grade {grade})",
+            **_grade_visual_hint(grade),
         },
         {
             'key': 'mileage_score',
@@ -606,6 +662,7 @@ def _build_summary(score, grade, user_mileage, mileage_reduction, selected_condi
                 if user_mileage in [None, '']
                 else f"{_safe_int(user_mileage, 0):,} km - {_mileage_impact_label(mileage_reduction)}"
             ),
+            **_mileage_visual_hint(mileage_reduction),
         },
     ]
 
@@ -620,6 +677,8 @@ def _build_summary(score, grade, user_mileage, mileage_reduction, selected_condi
             'display_value': detail['display_value'],
             'option_code': detail['option_code'],
             'reduction_percentage': detail['reduction_percentage'],
+            'severity': detail.get('severity'),
+            'color_token': detail.get('color_token'),
         })
 
     return {
