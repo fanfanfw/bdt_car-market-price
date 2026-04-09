@@ -48,6 +48,22 @@ def require_api_key(view_func):
     return _wrapped
 
 
+def parse_recent_months(value):
+    """Parse nullable recent_months and enforce a positive integer when provided."""
+    if value in [None, '']:
+        return None
+
+    try:
+        parsed_value = int(value)
+    except (TypeError, ValueError):
+        raise ValueError('recent_months must be an integer when provided')
+
+    if parsed_value < 1:
+        raise ValueError('recent_months must be greater than or equal to 1')
+
+    return parsed_value
+
+
 def serialize_integration_result(result_data):
     """Return an English-only payload contract for external integrations."""
     return {
@@ -223,6 +239,7 @@ def openapi_schema(request):
                         'variant': {'type': 'string', 'example': 'E'},
                         'year': {'type': 'integer', 'example': 2025},
                         'mileage': {'type': 'integer', 'nullable': True, 'example': 85000},
+                        'recent_months': {'type': 'integer', 'nullable': True, 'minimum': 1, 'example': 3},
                         'condition': {
                             'type': 'object',
                             'additionalProperties': {'type': 'string'},
@@ -478,6 +495,7 @@ def openapi_schema(request):
                         {'name': 'variant', 'in': 'query', 'required': True, 'schema': {'type': 'string'}, 'example': 'E'},
                         {'name': 'year', 'in': 'query', 'required': True, 'schema': {'type': 'integer'}, 'example': 2025},
                         {'name': 'recommended_price', 'in': 'query', 'required': True, 'schema': {'type': 'number'}, 'example': 62500},
+                        {'name': 'recent_months', 'in': 'query', 'required': False, 'schema': {'type': 'integer', 'nullable': True, 'minimum': 1}, 'example': 3},
                         {'name': 'page', 'in': 'query', 'required': False, 'schema': {'type': 'integer', 'default': 1}},
                         {'name': 'page_size', 'in': 'query', 'required': False, 'schema': {'type': 'integer', 'default': 20}},
                     ],
@@ -548,6 +566,7 @@ def price_estimate_api(request):
     variant = (data.get('variant') or '').strip()
     year = data.get('year')
     mileage = data.get('mileage')
+    recent_months = data.get('recent_months')
     condition = data.get('condition')
 
     if not all([brand, model, variant]) or year is None or not isinstance(condition, dict):
@@ -567,6 +586,11 @@ def price_estimate_api(request):
             mileage = int(mileage)
         except (TypeError, ValueError):
             return JsonResponse({'error': 'mileage must be an integer when provided'}, status=400)
+
+    try:
+        recent_months = parse_recent_months(recent_months)
+    except ValueError as exc:
+        return JsonResponse({'error': str(exc)}, status=400)
 
     categories = list(
         VehicleConditionCategory.objects.filter(is_active=True)
@@ -630,6 +654,7 @@ def price_estimate_api(request):
         variant=variant,
         year=year,
         user_mileage=mileage,
+        recent_months=recent_months,
         condition_assessments=condition_assessments,
         selected_condition_details=selected_condition_details,
     )
@@ -656,6 +681,7 @@ def comparable_listings_api(request):
     variant = (request.GET.get('variant') or '').strip()
     year = request.GET.get('year')
     recommended_price = request.GET.get('recommended_price')
+    recent_months = request.GET.get('recent_months')
     page = request.GET.get('page', 1)
     page_size = request.GET.get('page_size', 20)
 
@@ -675,6 +701,11 @@ def comparable_listings_api(request):
         return JsonResponse({'error': 'recommended_price must be numeric'}, status=400)
 
     try:
+        recent_months = parse_recent_months(recent_months)
+    except ValueError as exc:
+        return JsonResponse({'error': str(exc)}, status=400)
+
+    try:
         page = max(int(page), 1)
         page_size = max(int(page_size), 1)
     except (TypeError, ValueError):
@@ -687,6 +718,7 @@ def comparable_listings_api(request):
         variant=variant,
         year=year,
         recommended_price=recommended_price,
+        recent_months=recent_months,
         page=page,
         page_size=page_size,
     )

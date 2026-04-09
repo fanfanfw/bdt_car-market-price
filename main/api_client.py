@@ -132,7 +132,8 @@ class FastAPIClient:
         brand_filter: Optional[str] = None,
         model_filter: Optional[str] = None,
         variant_filter: Optional[str] = None,
-        year_value: Optional[int] = None
+        year_value: Optional[int] = None,
+        recent_months: Optional[int] = None,
     ) -> Dict[str, Any]:
         """Get car records for DataTables"""
         params = {
@@ -160,7 +161,9 @@ class FastAPIClient:
             params['variant_filter'] = variant_filter
         if year_value:
             params['year_value'] = year_value
-        
+        if recent_months is not None:
+            params['recent_months'] = recent_months
+
         return self._make_request('GET', '/django/cars', params=params)
     
     def get_car_detail(self, car_id: int, source: Optional[str] = None) -> Dict[str, Any]:
@@ -191,7 +194,8 @@ class FastAPIClient:
         model: str,
         variant: str,
         year: int,
-        mileage: Optional[int] = None
+        mileage: Optional[int] = None,
+        recent_months: Optional[int] = None,
     ) -> Dict[str, Any]:
         """Get price estimation for car"""
         params = {
@@ -201,9 +205,11 @@ class FastAPIClient:
             'year': year
         }
         
-        if mileage:
+        if mileage is not None:
             params['mileage'] = mileage
-        
+        if recent_months is not None:
+            params['recent_months'] = recent_months
+
         return self._make_request('POST', '/django/price-estimation', params=params)
     
     def get_brand_car_counts(self) -> Dict[str, int]:

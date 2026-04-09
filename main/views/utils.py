@@ -70,6 +70,7 @@ def get_car_statistics(
     variant,
     year,
     user_mileage=None,
+    recent_months=None,
     condition_assessments=None,
     selected_condition_details=None,
 ):
@@ -85,7 +86,8 @@ def get_car_statistics(
                 model=model,
                 variant=variant,
                 year=year,
-                mileage=user_mileage
+                mileage=user_mileage,
+                recent_months=recent_months,
             )
 
             print(f"DEBUG: FastAPI response for {brand} {model} {variant} {year}: {estimation_data}")
@@ -273,6 +275,7 @@ def get_car_statistics(
             variant=variant,
             year=year,
             recommended_price=adjusted_price,
+            recent_months=recent_months,
             page=1,
             page_size=10,
         )
@@ -523,7 +526,7 @@ def _normalize_comparable_from_row(row, recommended_price):
     return comparable
 
 
-def get_comparable_listings(estimation_data, brand, model, variant, year, recommended_price, page=1, page_size=20):
+def get_comparable_listings(estimation_data, brand, model, variant, year, recommended_price, recent_months=None, page=1, page_size=20):
     page = max(int(page or 1), 1)
     page_size = max(int(page_size or 20), 1)
     comparables = []
@@ -562,6 +565,7 @@ def get_comparable_listings(estimation_data, brand, model, variant, year, recomm
             model_filter=model,
             variant_filter=variant,
             year_value=year,
+            recent_months=recent_months,
         )
     except APIError:
         return {
