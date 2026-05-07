@@ -616,7 +616,13 @@ def _build_market_price_position(comparables, price_range, recommended_price, av
         floor_price = _safe_int(price_range.get('low'))
 
     ci_low = _safe_int(price_range.get('low'))
+    if ci_low is None:
+        ci_low = _safe_int(price_range.get('min'))
+
     ci_high = _safe_int(price_range.get('high'))
+    if ci_high is None:
+        ci_high = _safe_int(price_range.get('max'))
+
     ceiling_price = round((ci_low + ci_high) / 2) if ci_low is not None and ci_high is not None else None
 
     if ceiling_price is None:

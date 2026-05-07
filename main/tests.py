@@ -16,7 +16,7 @@ class MarketPricePositionTests(SimpleTestCase):
         self.assertEqual(result['recommended_price'], 245)
         self.assertEqual(result['ceiling_price'], 245)
 
-    def test_ceiling_price_falls_back_to_max_when_ci_is_unavailable(self):
+    def test_ceiling_price_uses_min_max_midpoint_when_low_high_are_unavailable(self):
         result = _build_market_price_position(
             comparables=[],
             price_range={'min': 100, 'max': 260},
@@ -25,5 +25,17 @@ class MarketPricePositionTests(SimpleTestCase):
         )
 
         self.assertEqual(result['floor_price'], 100)
+        self.assertEqual(result['recommended_price'], 200)
+        self.assertEqual(result['ceiling_price'], 180)
+
+    def test_ceiling_price_falls_back_to_max_when_lower_bound_is_unavailable(self):
+        result = _build_market_price_position(
+            comparables=[],
+            price_range={'max': 260},
+            recommended_price=200,
+            average_price=200,
+        )
+
+        self.assertEqual(result['floor_price'], 200)
         self.assertEqual(result['recommended_price'], 200)
         self.assertEqual(result['ceiling_price'], 260)
