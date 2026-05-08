@@ -94,6 +94,16 @@ def serialize_integration_result(result_data):
         'market_price_position': result_data.get('market_price_position'),
         'comparables_count': result_data.get('comparables_count'),
         'summary': result_data.get('summary'),
+        'original_sample_size': result_data.get('original_sample_size'),
+        'clean_sample_size': result_data.get('clean_sample_size'),
+        'excluded_outliers_count': result_data.get('excluded_outliers_count'),
+        'excluded_outliers': result_data.get('excluded_outliers'),
+        'market_average_before_outlier_filter': result_data.get('market_average_before_outlier_filter'),
+        'market_average_after_outlier_filter': result_data.get('market_average_after_outlier_filter'),
+        'standard_deviation_after_outlier_filter': result_data.get('standard_deviation_after_outlier_filter'),
+        'confidence_interval_after_outlier_filter': result_data.get('confidence_interval_after_outlier_filter'),
+        'outlier_detection_applied': result_data.get('outlier_detection_applied'),
+        'outlier_detection_reason': result_data.get('outlier_detection_reason'),
     }
 
 
@@ -272,6 +282,25 @@ def openapi_schema(request):
                                 'average_mileage': {'type': 'integer', 'example': 6677},
                                 'average_price': {'type': 'integer', 'example': 76076},
                                 'sample_size': {'type': 'integer', 'example': 10},
+                                'original_sample_size': {'type': 'integer', 'example': 11},
+                                'clean_sample_size': {'type': 'integer', 'example': 10},
+                                'excluded_outliers_count': {'type': 'integer', 'example': 1},
+                                'excluded_outliers': {
+                                    'type': 'array',
+                                    'items': {'type': 'object'},
+                                },
+                                'market_average_before_outlier_filter': {'type': 'integer', 'example': 82400},
+                                'market_average_after_outlier_filter': {'type': 'integer', 'example': 76076},
+                                'standard_deviation_after_outlier_filter': {'type': 'number', 'example': 4200.5},
+                                'confidence_interval_after_outlier_filter': {
+                                    'type': 'object',
+                                    'properties': {
+                                        'low': {'type': 'integer', 'example': 73472},
+                                        'high': {'type': 'integer', 'example': 78680},
+                                    },
+                                },
+                                'outlier_detection_applied': {'type': 'boolean', 'example': True},
+                                'outlier_detection_reason': {'type': 'string', 'example': 'modified_z_score_median_mad; threshold=3.5'},
                                 'user_mileage': {'type': 'integer', 'example': 85000},
                                 'mileage_diff_percent': {'type': 'number', 'example': 1173.0},
                                 'score': {'type': 'integer', 'example': 82},

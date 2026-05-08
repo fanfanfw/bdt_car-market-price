@@ -2,9 +2,11 @@
 Utility functions and helpers for views
 """
 from functools import lru_cache
+import math
 import random
 import re
 from datetime import date, datetime, timedelta
+from statistics import mean, median, stdev
 
 from django.http import HttpResponse
 from django.utils import timezone
@@ -15,6 +17,14 @@ from ..models import (
     VehicleConditionCategory
 )
 from ..api_client import get_price_estimation, get_car_records, get_car_detail, APIError
+
+
+OUTLIER_MIN_SAMPLE_SIZE = 10
+MODIFIED_Z_SCORE_THRESHOLD = 3.5
+MAD_ZERO_FALLBACK_Z_SCORE_THRESHOLD = 2.5
+OUTLIER_MIN_MEDIAN_DEVIATION_PERCENT = 25
+MARKET_RECORDS_PAGE_SIZE = 500
+MARKET_RECORDS_MAX_PAGES = 20
 
 
 def _normalize_phone_e164_like(phone: str) -> str:
@@ -106,14 +116,40 @@ def get_car_statistics(
                     print(f"DEBUG: No valid price data in FastAPI response: {estimation_data}")
                     return None
 
-            avg_mileage = stats.get('average_mileage', 100000)  # Default fallback
-            avg_price = stats.get('average_price', 0)
+            original_avg_mileage = stats.get('average_mileage', 100000)  # Default fallback
+            original_avg_price = stats.get('average_price', 0)
             total_data = stats.get('data_count', estimation_data.get('sample_size', 0))
             raw_price_range = estimation_data.get('price_range', {}) if isinstance(estimation_data, dict) else {}
 
             if total_data == 0:
                 print(f"DEBUG: No data found for {brand} {model} {variant} {year}")
                 return None
+
+            market_comparables = _load_market_comparables(
+                estimation_data=estimation_data,
+                brand=brand,
+                model=model,
+                variant=variant,
+                year=year,
+                recent_months=recent_months,
+            )
+            outlier_stats = _build_outlier_filtered_market_stats(
+                market_comparables,
+                fallback_average_price=original_avg_price,
+                fallback_average_mileage=original_avg_mileage,
+                fallback_sample_size=total_data,
+            )
+
+            avg_mileage = outlier_stats.get('average_mileage_after_outlier_filter')
+            if avg_mileage is None:
+                avg_mileage = original_avg_mileage
+
+            avg_price = outlier_stats.get('market_average_after_outlier_filter')
+            if avg_price is None:
+                avg_price = original_avg_price
+
+            total_data = outlier_stats.get('clean_sample_size') or total_data
+            raw_price_range = outlier_stats.get('price_range_after_outlier_filter') or raw_price_range
 
         except APIError as e:
             print(f"DEBUG: FastAPI error: {e}")
@@ -129,6 +165,7 @@ def get_car_statistics(
             'rata_rata_price_bulat': avg_price,
             'total_data': total_data,
             'sample_size': total_data,
+            **outlier_stats,
         }
 
         # Calculate price adjustments with dynamic 2-layer system
@@ -287,7 +324,7 @@ def get_car_statistics(
             recommended_price=adjusted_price,
             average_price=avg_price,
         )
-        confidence_level = _confidence_level(total_data)
+        confidence_level = _confidence_level(outlier_stats.get('clean_sample_size', total_data))
         summary = _build_summary(
             score=score,
             grade=grade,
@@ -424,6 +461,290 @@ def _safe_int(value, default=None):
         return int(float(value))
     except (TypeError, ValueError):
         return default
+
+
+def _round_or_none(value):
+    if value is None:
+        return None
+    return round(float(value))
+
+
+def _extract_raw_comparables(estimation_data, recommended_price=0):
+    comparables = []
+    if not isinstance(estimation_data, dict):
+        return comparables
+
+    for key in ['comparables', 'comparable_listings', 'listings']:
+        raw_comparables = estimation_data.get(key)
+        if not isinstance(raw_comparables, list):
+            continue
+
+        for item in raw_comparables:
+            comparable = None
+            if isinstance(item, dict):
+                comparable = _normalize_comparable_from_detail(item, item.get('source'), recommended_price)
+            elif isinstance(item, (list, tuple)):
+                comparable = _normalize_comparable_from_row(item, recommended_price)
+
+            if comparable:
+                comparables.append(comparable)
+        break
+
+    return comparables
+
+
+def _load_market_comparables(estimation_data, brand, model, variant, year, recent_months=None):
+    comparables = _extract_raw_comparables(estimation_data, recommended_price=0)
+    if comparables:
+        return comparables
+
+    all_comparables = []
+    start = 0
+    total_count = None
+
+    for _ in range(MARKET_RECORDS_MAX_PAGES):
+        try:
+            records = get_car_records(
+                draw=1,
+                start=start,
+                length=MARKET_RECORDS_PAGE_SIZE,
+                brand_filter=brand,
+                model_filter=model,
+                variant_filter=variant,
+                year_value=year,
+                recent_months=recent_months,
+            )
+        except APIError:
+            break
+
+        rows = records.get('data', []) if isinstance(records, dict) else []
+        if total_count is None and isinstance(records, dict):
+            total_count = _safe_int(records.get('recordsFiltered'))
+            if total_count is None:
+                total_count = _safe_int(records.get('recordsTotal'))
+
+        for row in rows:
+            comparable = _normalize_comparable_from_row(row, recommended_price=0)
+            if comparable:
+                all_comparables.append(comparable)
+
+        if not rows:
+            break
+
+        start += len(rows)
+        if total_count is not None and start >= total_count:
+            break
+
+    return all_comparables
+
+
+def _sample_standard_deviation(values):
+    if len(values) < 2:
+        return 0.0
+    return float(stdev(values))
+
+
+def _confidence_interval(values):
+    if not values:
+        return {'low': None, 'high': None}
+
+    average = float(mean(values))
+    if len(values) < 2:
+        return {'low': round(average), 'high': round(average)}
+
+    margin = 1.96 * (_sample_standard_deviation(values) / math.sqrt(len(values)))
+    return {
+        'low': round(average - margin),
+        'high': round(average + margin),
+    }
+
+
+def _summarize_market_prices(prices):
+    if not prices:
+        return {
+            'average': None,
+            'standard_deviation': None,
+            'confidence_interval': {'low': None, 'high': None},
+            'price_range': {},
+        }
+
+    average = float(mean(prices))
+    confidence_interval = _confidence_interval(prices)
+    return {
+        'average': round(average),
+        'standard_deviation': round(_sample_standard_deviation(prices), 2),
+        'confidence_interval': confidence_interval,
+        'price_range': {
+            'min': round(min(prices)),
+            'max': round(max(prices)),
+            'avg': round(average),
+            'low': confidence_interval['low'],
+            'high': confidence_interval['high'],
+        },
+    }
+
+
+def _median_deviation_percent(price, median_price):
+    if median_price <= 0:
+        return 0.0
+    return abs(price - median_price) / median_price * 100
+
+
+def _listing_outlier_payload(comparable, method, score, median_price, mad, median_deviation_percent):
+    payload = dict(comparable)
+    payload.update({
+        'outlier_method': method,
+        'outlier_score': None if score is None else round(float(score), 4),
+        'median_price': round(float(median_price)),
+        'median_deviation_percent': round(float(median_deviation_percent), 2),
+        'mad': round(float(mad), 4),
+    })
+    return payload
+
+
+def _detect_price_outliers(price_comparables):
+    prices = [float(item['price']) for item in price_comparables]
+    sample_size = len(prices)
+
+    if sample_size < OUTLIER_MIN_SAMPLE_SIZE:
+        return {
+            'outlier_detection_applied': False,
+            'outlier_detection_reason': (
+                f'sample_size_below_minimum_{OUTLIER_MIN_SAMPLE_SIZE}; no listings excluded'
+            ),
+            'clean_comparables': price_comparables,
+            'excluded_outliers': [],
+        }
+
+    median_price = float(median(prices))
+    deviations = [abs(price - median_price) for price in prices]
+    mad = float(median(deviations))
+    excluded_outliers = []
+    clean_comparables = []
+
+    if mad > 0:
+        method = 'modified_z_score_median_mad'
+        for comparable, price in zip(price_comparables, prices):
+            score = 0.6745 * (price - median_price) / mad
+            median_deviation_percent = _median_deviation_percent(price, median_price)
+            if (
+                abs(score) > MODIFIED_Z_SCORE_THRESHOLD
+                and median_deviation_percent >= OUTLIER_MIN_MEDIAN_DEVIATION_PERCENT
+            ):
+                excluded_outliers.append(
+                    _listing_outlier_payload(
+                        comparable,
+                        method,
+                        score,
+                        median_price,
+                        mad,
+                        median_deviation_percent,
+                    )
+                )
+            else:
+                clean_comparables.append(comparable)
+    else:
+        std_dev = _sample_standard_deviation(prices)
+        if std_dev <= 0:
+            return {
+                'outlier_detection_applied': True,
+                'outlier_detection_reason': 'mad_zero_and_all_prices_identical; no listings excluded',
+                'clean_comparables': price_comparables,
+                'excluded_outliers': [],
+            }
+
+        average = float(mean(prices))
+        method = 'mad_zero_fallback_standard_z_score'
+        for comparable, price in zip(price_comparables, prices):
+            score = (price - average) / std_dev
+            median_deviation_percent = _median_deviation_percent(price, median_price)
+            if (
+                abs(score) > MAD_ZERO_FALLBACK_Z_SCORE_THRESHOLD
+                and median_deviation_percent >= OUTLIER_MIN_MEDIAN_DEVIATION_PERCENT
+            ):
+                excluded_outliers.append(
+                    _listing_outlier_payload(
+                        comparable,
+                        method,
+                        score,
+                        median_price,
+                        mad,
+                        median_deviation_percent,
+                    )
+                )
+            else:
+                clean_comparables.append(comparable)
+
+    return {
+        'outlier_detection_applied': True,
+        'outlier_detection_reason': (
+            f'{method}; threshold='
+            f'{MODIFIED_Z_SCORE_THRESHOLD if mad > 0 else MAD_ZERO_FALLBACK_Z_SCORE_THRESHOLD}; '
+            f'min_median_deviation_percent={OUTLIER_MIN_MEDIAN_DEVIATION_PERCENT}'
+        ),
+        'clean_comparables': clean_comparables or price_comparables,
+        'excluded_outliers': excluded_outliers if clean_comparables else [],
+    }
+
+
+def _build_outlier_filtered_market_stats(
+    comparables,
+    fallback_average_price=None,
+    fallback_average_mileage=None,
+    fallback_sample_size=None,
+):
+    price_comparables = [
+        item for item in comparables
+        if isinstance(item, dict) and _safe_int(item.get('price')) is not None
+    ]
+    for item in price_comparables:
+        item['price'] = _safe_int(item.get('price'))
+
+    if not price_comparables:
+        fallback_sample_size = _safe_int(fallback_sample_size, 0)
+        fallback_average_price = _round_or_none(fallback_average_price)
+        return {
+            'original_sample_size': fallback_sample_size,
+            'clean_sample_size': fallback_sample_size,
+            'excluded_outliers_count': 0,
+            'excluded_outliers': [],
+            'market_average_before_outlier_filter': fallback_average_price,
+            'market_average_after_outlier_filter': fallback_average_price,
+            'standard_deviation_after_outlier_filter': None,
+            'confidence_interval_after_outlier_filter': {'low': None, 'high': None},
+            'outlier_detection_applied': False,
+            'outlier_detection_reason': 'no_listing_prices_available; used upstream market statistics',
+            'average_mileage_after_outlier_filter': _round_or_none(fallback_average_mileage),
+            'price_range_after_outlier_filter': {},
+        }
+
+    original_prices = [float(item['price']) for item in price_comparables]
+    original_summary = _summarize_market_prices(original_prices)
+    detection_result = _detect_price_outliers(price_comparables)
+    clean_comparables = detection_result['clean_comparables']
+    clean_prices = [float(item['price']) for item in clean_comparables]
+    clean_summary = _summarize_market_prices(clean_prices)
+    clean_mileages = [
+        _safe_int(item.get('mileage')) for item in clean_comparables
+        if _safe_int(item.get('mileage')) is not None
+    ]
+
+    return {
+        'original_sample_size': len(price_comparables),
+        'clean_sample_size': len(clean_comparables),
+        'excluded_outliers_count': len(detection_result['excluded_outliers']),
+        'excluded_outliers': detection_result['excluded_outliers'],
+        'market_average_before_outlier_filter': original_summary['average'],
+        'market_average_after_outlier_filter': clean_summary['average'],
+        'standard_deviation_after_outlier_filter': clean_summary['standard_deviation'],
+        'confidence_interval_after_outlier_filter': clean_summary['confidence_interval'],
+        'outlier_detection_applied': detection_result['outlier_detection_applied'],
+        'outlier_detection_reason': detection_result['outlier_detection_reason'],
+        'average_mileage_after_outlier_filter': (
+            round(mean(clean_mileages)) if clean_mileages else _round_or_none(fallback_average_mileage)
+        ),
+        'price_range_after_outlier_filter': clean_summary['price_range'],
+    }
 
 
 def serialize_condition_option_detail(category, option):
