@@ -90,6 +90,22 @@ class PriceOutlierDetectionTests(SimpleTestCase):
             result['market_average_before_outlier_filter'],
         )
 
+    def test_clean_price_range_keeps_ui_ceiling_on_clean_min_max_midpoint(self):
+        prices = [60000, 62000, 63000, 64000, 65000, 66000, 67000, 68000, 69000, 70000, 132000]
+        listings = [self._listing(price, listing_id=index) for index, price in enumerate(prices, start=1)]
+
+        outlier_result = _build_outlier_filtered_market_stats(listings)
+        market_position = _build_market_price_position(
+            comparables=[],
+            price_range=outlier_result['price_range_after_outlier_filter'],
+            recommended_price=outlier_result['market_average_after_outlier_filter'],
+            average_price=outlier_result['market_average_after_outlier_filter'],
+        )
+
+        self.assertEqual(market_position['floor_price'], 60000)
+        self.assertEqual(market_position['recommended_price'], 65400)
+        self.assertEqual(market_position['ceiling_price'], 65000)
+
     def test_sample_size_at_least_10_with_normal_prices_excludes_nothing(self):
         prices = [60000, 61500, 63000, 64000, 65500, 67000, 68500, 70000, 71500, 73000]
         listings = [self._listing(price, listing_id=index) for index, price in enumerate(prices, start=1)]

@@ -578,8 +578,6 @@ def _summarize_market_prices(prices):
             'min': round(min(prices)),
             'max': round(max(prices)),
             'avg': round(average),
-            'low': confidence_interval['low'],
-            'high': confidence_interval['high'],
         },
     }
 
