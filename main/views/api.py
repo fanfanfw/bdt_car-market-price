@@ -2,6 +2,7 @@
 API endpoints for data retrieval
 """
 import json
+from functools import wraps
 
 from django.conf import settings
 from django.http import JsonResponse
@@ -28,6 +29,23 @@ lookup_rate_limit = rate_limit_by_api_key_or_ip(
     reject_invalid_api_key_header=True,
     invalid_key_limit=getattr(settings, "LOOKUP_RL_INVALID_KEY_LIMIT", 30),
 )
+
+
+def require_api_key(view_func):
+    """Protect integration endpoints with X-API-Key header."""
+    @wraps(view_func)
+    def _wrapped(request, *args, **kwargs):
+        configured_api_keys = getattr(settings, 'API_KEYS', None) or []
+        if not configured_api_keys:
+            return JsonResponse({'error': 'API key is not configured on server'}, status=503)
+
+        provided_api_key = request.headers.get('X-API-Key') or request.META.get('HTTP_X_API_KEY')
+        if provided_api_key not in configured_api_keys:
+            return JsonResponse({'error': 'Invalid API key'}, status=401)
+
+        return view_func(request, *args, **kwargs)
+
+    return _wrapped
 
 
 def parse_recent_months(value):
@@ -191,11 +209,11 @@ def openapi_schema(request):
         ],
         'components': {
             'securitySchemes': {
-                'KongApiKeyAuth': {
+                'ApiKeyAuth': {
                     'type': 'apiKey',
                     'in': 'header',
                     'name': 'X-API-Key',
-                    'description': 'Provide Kong API key in X-API-Key header.',
+                    'description': 'Provide API key in X-API-Key header.',
                 }
             },
             'schemas': {
@@ -444,7 +462,7 @@ def openapi_schema(request):
                     'tags': ['Integration'],
                     'summary': 'Get condition categories and options',
                     'description': 'Returns dynamic condition categories and stable option_code values for integrations.',
-                    'security': [{'KongApiKeyAuth': []}],
+                    'security': [{'ApiKeyAuth': []}],
                     'responses': {
                         '200': {
                             'description': 'Condition options retrieved',
@@ -471,7 +489,7 @@ def openapi_schema(request):
                     'tags': ['Integration'],
                     'summary': 'Calculate price estimation',
                     'description': 'Calculate final estimated price using mileage and condition option_code values.',
-                    'security': [{'KongApiKeyAuth': []}],
+                    'security': [{'ApiKeyAuth': []}],
                     'requestBody': {
                         'required': True,
                         'content': {
@@ -499,7 +517,7 @@ def openapi_schema(request):
                     'tags': ['Integration'],
                     'summary': 'Get comparable listings',
                     'description': 'Returns paginated comparable listings for the selected vehicle and recommendation price.',
-                    'security': [{'KongApiKeyAuth': []}],
+                    'security': [{'ApiKeyAuth': []}],
                     'parameters': [
                         {'name': 'brand', 'in': 'query', 'required': True, 'schema': {'type': 'string'}, 'example': 'TOYOTA'},
                         {'name': 'model', 'in': 'query', 'required': True, 'schema': {'type': 'string'}, 'example': 'YARIS'},
@@ -564,6 +582,7 @@ def openapi_schema(request):
 
 @csrf_exempt
 @require_http_methods(["POST"])
+@require_api_key
 def price_estimate_api(request):
     """API endpoint to calculate car price estimation from integration payload."""
     try:
@@ -683,6 +702,7 @@ def price_estimate_api(request):
 
 
 @require_http_methods(["GET"])
+@require_api_key
 def comparable_listings_api(request):
     """API endpoint to get paginated comparable listings for integrations."""
     brand = (request.GET.get('brand') or '').strip()
@@ -742,6 +762,7 @@ def comparable_listings_api(request):
     })
 
 
+@require_api_key
 def get_condition_options_api(request):
     """API endpoint to get dynamic condition categories and option codes."""
     try:
