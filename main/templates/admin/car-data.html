@@ -237,10 +237,10 @@
 let carTable;
 let brandFilter, modelFilter, variantFilter, yearValueFilter;
 
-const brandsUrl = '{% url "main:get_brands" %}';
-const modelsUrl = '{% url "main:get_models" %}';
-const variantsUrl = '{% url "main:get_variants" %}';
-const yearsUrl = '{% url "main:get_years" %}';
+const brandsUrl = '{% url "main:get_web_brands" %}';
+const modelsUrl = '{% url "main:get_web_models" %}';
+const variantsUrl = '{% url "main:get_web_variants" %}';
+const yearsUrl = '{% url "main:get_web_years" %}';
 
 $(document).ready(function() {
     brandFilter = $('#brandFilter');

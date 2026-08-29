@@ -308,7 +308,8 @@ def openapi_schema(request):
                 'get': {
                     'tags': ['Lookup'],
                     'summary': 'Get brands',
-                    'description': 'Returns all available car brands.',
+                    'description': 'Integration lookup. Returns all available car brands.',
+                    'security': [{'KongApiKeyAuth': []}],
                     'responses': {
                         '200': {
                             'description': 'Brand list',
@@ -329,7 +330,8 @@ def openapi_schema(request):
                 'get': {
                     'tags': ['Lookup'],
                     'summary': 'Get models by brand',
-                    'description': 'Returns models for a selected brand.',
+                    'description': 'Integration lookup. Returns models for a selected brand.',
+                    'security': [{'KongApiKeyAuth': []}],
                     'parameters': [
                         {
                             'name': 'brand',
@@ -360,7 +362,8 @@ def openapi_schema(request):
                 'get': {
                     'tags': ['Lookup'],
                     'summary': 'Get variants by brand and model',
-                    'description': 'Returns variants for a selected brand and model.',
+                    'description': 'Integration lookup. Returns variants for a selected brand and model.',
+                    'security': [{'KongApiKeyAuth': []}],
                     'parameters': [
                         {
                             'name': 'brand',
@@ -398,7 +401,8 @@ def openapi_schema(request):
                 'get': {
                     'tags': ['Lookup'],
                     'summary': 'Get years by brand, model, and variant',
-                    'description': 'Returns years for a selected brand, model, and variant.',
+                    'description': 'Integration lookup. Returns years for a selected brand, model, and variant.',
+                    'security': [{'KongApiKeyAuth': []}],
                     'parameters': [
                         {
                             'name': 'brand',

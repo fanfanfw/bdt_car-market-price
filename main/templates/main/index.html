@@ -7,10 +7,10 @@
 <script>
     // Define API URLs using Django template tags
     const API_URLS = {
-        brands: '{% url "main:get_brands" %}',
-        models: '{% url "main:get_models" %}',
-        variants: '{% url "main:get_variants" %}',
-        years: '{% url "main:get_years" %}'
+        brands: '{% url "main:get_web_brands" %}',
+        models: '{% url "main:get_web_models" %}',
+        variants: '{% url "main:get_web_variants" %}',
+        years: '{% url "main:get_web_years" %}'
     };
 </script>
 {% endblock %}
